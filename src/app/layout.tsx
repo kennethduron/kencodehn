@@ -3,14 +3,11 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
+import { site, seoKeywords } from "@/lib/site";
 
-const siteUrl = "https://kencodehn.com";
-const siteName = "Ken Code";
-const title = "Ken Code | Sitios web profesionales que convierten";
+const title = "Ken Code | Desarrollo web profesional en Honduras";
 const description =
-  "Ken Code crea sitios web modernos, rápidos y enfocados en ventas para negocios que quieren verse más profesionales, recibir más cotizaciones y crecer en línea.";
-const ogImage = "/images/logo-kenneth.jpg";
-const favicon = "/images/fav-icon.jpg";
+  "Ken Code crea páginas web, landing pages, e-commerce y sitios para negocios en Honduras, con SEO técnico, WhatsApp integrado y enfoque en cotizaciones.";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,51 +22,40 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(site.url),
   title,
   description,
-  applicationName: siteName,
-  authors: [{ name: siteName, url: siteUrl }],
-  creator: siteName,
-  publisher: siteName,
+  applicationName: site.name,
+  authors: [{ name: site.name, url: site.url }],
+  creator: site.name,
+  publisher: site.name,
   category: "Desarrollo web",
-  keywords: [
-    "Ken Code",
-    "desarrollo web Honduras",
-    "landing pages",
-    "sitios web profesionales",
-    "CRM",
-    "e-commerce",
-    "diseño web",
-    "SEO básico",
-    "Vercel",
-    "Next.js",
-  ],
+  keywords: seoKeywords,
   alternates: {
     canonical: "/",
   },
   icons: {
     icon: [
-      { url: favicon, type: "image/jpeg" },
-      { url: favicon, sizes: "32x32", type: "image/jpeg" },
-      { url: favicon, sizes: "192x192", type: "image/jpeg" },
+      { url: site.favicon, type: "image/jpeg" },
+      { url: site.favicon, sizes: "32x32", type: "image/jpeg" },
+      { url: site.favicon, sizes: "192x192", type: "image/jpeg" },
     ],
-    shortcut: [{ url: favicon, type: "image/jpeg" }],
-    apple: [{ url: favicon, sizes: "180x180", type: "image/jpeg" }],
+    shortcut: [{ url: site.favicon, type: "image/jpeg" }],
+    apple: [{ url: site.favicon, sizes: "180x180", type: "image/jpeg" }],
   },
   openGraph: {
     title,
     description,
-    url: siteUrl,
-    siteName,
+    url: site.url,
+    siteName: site.name,
     locale: "es_HN",
     type: "website",
     images: [
       {
-        url: ogImage,
+        url: site.ogImage,
         width: 1200,
         height: 630,
-        alt: "Ken Code - Sitios web profesionales",
+        alt: "Ken Code - Desarrollo web profesional en Honduras",
         type: "image/jpeg",
       },
     ],
@@ -78,7 +64,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
-    images: [ogImage],
+    images: [site.ogImage],
   },
 };
 

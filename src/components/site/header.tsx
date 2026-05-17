@@ -2,29 +2,52 @@
 
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/site/logo";
 
 const navItems = [
-  { label: "Inicio", href: "/#inicio" },
-  { label: "Servicios", href: "/#servicios" },
-  { label: "Proyectos", href: "/#proyectos" },
-  { label: "Paquetes", href: "/#paquetes" },
-  { label: "Testimonios", href: "/#testimonios" },
-  { label: "Contacto", href: "/#contacto" },
+  { label: "Inicio", href: "/" },
+  { label: "Servicios", href: "/servicios" },
+  { label: "Proyectos", href: "/proyectos" },
+  { label: "Paquetes", href: "/paquetes" },
+  { label: "Contacto", href: "/contacto" },
 ];
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   function closeMenu() {
     setIsOpen(false);
   }
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || buttonRef.current?.contains(target)) {
+        return;
+      }
+      closeMenu();
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("scroll", closeMenu, { passive: true });
+    window.addEventListener("touchmove", closeMenu, { passive: true });
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("scroll", closeMenu);
+      window.removeEventListener("touchmove", closeMenu);
+    };
+  }, [isOpen]);
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-kc-bg/82 backdrop-blur-xl">
       <nav className="kc-shell flex h-20 items-center justify-between gap-4" aria-label="Navegacion principal">
-        <Link href="/" onClick={closeMenu} aria-label="Ken Code inicio">
+        <Link href="/" onClick={closeMenu} aria-label="Ken Code inicio" className="shrink-0">
           <Logo />
         </Link>
 
@@ -42,7 +65,7 @@ export function Header() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <Link
-            href="/#contacto"
+            href="/cotizar"
             className="rounded-lg bg-kc-electric px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(0,109,255,0.3)] transition hover:bg-kc-cyan hover:text-kc-bg"
           >
             Cotizar
@@ -50,6 +73,7 @@ export function Header() {
         </div>
 
         <button
+          ref={buttonRef}
           type="button"
           className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-kc-border bg-white/5 text-kc-text lg:hidden"
           aria-label={isOpen ? "Cerrar menu" : "Abrir menu"}
@@ -63,9 +87,14 @@ export function Header() {
 
       <div
         id="mobile-menu"
-        className={`lg:hidden ${isOpen ? "block" : "hidden"}`}
+        aria-hidden={!isOpen}
+        className={`absolute inset-x-0 top-20 transition duration-200 lg:hidden ${
+          isOpen
+            ? "visible pointer-events-auto translate-y-0 opacity-100"
+            : "invisible pointer-events-none -translate-y-2 opacity-0"
+        }`}
       >
-        <div className="mx-4 mb-4 rounded-2xl border border-kc-border bg-kc-bg-soft/96 p-3 shadow-2xl">
+        <div ref={menuRef} className="mx-4 mb-4 rounded-2xl border border-kc-border bg-kc-bg-soft/96 p-3 shadow-2xl">
           {navItems.map((item) => (
             <Link
               key={item.label}
@@ -77,7 +106,7 @@ export function Header() {
             </Link>
           ))}
           <Link
-            href="/#contacto"
+            href="/cotizar"
             onClick={closeMenu}
             className="mt-2 flex min-h-12 items-center justify-center rounded-xl bg-kc-electric px-4 py-3 text-base font-bold text-white"
           >

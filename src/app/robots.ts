@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const siteUrl = "https://kencodehn.com";
+import { site } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,10 +7,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/"],
+        disallow: ["/admin", "/admin/", "/api", "/api/"],
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap: `${site.url}/sitemap.xml`,
+    host: site.url,
   };
 }

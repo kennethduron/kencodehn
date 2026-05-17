@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { Logo } from "@/components/site/logo";
-
-const email = "kencodehn@gmail.com";
-const phone = "+504 9911-2211";
-const facebookUrl = "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr";
+import { site } from "@/lib/site";
 
 const footerLinks = [
-  { label: "Servicios", href: "/#servicios" },
-  { label: "Proyectos", href: "/#proyectos" },
-  { label: "Paquetes", href: "/#paquetes" },
-  { label: "Testimonios", href: "/#testimonios" },
-  { label: "Cotizar", href: "/#contacto" },
+  { label: "Servicios", href: "/servicios" },
+  { label: "Proyectos", href: "/proyectos" },
+  { label: "Paquetes", href: "/paquetes" },
+  { label: "Sobre mí", href: "/sobre-mi" },
+  { label: "Blog", href: "/blog" },
+  { label: "Cotizar", href: "/cotizar" },
 ];
 
 export function Footer() {
@@ -24,15 +22,15 @@ export function Footer() {
             para negocios que quieren recibir mas cotizaciones.
           </p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-kc-muted">
-            <a className="transition hover:text-kc-cyan" href={`mailto:${email}`}>
-              {email}
+            <a className="transition hover:text-kc-cyan" href={`mailto:${site.email}`}>
+              {site.email}
             </a>
-            <a className="transition hover:text-kc-cyan" href="tel:+50499112211">
-              {phone}
+            <a className="transition hover:text-kc-cyan" href={`tel:+${site.phoneRaw}`}>
+              {site.phone}
             </a>
             <a
               className="transition hover:text-kc-cyan"
-              href={facebookUrl}
+              href={site.facebook}
               target="_blank"
               rel="noopener noreferrer"
             >

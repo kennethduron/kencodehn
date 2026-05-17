@@ -2,8 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { Send } from "lucide-react";
-
-const phone = "50499112211";
+import { site } from "@/lib/site";
 
 export function QuoteForm() {
   const [form, setForm] = useState({
@@ -25,7 +24,7 @@ export function QuoteForm() {
       "Me gustaria recibir una propuesta y próximos pasos.",
     ].join("\n");
 
-    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/${site.phoneRaw}?text=${encodeURIComponent(message)}`;
   }, [form]);
 
   function updateField(field: keyof typeof form, value: string) {

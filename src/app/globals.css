@@ -33,6 +33,7 @@
 html {
   scroll-behavior: smooth;
   background: var(--kc-bg);
+  overflow-x: hidden;
 }
 
 body {
@@ -45,6 +46,13 @@ body {
     var(--kc-bg);
   color: var(--kc-text);
   font-family: var(--font-sans);
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
 }
 
 a {
