@@ -5,9 +5,9 @@ import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
 import { site, seoKeywords } from "@/lib/site";
 
-const title = "Ken Code | International Web Development Studio";
+const title = "Ken Code | Estudio internacional de desarrollo web";
 const description =
-  "Ken Code creates premium websites, landing pages, e-commerce experiences and modern digital solutions for businesses working locally and internationally.";
+  "Ken Code crea paginas web premium, landing pages, e-commerce y soluciones digitales modernas para negocios que trabajan localmente e internacionalmente.";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,6 +33,11 @@ export const metadata: Metadata = {
   keywords: seoKeywords,
   alternates: {
     canonical: "/",
+    languages: {
+      es: "/",
+      en: "/en",
+      "x-default": "/",
+    },
   },
   icons: {
     icon: [
@@ -55,7 +60,7 @@ export const metadata: Metadata = {
         url: site.ogImage,
         width: 1200,
         height: 630,
-        alt: "Ken Code - International web development studio",
+        alt: "Ken Code - Estudio internacional de desarrollo web",
         type: "image/jpeg",
       },
     ],

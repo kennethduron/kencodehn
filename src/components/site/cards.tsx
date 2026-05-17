@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Check, ExternalLink } from "lucide-react";
+import { Check, ExternalLink, LockKeyhole } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type ServiceCardProps = {
@@ -24,31 +25,119 @@ type ProjectCardProps = {
   slug: string;
   name: string;
   category: string;
-  technologies: string[];
+  description: string;
   result: string;
+  image: string;
+  imageAlt: string;
+  externalUrl?: string;
+  benefits: string[];
+  caseHref?: string;
+  liveLabel?: string;
+  caseLabel?: string;
+  unavailableLabel?: string;
 };
 
-export function ProjectCard({ slug, name, category, technologies, result }: ProjectCardProps) {
+export function ProjectCard({
+  slug,
+  name,
+  category,
+  description,
+  result,
+  image,
+  imageAlt,
+  externalUrl,
+  benefits,
+  caseHref,
+  liveLabel = "Ver proyecto",
+  caseLabel = "Ver caso de estudio",
+  unavailableLabel = "Link pendiente",
+}: ProjectCardProps) {
   return (
-    <article className="kc-card rounded-2xl p-6">
-      <p className="text-sm font-bold uppercase tracking-[0.18em] text-kc-cyan">{category}</p>
-      <h3 className="mt-3 font-display text-2xl font-black text-kc-text">{name}</h3>
-      <p className="mt-4 text-sm leading-7 text-kc-muted">{result}</p>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {technologies.map((tech) => (
-          <span key={tech} className="rounded-full border border-kc-turquoise/25 bg-kc-turquoise/10 px-3 py-1 text-xs font-bold text-kc-turquoise">
-            {tech}
-          </span>
-        ))}
+    <article className="kc-card flex h-full flex-col overflow-hidden rounded-2xl">
+      <div className="relative aspect-[16/10] overflow-hidden border-b border-white/10 bg-kc-bg-soft">
+        <Image
+          src={image}
+          alt={imageAlt}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1180px) 50vw, 380px"
+          className="object-cover transition duration-500 hover:scale-[1.03]"
+        />
       </div>
-      <Link
-        href={`/proyectos/${slug}`}
-        className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-kc-border px-4 py-2 text-sm font-bold text-kc-text transition hover:border-kc-cyan hover:text-kc-cyan"
-      >
-        Ver caso
-        <ExternalLink size={16} aria-hidden="true" />
-      </Link>
+      <div className="flex flex-1 flex-col p-6">
+        <p className="text-sm font-bold uppercase tracking-[0.18em] text-kc-cyan">{category}</p>
+        <h3 className="mt-3 font-display text-2xl font-black text-kc-text">{name}</h3>
+        <p className="mt-3 text-sm leading-7 text-kc-muted">{description}</p>
+        <p className="mt-3 text-sm leading-7 text-kc-text">{result}</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {benefits.map((benefit) => (
+            <span key={benefit} className="rounded-full border border-kc-turquoise/25 bg-kc-turquoise/10 px-3 py-1 text-xs font-bold text-kc-turquoise">
+              {benefit}
+            </span>
+          ))}
+        </div>
+        <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row">
+          {externalUrl ? (
+            <Link
+              href={externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-kc-electric px-4 py-2 text-sm font-bold text-white transition hover:bg-kc-cyan hover:text-kc-bg"
+            >
+              {liveLabel}
+              <ExternalLink size={16} aria-hidden="true" />
+            </Link>
+          ) : (
+            <span className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-kc-border bg-white/5 px-4 py-2 text-sm font-bold text-kc-muted">
+              {unavailableLabel}
+              <LockKeyhole size={16} aria-hidden="true" />
+            </span>
+          )}
+          <Link
+            href={caseHref ?? `/proyectos/${slug}`}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-kc-border px-4 py-2 text-sm font-bold text-kc-text transition hover:border-kc-cyan hover:text-kc-cyan"
+          >
+            {caseLabel}
+            <ExternalLink size={16} aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
     </article>
+  );
+}
+
+type ScreenshotPanelProps = {
+  image: string;
+  imageAlt: string;
+};
+
+export function ScreenshotPanel({ image, imageAlt }: ScreenshotPanelProps) {
+  return (
+    <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-white/10 bg-kc-bg-soft shadow-[0_0_60px_rgba(0,217,255,0.1)]">
+      <Image
+        src={image}
+        alt={imageAlt}
+        fill
+        sizes="(max-width: 768px) 100vw, 980px"
+        className="object-cover"
+      />
+    </div>
+  );
+}
+
+type BenefitListProps = {
+  items: string[];
+};
+
+export function BenefitList({ items }: BenefitListProps) {
+  return (
+    <div className="mt-5 flex flex-wrap gap-2">
+      {items.map((item) => (
+        <span key={item} className="inline-flex items-center gap-2 rounded-full border border-kc-turquoise/25 bg-kc-turquoise/10 px-3 py-1 text-xs font-bold text-kc-turquoise">
+          <Check size={14} aria-hidden="true" />
+          {item}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -58,9 +147,19 @@ type PackageCardProps = {
   audience: string;
   includes: string[];
   featured?: boolean;
+  quoteHref?: string;
+  quoteLabel?: string;
 };
 
-export function PackageCard({ name, price, audience, includes, featured }: PackageCardProps) {
+export function PackageCard({
+  name,
+  price,
+  audience,
+  includes,
+  featured,
+  quoteHref = "/cotizar",
+  quoteLabel = "Cotizar paquete",
+}: PackageCardProps) {
   return (
     <article
       className={`rounded-2xl border p-6 ${
@@ -81,10 +180,10 @@ export function PackageCard({ name, price, audience, includes, featured }: Packa
         ))}
       </ul>
       <Link
-        href="/cotizar"
+        href={quoteHref}
         className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-white/8 px-4 py-2 text-sm font-black text-kc-text transition hover:bg-kc-cyan hover:text-kc-bg"
       >
-        Cotizar paquete
+        {quoteLabel}
       </Link>
     </article>
   );

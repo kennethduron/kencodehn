@@ -1,7 +1,11 @@
 import Image from "next/image";
 import { site } from "@/lib/site";
 
-export function Logo() {
+type LogoProps = {
+  subtitle?: string;
+};
+
+export function Logo({ subtitle = "Estudio web" }: LogoProps) {
   return (
     <span className="inline-flex items-center gap-3">
       <span className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-xl border border-kc-cyan/40 bg-kc-bg-soft shadow-[0_0_28px_rgba(0,217,255,0.2)]">
@@ -19,7 +23,7 @@ export function Logo() {
           {site.name}
         </span>
         <span className="block text-[0.67rem] font-semibold uppercase tracking-[0.22em] text-kc-cyan">
-          Web Studio
+          {subtitle}
         </span>
       </span>
     </span>

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProjectDetailView } from "@/components/site/localized-pages";
-import { projects } from "@/content/site-content";
+import { getContent } from "@/content/site-content";
 import { createMetadata } from "@/lib/site";
 
 type ProjectPageProps = {
   params: Promise<{ slug: string }>;
 };
+
+const projects = getContent("en").projects;
 
 export function generateStaticParams() {
   return projects.map((project) => ({ slug: project.slug }));
@@ -18,14 +20,15 @@ export async function generateMetadata({ params }: ProjectPageProps): Promise<Me
   if (!project) return {};
 
   return createMetadata({
-    title: `${project.name} | Caso de estudio`,
+    title: `${project.name} | Case Study`,
     description: `${project.name}: ${project.result}`,
-    path: `/proyectos/${project.slug}`,
+    path: `/en/projects/${project.slug}`,
+    locale: "en",
     keywords: [project.category, ...project.benefits],
   });
 }
 
-export default async function ProjectDetailPage({ params }: ProjectPageProps) {
+export default async function EnglishProjectDetailPage({ params }: ProjectPageProps) {
   const { slug } = await params;
   const project = projects.find((item) => item.slug === slug);
 
@@ -33,5 +36,5 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
     notFound();
   }
 
-  return <ProjectDetailView locale="es" project={project} />;
+  return <ProjectDetailView locale="en" project={project} />;
 }

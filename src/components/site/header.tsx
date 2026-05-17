@@ -1,22 +1,40 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/site/logo";
+import { getAlternatePath, type Locale } from "@/lib/site";
 
-const navItems = [
-  { label: "Inicio", href: "/" },
-  { label: "Servicios", href: "/servicios" },
-  { label: "Proyectos", href: "/proyectos" },
-  { label: "Paquetes", href: "/paquetes" },
-  { label: "Contacto", href: "/contacto" },
-];
+const navItems: Record<Locale, { label: string; href: string }[]> = {
+  es: [
+    { label: "Inicio", href: "/" },
+    { label: "Servicios", href: "/servicios" },
+    { label: "Proyectos", href: "/proyectos" },
+    { label: "Paquetes", href: "/paquetes" },
+    { label: "Contacto", href: "/contacto" },
+  ],
+  en: [
+    { label: "Home", href: "/en" },
+    { label: "Services", href: "/en/services" },
+    { label: "Projects", href: "/en/projects" },
+    { label: "Packages", href: "/en/packages" },
+    { label: "Contact", href: "/en/contact" },
+  ],
+};
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const pathname = usePathname();
+  const locale: Locale = pathname.startsWith("/en") ? "en" : "es";
+  const alternateHref = getAlternatePath(pathname, locale);
+  const quoteHref = locale === "es" ? "/cotizar" : "/en/quote";
+  const homeHref = locale === "es" ? "/" : "/en";
+  const logoSubtitle = locale === "es" ? "Estudio web" : "Web Studio";
+  const quoteLabel = locale === "es" ? "Cotizar" : "Quote";
 
   function closeMenu() {
     setIsOpen(false);
@@ -47,12 +65,12 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-kc-bg/82 backdrop-blur-xl">
       <nav className="kc-shell flex h-20 items-center justify-between gap-4" aria-label="Navegacion principal">
-        <Link href="/" onClick={closeMenu} aria-label="Ken Code inicio" className="shrink-0">
-          <Logo />
+        <Link href={homeHref} onClick={closeMenu} aria-label="Ken Code inicio" className="shrink-0">
+          <Logo subtitle={logoSubtitle} />
         </Link>
 
         <div className="hidden items-center gap-1 lg:flex">
-          {navItems.map((item) => (
+          {navItems[locale].map((item) => (
             <Link
               key={item.label}
               href={item.href}
@@ -65,10 +83,16 @@ export function Header() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <Link
-            href="/cotizar"
+            href={alternateHref}
+            className="rounded-lg border border-kc-border px-4 py-2.5 text-sm font-black text-kc-text transition hover:border-kc-cyan hover:text-kc-cyan"
+          >
+            ES / EN
+          </Link>
+          <Link
+            href={quoteHref}
             className="rounded-lg bg-kc-electric px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(0,109,255,0.3)] transition hover:bg-kc-cyan hover:text-kc-bg"
           >
-            Cotizar
+            {quoteLabel}
           </Link>
         </div>
 
@@ -95,7 +119,7 @@ export function Header() {
         }`}
       >
         <div ref={menuRef} className="mx-4 mb-4 rounded-2xl border border-kc-border bg-kc-bg-soft/96 p-3 shadow-2xl">
-          {navItems.map((item) => (
+          {navItems[locale].map((item) => (
             <Link
               key={item.label}
               href={item.href}
@@ -106,11 +130,18 @@ export function Header() {
             </Link>
           ))}
           <Link
-            href="/cotizar"
+            href={alternateHref}
+            onClick={closeMenu}
+            className="mt-2 flex min-h-12 items-center justify-center rounded-xl border border-kc-border px-4 py-3 text-base font-black text-kc-text"
+          >
+            ES / EN
+          </Link>
+          <Link
+            href={quoteHref}
             onClick={closeMenu}
             className="mt-2 flex min-h-12 items-center justify-center rounded-xl bg-kc-electric px-4 py-3 text-base font-bold text-white"
           >
-            Cotizar
+            {quoteLabel}
           </Link>
         </div>
       </div>
