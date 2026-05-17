@@ -7,11 +7,11 @@ import { benefits, process, services } from "@/content/site-content";
 import { createMetadata, site } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Servicios de desarrollo web en Honduras",
+  title: "International Web Development Services",
   description:
-    "Servicios de Ken Code: landing pages, sitios web para negocios, e-commerce, CRM para leads, rediseño web, WhatsApp integrado, SEO básico y correos.",
+    "Premium web development services by Ken Code: landing pages, business websites, e-commerce, lead systems, redesign, SEO and digital automation for global clients.",
   path: "/servicios",
-  keywords: ["servicios web Honduras", "landing pages Honduras", "SEO básico Honduras"],
+  keywords: ["servicios web Honduras", "landing pages Honduras", "SEO básico Honduras", "international web development services", "remote software studio"],
 });
 
 const servicesSchema = {
@@ -23,7 +23,7 @@ const servicesSchema = {
     name: site.name,
     url: site.url,
   },
-  areaServed: "Honduras",
+  areaServed: ["Global", "United States", "Canada", "Europe", "Latin America", "Honduras"],
   hasOfferCatalog: {
     "@type": "OfferCatalog",
     name: "Servicios web",
@@ -44,8 +44,8 @@ export default function ServicesPage() {
       <JsonLd data={servicesSchema} />
       <PageHero
         eyebrow="Servicios"
-        title="Desarrollo web completo para negocios que quieren verse profesionales."
-        copy="Desde landing pages hasta e-commerce y bases listas para CRM futuro, cada servicio está diseñado para claridad, velocidad, contacto y crecimiento."
+        title="Complete web development for modern businesses and global brands."
+        copy="From landing pages to e-commerce and future-ready CRM foundations, every service is designed for clarity, speed, conversion and remote collaboration."
       />
 
       <section className="kc-shell py-12">
@@ -58,7 +58,7 @@ export default function ServicesPage() {
 
       <section className="border-y border-white/10 bg-white/[0.025] py-16">
         <div className="kc-shell">
-          <SectionIntro eyebrow="Beneficios" title="Qué gana tu negocio con una web bien construida." />
+          <SectionIntro eyebrow="Beneficios" title="What a premium web presence brings to your business." />
           <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map((benefit) => {
               const Icon = benefit.icon;
@@ -75,7 +75,7 @@ export default function ServicesPage() {
       </section>
 
       <section className="kc-shell py-16">
-        <SectionIntro eyebrow="Proceso" title="Un camino ordenado desde la idea hasta el lanzamiento." />
+        <SectionIntro eyebrow="Proceso" title="A structured process from idea to international-ready launch." />
         <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           {process.map((step, index) => (
             <div key={step} className="rounded-xl border border-white/10 bg-white/[0.04] p-4">

@@ -6,9 +6,9 @@ import { createMetadata, site } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Cotizar página web",
   description:
-    "Cotiza una página web profesional con Ken Code. Formulario avanzado para landing pages, sitios web business, e-commerce o bases listas para CRM futuro.",
+    "Quote a professional website or digital solution with Ken Code. Remote-ready form for landing pages, business websites, e-commerce and CRM-ready foundations.",
   path: "/cotizar",
-  keywords: ["cotizar página web Honduras", "precio landing page Honduras"],
+  keywords: ["cotizar página web Honduras", "precio landing page Honduras", "quote website project", "remote web development"],
 });
 
 const quoteSchema = {
@@ -24,14 +24,14 @@ export default function QuotePage() {
       <JsonLd data={quoteSchema} />
       <PageHero
         eyebrow="Cotizar"
-        title="Cuéntame qué necesitas y preparo una ruta clara."
-        copy="Este formulario todavía no se conecta al CRM. Por ahora prepara un mensaje profesional para enviarlo directo por WhatsApp."
+        title="Tell me what you need and I will prepare a clear path."
+        copy="This form is ready for remote project inquiries. For now, it prepares a professional WhatsApp message before the CRM phase."
       />
       <section className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
           <h2 className="font-display text-2xl font-black text-kc-text">Antes de enviar</h2>
           <p className="mt-4 text-sm leading-7 text-kc-muted">
-            Incluye el tipo de negocio, el objetivo principal, si ya tienes logo/contenido y una fecha tentativa de lanzamiento. Con eso puedo responderte mejor.
+            Include your business type, target market, main goal, available content and ideal launch date. That makes it easier to recommend the right path.
           </p>
           <div className="mt-6 grid gap-3 text-sm font-semibold text-kc-muted">
             <span className="rounded-lg border border-kc-border bg-kc-bg/70 px-4 py-3">Landing pages</span>

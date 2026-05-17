@@ -18,8 +18,8 @@ export function Footer() {
         <div>
           <Logo />
           <p className="mt-4 max-w-xl text-sm leading-6 text-kc-muted">
-            Ken Code crea sitios web modernos, rapidos y enfocados en ventas
-            para negocios que quieren recibir mas cotizaciones.
+            Ken Code is a premium web and software studio building modern digital experiences
+            for businesses, founders and brands working locally and internationally.
           </p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-kc-muted">
             <a className="transition hover:text-kc-cyan" href={`mailto:${site.email}`}>

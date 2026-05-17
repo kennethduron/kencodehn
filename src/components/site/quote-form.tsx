@@ -15,7 +15,7 @@ export function QuoteForm() {
 
   const whatsappHref = useMemo(() => {
     const message = [
-      "Hola Ken Code. Quiero cotizar un proyecto web profesional.",
+      "Hola Ken Code. Quiero cotizar un proyecto web profesional. Podemos trabajar de forma remota.",
       `Nombre: ${form.name || "Por completar"}`,
       `Negocio: ${form.business || "Por completar"}`,
       `Tipo de proyecto: ${form.project}`,
@@ -84,7 +84,7 @@ export function QuoteForm() {
             value={form.budget}
             onChange={(event) => updateField("budget", event.target.value)}
             className="min-h-12 rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
-            placeholder="Ej. L 8,000 - L 15,000"
+            placeholder="Ej. USD 500 - USD 1,500"
             inputMode="text"
           />
         </label>
@@ -109,7 +109,7 @@ export function QuoteForm() {
         <Send size={18} aria-hidden="true" />
       </button>
       <p className="mt-4 text-xs leading-6 text-kc-muted">
-        Este formulario publico no muestra datos del CRM. Solo prepara tu mensaje para enviarlo por WhatsApp.
+        Este formulario público no muestra datos del CRM. Solo prepara tu mensaje para enviarlo por WhatsApp.
       </p>
     </form>
   );

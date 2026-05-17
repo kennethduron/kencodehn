@@ -6,9 +6,9 @@ import { createMetadata } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Blog de diseño y desarrollo web",
   description:
-    "Blog SEO futuro de Ken Code sobre desarrollo web Honduras, landing pages, páginas para negocios, e-commerce y SEO básico.",
+    "Future Ken Code SEO blog about international web development, business websites, landing pages, e-commerce, local SEO and modern digital strategy.",
   path: "/blog",
-  keywords: ["blog desarrollo web Honduras", "consejos páginas web"],
+  keywords: ["blog desarrollo web Honduras", "consejos páginas web", "international web development blog", "business website strategy"],
 });
 
 export default function BlogPage() {
@@ -16,8 +16,8 @@ export default function BlogPage() {
     <main className="min-h-screen overflow-x-hidden">
       <PageHero
         eyebrow="Blog"
-        title="Recursos SEO para negocios que quieren vender mejor en línea."
-        copy="Esta sección queda preparada para publicar contenido útil sobre páginas web, SEO local, landing pages y presencia digital."
+        title="Resources for businesses that want to grow with better digital strategy."
+        copy="This section is prepared for useful content about international web development, local SEO, landing pages, e-commerce and business websites."
       />
       <section className="kc-shell grid gap-4 py-12 md:grid-cols-3">
         {blogTopics.map((topic) => (

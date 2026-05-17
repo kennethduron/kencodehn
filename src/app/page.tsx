@@ -10,11 +10,11 @@ import { benefits, projects, services, testimonials } from "@/content/site-conte
 import { createMetadata, site, whatsappLink } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Ken Code | Páginas web profesionales en Honduras",
+  title: "Ken Code | International Web Development Studio",
   description:
-    "Ken Code crea páginas web profesionales, landing pages, e-commerce y sitios para negocios en Honduras con diseño responsive, SEO y WhatsApp integrado.",
+    "Ken Code is a premium web and software studio creating modern websites, landing pages, e-commerce and digital systems for businesses around the world.",
   path: "/",
-  keywords: ["páginas web profesionales", "diseño web para negocios"],
+  keywords: ["páginas web profesionales", "diseño web para negocios", "international web development", "remote web studio"],
 });
 
 const homeSchema = {
@@ -26,7 +26,7 @@ const homeSchema = {
   logo: `${site.url}${site.favicon}`,
   email: site.email,
   telephone: site.phone,
-  areaServed: ["Honduras", "San Pedro Sula", "Latinoamérica"],
+  areaServed: ["Global", "United States", "Canada", "Europe", "Latin America", "Honduras"],
   sameAs: [site.facebook],
   makesOffer: services.map((service) => service.title),
 };
@@ -44,13 +44,13 @@ export default function Home() {
           <Reveal>
             <div className="max-w-4xl">
               <p className="inline-flex rounded-full border border-kc-cyan/30 bg-kc-cyan/10 px-4 py-2 text-sm font-bold text-kc-cyan shadow-[0_0_30px_rgba(0,217,255,0.14)]">
-                Desarrollo web en Honduras
+                International Web & Software Studio
               </p>
               <h1 className="mt-6 max-w-5xl font-display text-4xl font-black leading-[1.04] text-kc-text sm:text-5xl lg:text-7xl">
-                Páginas web profesionales que convierten visitas en clientes
+                Premium websites for modern businesses growing worldwide
               </h1>
               <p className="mt-6 max-w-3xl text-base leading-8 text-kc-muted sm:text-lg">
-                Soy Kenneth Durón, creador de Ken Code. Diseño y desarrollo sitios web modernos para negocios que quieren verse mejor, recibir más cotizaciones y crecer en línea.
+                Ken Code crea experiencias web modernas para empresas, marcas y emprendedores que trabajan localmente o de forma remota con clientes de cualquier parte del mundo.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -85,7 +85,7 @@ export default function Home() {
               </div>
               <div className="absolute bottom-6 left-6 right-6 rounded-xl border border-white/10 bg-kc-bg/82 p-4 backdrop-blur-md">
                 <p className="font-display text-xl font-black text-kc-text">Ken Code</p>
-                <p className="mt-1 text-sm leading-6 text-kc-muted">Next.js, TypeScript, Tailwind, Firebase y Vercel.</p>
+                <p className="mt-1 text-sm leading-6 text-kc-muted">Remote-ready builds with Next.js, TypeScript, Firebase and Vercel.</p>
               </div>
             </div>
           </Reveal>
@@ -95,8 +95,8 @@ export default function Home() {
       <section className="kc-shell py-14">
         <SectionIntro
           eyebrow="Servicios"
-          title="Lo esencial para lanzar una presencia digital profesional."
-          copy="Webs rápidas, claras y preparadas para que tus clientes te contacten sin fricción."
+          title="Digital solutions for businesses that need a stronger online presence."
+          copy="Fast, responsive and conversion-focused websites ready for local and international clients."
         />
         <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {featuredServices.map((service) => (
@@ -115,8 +115,8 @@ export default function Home() {
         <div className="kc-shell">
           <SectionIntro
             eyebrow="Proyectos"
-            title="Casos destacados con enfoque comercial."
-            copy="Cada proyecto resuelve un problema de comunicación, confianza o contacto."
+            title="Selected work built with business goals in mind."
+            copy="Every project improves clarity, trust and the path from visitor to qualified conversation."
           />
           <div className="mt-9 grid gap-5 lg:grid-cols-3">
             {featuredProjects.map((project) => (
@@ -129,7 +129,7 @@ export default function Home() {
       <section className="kc-shell py-14">
         <SectionIntro
           eyebrow="Beneficios"
-          title="Una web pensada para vender, no solo para existir."
+          title="A web presence built for growth, not just for being online."
         />
         <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {benefits.map((benefit) => {
@@ -147,7 +147,7 @@ export default function Home() {
 
       <section className="border-y border-white/10 bg-kc-bg-soft/55 py-14">
         <div className="kc-shell">
-          <SectionIntro eyebrow="Testimonios" title="Clientes que necesitaban verse más profesionales." />
+          <SectionIntro eyebrow="Testimonios" title="Clients building a stronger digital presence." />
           <div className="mt-9 grid gap-5 md:grid-cols-3">
             {testimonials.map((testimonial) => (
               <figure key={testimonial.name} className="kc-card rounded-2xl p-6">
@@ -163,7 +163,7 @@ export default function Home() {
       </section>
 
       <CTASection
-        href={whatsappLink("Hola Ken Code. Quiero cotizar una página web profesional para mi negocio.")}
+        href={whatsappLink("Hola Ken Code. Quiero cotizar una solución web profesional para mi negocio. Podemos trabajar de forma remota.")}
         label="Escribir por WhatsApp"
       />
     </main>

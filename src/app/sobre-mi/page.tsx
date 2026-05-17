@@ -8,9 +8,9 @@ import { createMetadata, site } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Sobre mí",
   description:
-    "Conoce a Kenneth Durón, creador de Ken Code, desarrollador web enfocado en páginas profesionales, SEO técnico y sitios para negocios en Honduras.",
+    "Meet Kenneth Durón, creator of Ken Code, a remote web developer building premium websites, SEO-ready pages and modern digital solutions for global clients.",
   path: "/sobre-mi",
-  keywords: ["Kenneth Durón", "desarrollador web Honduras", "Ken Code"],
+  keywords: ["Kenneth Durón", "desarrollador web Honduras", "Ken Code", "remote web developer", "international web developer"],
 });
 
 const aboutSchema = {
@@ -22,6 +22,11 @@ const aboutSchema = {
   image: `${site.url}${site.portrait}`,
   sameAs: [site.facebook],
   jobTitle: "Desarrollador web",
+  worksFor: {
+    "@type": "Organization",
+    name: site.name,
+    url: site.url,
+  },
 };
 
 export default function AboutPage() {
@@ -30,8 +35,8 @@ export default function AboutPage() {
       <JsonLd data={aboutSchema} />
       <PageHero
         eyebrow="Sobre mí"
-        title="Construyo páginas web con criterio comercial y base técnica sólida."
-        copy="Ken Code nace para ayudar a negocios a verse más profesionales, explicar mejor lo que venden y convertir visitas en conversaciones reales."
+        title="I build premium websites with business strategy and solid technical foundations."
+        copy="Ken Code helps businesses, founders and brands work with a modern web studio remotely, with clear communication and international-ready delivery."
       />
       <section className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
         <div className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-2xl border border-kc-cyan/25 bg-kc-card">
@@ -46,7 +51,7 @@ export default function AboutPage() {
         <div>
           <h2 className="font-display text-3xl font-black text-kc-text sm:text-4xl">Mi enfoque</h2>
           <p className="mt-5 text-base leading-8 text-kc-muted">
-            Trabajo cada web como una herramienta de ventas: primero claridad, después diseño, luego velocidad y SEO técnico. La meta es que el visitante entienda rápido, confíe y contacte.
+            I treat each website as a business tool: clarity first, then design, performance and technical SEO. The goal is simple: help visitors understand, trust and contact from anywhere.
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {techStack.map((tech) => (

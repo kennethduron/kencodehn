@@ -5,9 +5,9 @@ import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
 import { site, seoKeywords } from "@/lib/site";
 
-const title = "Ken Code | Desarrollo web profesional en Honduras";
+const title = "Ken Code | International Web Development Studio";
 const description =
-  "Ken Code crea páginas web, landing pages, e-commerce y sitios para negocios en Honduras, con SEO técnico, WhatsApp integrado y enfoque en cotizaciones.";
+  "Ken Code creates premium websites, landing pages, e-commerce experiences and modern digital solutions for businesses working locally and internationally.";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -48,14 +48,14 @@ export const metadata: Metadata = {
     description,
     url: site.url,
     siteName: site.name,
-    locale: "es_HN",
+    locale: "es_ES",
     type: "website",
     images: [
       {
         url: site.ogImage,
         width: 1200,
         height: 630,
-        alt: "Ken Code - Desarrollo web profesional en Honduras",
+        alt: "Ken Code - International web development studio",
         type: "image/jpeg",
       },
     ],

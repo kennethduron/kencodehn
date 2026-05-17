@@ -8,9 +8,9 @@ import { absoluteUrl, createMetadata, site } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Proyectos web de Ken Code",
   description:
-    "Explora proyectos de Ken Code: menús digitales, sitios corporativos, catálogos web y experiencias enfocadas en cotizaciones para negocios.",
+    "Explore Ken Code projects: digital menus, corporate websites, catalogs and conversion-focused web experiences for modern businesses.",
   path: "/proyectos",
-  keywords: ["portafolio web Honduras", "proyectos web Honduras"],
+  keywords: ["portafolio web Honduras", "proyectos web Honduras", "web development portfolio", "business website case studies"],
 });
 
 const projectsSchema = {
@@ -30,8 +30,8 @@ export default function ProjectsPage() {
       <JsonLd data={projectsSchema} />
       <PageHero
         eyebrow="Proyectos"
-        title="Casos construidos para negocios que necesitaban una presencia más clara."
-        copy="Cada proyecto combina diseño, estructura, velocidad y contacto directo para resolver una meta comercial concreta."
+        title="Case studies for brands that needed a clearer digital presence."
+        copy="Each project combines design, structure, speed and direct contact paths to solve a concrete business goal."
       />
       <section className="kc-shell grid gap-5 py-12 md:grid-cols-2">
         {projects.map((project) => (

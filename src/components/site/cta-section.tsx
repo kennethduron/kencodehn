@@ -9,8 +9,8 @@ type CTASectionProps = {
 };
 
 export function CTASection({
-  title = "¿Listo para que tu negocio tenga una web profesional?",
-  copy = "Hagamos una página rápida, clara y lista para recibir cotizaciones.",
+  title = "Ready to build a stronger digital presence?",
+  copy = "Let's create a fast, premium and conversion-focused web experience for your business, wherever your clients are.",
   href = "/cotizar",
   label = "Cotizar proyecto",
 }: CTASectionProps) {

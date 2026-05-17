@@ -15,6 +15,16 @@ export const site = {
 
 export const seoKeywords = [
   "Ken Code",
+  "desarrollo web internacional",
+  "modern web development",
+  "business websites",
+  "professional web design",
+  "remote web developer",
+  "software studio",
+  "web development studio",
+  "landing pages",
+  "e-commerce development",
+  "CRM systems",
   "desarrollo web Honduras",
   "diseño web Honduras",
   "páginas web Honduras",
@@ -57,14 +67,14 @@ export function createMetadata({ title, description, path, keywords = [] }: Page
       description,
       url: canonical,
       siteName: site.name,
-      locale: "es_HN",
+      locale: "es_ES",
       type: "website",
       images: [
         {
           url: site.ogImage,
           width: 1200,
           height: 630,
-          alt: "Ken Code - Desarrollo web profesional en Honduras",
+          alt: "Ken Code - International web development studio",
           type: "image/jpeg",
         },
       ],

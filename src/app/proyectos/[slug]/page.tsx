@@ -99,7 +99,10 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
         </div>
       </section>
 
-      <CTASection title="¿Quieres un proyecto similar?" copy="Puedo ayudarte a construir una web con una ruta clara hacia cotizaciones." />
+      <CTASection
+        title="Want a project with this level of clarity?"
+        copy="Ken Code can work remotely with your business to build a premium web experience ready for international clients."
+      />
     </main>
   );
 }

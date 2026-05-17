@@ -8,9 +8,9 @@ import { createMetadata, site, whatsappLink } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Contacto",
   description:
-    "Contacta a Ken Code por WhatsApp, correo o Facebook para cotizar una página web profesional, landing page o e-commerce en Honduras.",
+    "Contact Ken Code by WhatsApp, email or Facebook to quote a professional website, landing page, e-commerce or digital solution from anywhere in the world.",
   path: "/contacto",
-  keywords: ["contacto desarrollo web Honduras", "cotizar página web Honduras"],
+  keywords: ["contacto desarrollo web Honduras", "cotizar página web Honduras", "remote web developer", "international web studio"],
 });
 
 const contactSchema = {
@@ -28,7 +28,7 @@ const contactSchema = {
 
 export default function ContactPage() {
   const contactItems = [
-    { label: "WhatsApp", value: site.phone, href: whatsappLink("Hola Ken Code. Quiero información para una página web."), icon: MessageCircle },
+    { label: "WhatsApp", value: site.phone, href: whatsappLink("Hola Ken Code. Quiero información para una solución web profesional. Podemos trabajar de forma remota."), icon: MessageCircle },
     { label: "Correo", value: site.email, href: `mailto:${site.email}?subject=Cotización web Ken Code`, icon: MailCheck },
     { label: "Facebook", value: "Ken Code en Facebook", href: site.facebook, icon: Facebook },
   ];
@@ -38,8 +38,8 @@ export default function ContactPage() {
       <JsonLd data={contactSchema} />
       <PageHero
         eyebrow="Contacto"
-        title="Hablemos de la página web que necesita tu negocio."
-        copy="Puedes escribirme por WhatsApp, correo o Facebook. Si ya tienes una idea clara, usa el formulario y te respondo con próximos pasos."
+        title="Let's talk about the digital solution your business needs."
+        copy="You can reach Ken Code by WhatsApp, email or Facebook. We work remotely with businesses and founders in different countries."
       />
       <section className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         <div className="grid gap-4">

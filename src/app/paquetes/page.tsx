@@ -6,17 +6,17 @@ import { packages } from "@/content/site-content";
 import { createMetadata, site } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Paquetes de páginas web",
+  title: "Website Packages for Modern Businesses",
   description:
-    "Paquetes de Ken Code para landing pages, sitios web business, Web Pro + CRM y e-commerce para negocios en Honduras.",
+    "Website packages by Ken Code for landing pages, business websites, Web Pro + CRM foundations and e-commerce projects for local and international businesses.",
   path: "/paquetes",
-  keywords: ["precios páginas web Honduras", "paquetes desarrollo web"],
+  keywords: ["precios páginas web Honduras", "paquetes desarrollo web", "website packages", "business websites", "e-commerce development"],
 });
 
 const packagesSchema = {
   "@context": "https://schema.org",
   "@type": "OfferCatalog",
-  name: "Paquetes de páginas web Ken Code",
+  name: "Ken Code website packages",
   provider: {
     "@type": "Organization",
     name: site.name,
@@ -34,8 +34,8 @@ export default function PackagesPage() {
       <JsonLd data={packagesSchema} />
       <PageHero
         eyebrow="Paquetes"
-        title="Opciones claras según la etapa de tu negocio."
-        copy="Puedes iniciar con una landing page y escalar hacia una web más completa, e-commerce o una base preparada para CRM privado futuro."
+        title="Clear packages for businesses at different stages of growth."
+        copy="Start with a focused landing page or scale into a complete business website, e-commerce experience or CRM-ready foundation."
       />
       <section className="kc-shell grid gap-5 py-12 lg:grid-cols-4">
         {packages.map((plan) => (
