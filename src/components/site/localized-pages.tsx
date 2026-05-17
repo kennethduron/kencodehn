@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/site/json-ld";
 import { PageHero } from "@/components/site/page-hero";
 import { Reveal } from "@/components/site/reveal";
 import { SectionIntro } from "@/components/site/section-intro";
+import { SocialLinks } from "@/components/site/social-links";
 import { getContent, type Project } from "@/content/site-content";
 import { absoluteUrl, site, whatsappLink, type Locale } from "@/lib/site";
 import { QuoteForm } from "./quote-form";
@@ -28,7 +29,7 @@ const labels = {
     benefitsTitle: "Una presencia web pensada para crecer, no solo para estar en internet.",
     testimonialsTitle: "Clientes construyendo una presencia digital mas fuerte.",
     whatsappMessage: "Hola Ken Code. Quiero cotizar una solucion web profesional para mi negocio. Podemos trabajar de forma remota.",
-    whatsappLabel: "Escribir por WhatsApp",
+    whatsappLabel: "Cotizar proyecto",
     live: "Ver proyecto",
     case: "Ver caso de estudio",
     pending: "Link pendiente",
@@ -58,7 +59,7 @@ const labels = {
     benefitsTitle: "A web presence built for growth, not just for being online.",
     testimonialsTitle: "Clients building a stronger digital presence.",
     whatsappMessage: "Hello Ken Code. I want to quote a professional web solution for my business. We can work remotely.",
-    whatsappLabel: "Write on WhatsApp",
+    whatsappLabel: "Quote project",
     live: "View project",
     case: "View case study",
     pending: "Link pending",
@@ -159,10 +160,6 @@ export function HomeView({ locale }: { locale: Locale }) {
                   className="object-cover"
                 />
               </div>
-              <div className="absolute bottom-6 left-6 right-6 rounded-xl border border-white/10 bg-kc-bg/82 p-4 backdrop-blur-md">
-                <p className="font-display text-xl font-black text-kc-text">Ken Code</p>
-                <p className="mt-1 text-sm leading-6 text-kc-muted">{copy.photoCaption}</p>
-              </div>
             </div>
           </Reveal>
         </div>
@@ -234,7 +231,11 @@ export function HomeView({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      <CTASection href={whatsappLink(copy.whatsappMessage)} label={copy.whatsappLabel} {...cta(locale)} />
+      <CTASection
+        href={path(locale, "/cotizar", "/en/quote")}
+        label={copy.whatsappLabel}
+        {...cta(locale)}
+      />
     </main>
   );
 }
@@ -420,11 +421,28 @@ export function ContactView({ locale }: { locale: Locale }) {
         eyebrow={locale === "es" ? "Contacto" : "Contact"}
         title={locale === "es" ? "Hablemos sobre la solucion digital que tu negocio necesita." : "Let's talk about the digital solution your business needs."}
         copy={locale === "es" ? "Puedes contactar a Ken Code por WhatsApp, correo o Facebook. Trabajamos de forma remota con negocios y fundadores de diferentes paises." : "You can reach Ken Code by WhatsApp, email or Facebook. We work remotely with businesses and founders in different countries."}
-        primaryLabel={locale === "es" ? "Escribir por WhatsApp" : "Write on WhatsApp"}
-        primaryHref={contactItems[0].href}
+        primaryLabel={locale === "es" ? "Ver opciones de contacto" : "View contact options"}
+        primaryHref="#contacto"
       />
-      <section className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-        <div className="grid gap-4">
+      <section id="contacto" className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+          <h2 className="font-display text-2xl font-black text-kc-text">
+            {locale === "es" ? "Contacto directo" : "Direct contact"}
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-kc-muted">
+            {locale === "es"
+              ? "Usa el canal que prefieras. El formulario queda para solicitudes formales y seguimiento del futuro panel."
+              : "Use the channel you prefer. The form is for formal requests and future panel follow-up."}
+          </p>
+          <SocialLinks
+            className="mt-5"
+            whatsappMessage={
+              locale === "es"
+                ? "Hola Ken Code. Quiero informacion para una solucion web profesional. Podemos trabajar de forma remota."
+                : "Hello Ken Code. I want information about a professional web solution. We can work remotely."
+            }
+          />
+          <div className="mt-6 grid gap-3">
           {contactItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -433,14 +451,19 @@ export function ContactView({ locale }: { locale: Locale }) {
                 href={item.href}
                 target={item.href.startsWith("http") ? "_blank" : undefined}
                 rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition hover:border-kc-cyan/45"
+                className="flex items-center gap-4 rounded-xl border border-white/10 bg-kc-bg/55 p-4 transition hover:border-kc-cyan/45"
               >
-                <Icon className="text-kc-turquoise" size={24} aria-hidden="true" />
-                <h2 className="mt-4 font-display text-xl font-black text-kc-text">{item.label}</h2>
-                <p className="mt-2 text-sm leading-7 text-kc-muted">{item.value}</p>
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-kc-turquoise/25 bg-kc-turquoise/10 text-kc-turquoise">
+                  <Icon size={20} aria-hidden="true" />
+                </span>
+                <span>
+                  <span className="block text-sm font-black text-kc-text">{item.label}</span>
+                  <span className="block text-sm leading-6 text-kc-muted">{item.value}</span>
+                </span>
               </Link>
             );
           })}
+          </div>
         </div>
         <QuoteForm locale={locale} />
       </section>
@@ -455,7 +478,7 @@ export function QuoteView({ locale }: { locale: Locale }) {
       <PageHero
         eyebrow={locale === "es" ? "Cotizar" : "Quote"}
         title={locale === "es" ? "Cuentame que necesitas y preparo un camino claro." : "Tell me what you need and I will prepare a clear path."}
-        copy={locale === "es" ? "Este formulario esta listo para solicitudes remotas. Por ahora prepara un mensaje profesional de WhatsApp antes de la fase del panel privado." : "This form is ready for remote project inquiries. For now, it prepares a professional WhatsApp message before the private panel phase."}
+        copy={locale === "es" ? "Este formulario envia tu solicitud al flujo interno de leads y queda preparado para el futuro panel administrativo." : "This form sends your request into the internal lead flow and is prepared for the future admin panel."}
         primaryLabel={locale === "es" ? "Enviar mensaje" : "Send message"}
         primaryHref="#formulario"
       />

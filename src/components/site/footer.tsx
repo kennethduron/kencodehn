@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/site/logo";
-import { site, type Locale } from "@/lib/site";
+import { SocialLinks } from "@/components/site/social-links";
+import { type Locale } from "@/lib/site";
 
 const footerLinks: Record<Locale, { label: string; href: string }[]> = {
   es: [
@@ -31,6 +32,10 @@ export function Footer() {
     locale === "es"
       ? "Ken Code es un estudio web premium que crea experiencias digitales modernas para negocios, fundadores y marcas que trabajan localmente e internacionalmente."
       : "Ken Code is a premium web studio building modern digital experiences for businesses, founders and brands working locally and internationally.";
+  const whatsappMessage =
+    locale === "es"
+      ? "Hola Ken Code. Quiero informacion para una solucion web profesional."
+      : "Hello Ken Code. I want information about a professional web solution.";
 
   return (
     <footer className="border-t border-white/10 bg-kc-bg-soft/70">
@@ -38,22 +43,7 @@ export function Footer() {
         <div>
           <Logo subtitle={locale === "es" ? "Estudio web" : "Web Studio"} />
           <p className="mt-4 max-w-xl text-sm leading-6 text-kc-muted">{copy}</p>
-          <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-kc-muted">
-            <a className="transition hover:text-kc-cyan" href={`mailto:${site.email}`}>
-              {site.email}
-            </a>
-            <a className="transition hover:text-kc-cyan" href={`tel:+${site.phoneRaw}`}>
-              {site.phone}
-            </a>
-            <a
-              className="transition hover:text-kc-cyan"
-              href={site.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Facebook
-            </a>
-          </div>
+          <SocialLinks className="mt-5" whatsappMessage={whatsappMessage} />
         </div>
         <div className="flex flex-wrap gap-3">
           {footerLinks[locale].map((item) => (

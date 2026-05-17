@@ -7,7 +7,7 @@ export const metadata = createMetadata({
     "Real Ken Code projects with images, results and external links: digital menus, service websites, catalogs and professional web experiences.",
   path: "/en/projects",
   locale: "en",
-  keywords: ["web portfolio", "business website case studies", "professional web design", "international web development"],
+  keywords: ["web projects", "business website case studies", "professional web design", "international web development"],
 });
 
 export default function EnglishProjectsPage() {

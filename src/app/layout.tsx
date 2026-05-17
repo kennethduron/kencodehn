@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Footer } from "@/components/site/footer";
+import { FloatingContact } from "@/components/site/floating-contact";
 import { Header } from "@/components/site/header";
 import { site, seoKeywords } from "@/lib/site";
 
@@ -85,6 +86,7 @@ export default function RootLayout({
         <Header />
         {children}
         <Footer />
+        <FloatingContact />
       </body>
     </html>
   );

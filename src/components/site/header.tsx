@@ -96,17 +96,27 @@ export function Header() {
           </Link>
         </div>
 
-        <button
-          ref={buttonRef}
-          type="button"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-kc-border bg-white/5 text-kc-text lg:hidden"
-          aria-label={isOpen ? "Cerrar menu" : "Abrir menu"}
-          aria-expanded={isOpen}
-          aria-controls="mobile-menu"
-          onClick={() => setIsOpen((value) => !value)}
-        >
-          {isOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
-        </button>
+        <div className="flex items-center gap-2 lg:hidden">
+          <Link
+            href={alternateHref}
+            onClick={closeMenu}
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-kc-border bg-white/5 px-3 text-xs font-black text-kc-text transition hover:border-kc-cyan hover:text-kc-cyan"
+            aria-label={locale === "es" ? "Cambiar a ingles" : "Switch to Spanish"}
+          >
+            ES / EN
+          </Link>
+          <button
+            ref={buttonRef}
+            type="button"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-kc-border bg-white/5 text-kc-text"
+            aria-label={isOpen ? "Cerrar menu" : "Abrir menu"}
+            aria-expanded={isOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setIsOpen((value) => !value)}
+          >
+            {isOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+          </button>
+        </div>
       </nav>
 
       <div
@@ -129,13 +139,6 @@ export function Header() {
               {item.label}
             </Link>
           ))}
-          <Link
-            href={alternateHref}
-            onClick={closeMenu}
-            className="mt-2 flex min-h-12 items-center justify-center rounded-xl border border-kc-border px-4 py-3 text-base font-black text-kc-text"
-          >
-            ES / EN
-          </Link>
           <Link
             href={quoteHref}
             onClick={closeMenu}
