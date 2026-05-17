@@ -1,0 +1,17 @@
+.firebase
+.next
+node_modules
+test-artifacts
+api
+firebase-debug.log
+admin.html
+index.html
+/css
+/js
+firebase.json
+.firebaserc
+firestore.rules
+firestore.indexes.json
+database.rules.json
+/propuestas
+/images
