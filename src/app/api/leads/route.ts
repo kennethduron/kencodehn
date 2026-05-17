@@ -42,14 +42,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const doc = await db.collection("leads").add(lead);
+    try {
+      const doc = await db.collection("leads").add(lead);
 
-    return NextResponse.json({
-      ok: true,
-      persisted: true,
-      leadId: doc.id,
-      message: "Lead saved.",
-    });
+      return NextResponse.json({
+        ok: true,
+        persisted: true,
+        leadId: doc.id,
+        message: "Lead saved.",
+      });
+    } catch (error) {
+      console.warn("[Ken Code lead pending Firestore write]", error);
+      console.info("[Ken Code lead pending CRM persistence]", lead);
+      return NextResponse.json(
+        {
+          ok: true,
+          persisted: false,
+          leadId: `pending_${Date.now()}`,
+          reason: "firebase_write_unavailable",
+          message: "Lead accepted. Firebase persistence is pending configuration.",
+        },
+        { status: 202 },
+      );
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

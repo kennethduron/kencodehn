@@ -5,7 +5,12 @@ let firestore: Firestore | null = null;
 
 function getServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    try {
+      return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    } catch (error) {
+      console.warn("[Ken Code Firebase config warning] Invalid FIREBASE_SERVICE_ACCOUNT_KEY JSON.", error);
+      return null;
+    }
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -33,12 +38,17 @@ export function getAdminDb() {
     return null;
   }
 
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert(serviceAccount),
-    });
-  }
+  try {
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert(serviceAccount),
+      });
+    }
 
-  firestore = getFirestore();
-  return firestore;
+    firestore = getFirestore();
+    return firestore;
+  } catch (error) {
+    console.warn("[Ken Code Firebase config warning] Unable to initialize Firebase Admin.", error);
+    return null;
+  }
 }
