@@ -9,7 +9,7 @@ export function Logo() {
       </span>
       <span className="leading-none">
         <span className="block font-display text-lg font-bold tracking-tight text-kc-text">
-          Ken Coding
+          Ken Code
         </span>
         <span className="block text-[0.67rem] font-semibold uppercase tracking-[0.22em] text-kc-cyan">
           Web Studio

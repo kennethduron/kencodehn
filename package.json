@@ -2,7 +2,7 @@
   "name": "kencodehn",
   "version": "1.0.0",
   "private": true,
-  "description": "Ken Coding public landing and production web platform for professional websites, CRM-ready leads, and client conversion.",
+  "description": "Ken Code public landing and production web platform for professional websites, CRM-ready leads, and client conversion.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

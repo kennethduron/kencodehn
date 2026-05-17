@@ -23,11 +23,12 @@ import {
 import { QuoteForm } from "@/components/site/quote-form";
 
 const whatsappUrl =
-  "https://wa.me/50499112211?text=Hola%20Ken%20Coding.%20Quiero%20cotizar%20un%20proyecto%20web%20profesional%20para%20mi%20negocio.%20Me%20gustar%C3%ADa%20recibir%20una%20propuesta%20y%20pr%C3%B3ximos%20pasos.";
+  "https://wa.me/50499112211?text=Hola%20Ken%20Code.%20Quiero%20cotizar%20un%20proyecto%20web%20profesional%20para%20mi%20negocio.%20Me%20gustar%C3%ADa%20recibir%20una%20propuesta%20y%20pr%C3%B3ximos%20pasos.";
 
 const publicEmail = "kencodehn@gmail.com";
 const publicPhone = "+504 9911-2211";
 const siteUrl = "https://kencodehn.com";
+const facebookUrl = "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr";
 
 const badges = [
   { label: "Diseño responsive", icon: MonitorSmartphone },
@@ -149,7 +150,7 @@ const testimonials = [
   },
   {
     quote:
-      "Ken Coding cuido los detalles, la velocidad y la version movil. Eso hizo que el sitio se sintiera listo para vender.",
+      "Ken Code cuido los detalles, la velocidad y la version movil. Eso hizo que el sitio se sintiera listo para vender.",
     name: "Cliente corporativo",
     role: "Servicios B2B",
   },
@@ -181,7 +182,7 @@ const faqs = [
 const businessSchema = {
   "@context": "https://schema.org",
   "@type": "ProfessionalService",
-  name: "Ken Coding",
+  name: "Ken Code",
   url: siteUrl,
   logo: `${siteUrl}/images/logo-kenneth.jpg`,
   image: `${siteUrl}/images/logo-kenneth.jpg`,
@@ -192,7 +193,7 @@ const businessSchema = {
     "@type": "PostalAddress",
     addressCountry: "HN",
   },
-  sameAs: ["https://github.com/kennethduron/kencodehn"],
+  sameAs: [facebookUrl, "https://github.com/kennethduron/kencodehn"],
   contactPoint: [
     {
       "@type": "ContactPoint",
@@ -244,13 +245,13 @@ export default function Home() {
         <div className="kc-shell grid min-h-[calc(100vh-5rem)] items-center gap-10 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:py-16">
           <div className="max-w-4xl">
             <p className="inline-flex rounded-full border border-kc-cyan/30 bg-kc-cyan/10 px-4 py-2 text-sm font-bold text-kc-cyan shadow-[0_0_30px_rgba(0,217,255,0.14)]">
-              Ken Coding Web Studio
+              Ken Code Web Studio
             </p>
             <h1 className="mt-6 max-w-5xl font-display text-4xl font-black leading-[1.04] text-kc-text sm:text-5xl lg:text-7xl">
               Sitios web profesionales que convierten visitantes en clientes
             </h1>
             <p className="mt-6 max-w-3xl text-base leading-8 text-kc-muted sm:text-lg">
-              En Ken Coding creo páginas modernas, rápidas y enfocadas en ventas para negocios que quieren verse más profesionales, recibir más cotizaciones y crecer en línea.
+              En Ken Code creo páginas modernas, rápidas y enfocadas en ventas para negocios que quieren verse más profesionales, recibir más cotizaciones y crecer en línea.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -330,7 +331,7 @@ export default function Home() {
           <div className="rounded-2xl border border-kc-turquoise/25 bg-kc-turquoise/[0.05] p-6 sm:p-8">
             <p className="text-sm font-bold uppercase tracking-[0.24em] text-kc-turquoise">La solucion</p>
             <h2 className="mt-3 font-display text-3xl font-bold text-kc-text sm:text-4xl">
-              Ken Coding convierte tu presencia digital en una ruta clara hacia la cotizacion.
+              Ken Code convierte tu presencia digital en una ruta clara hacia la cotizacion.
             </h2>
             <p className="mt-4 text-base leading-8 text-kc-muted">
               Diseño moderno, formularios, WhatsApp, SEO, soporte y una base lista para conectar con un CRM interno privado cuando llegue la fase correspondiente.
@@ -549,7 +550,7 @@ export default function Home() {
             </p>
             <div className="mt-7 grid gap-3">
               <a
-                href={`mailto:${publicEmail}?subject=Cotización%20web%20Ken%20Coding`}
+                href={`mailto:${publicEmail}?subject=Cotización%20web%20Ken%20Code`}
                 className="flex items-center gap-3 text-sm font-semibold text-kc-muted transition hover:text-kc-cyan"
               >
                 <MailCheck className="text-kc-turquoise" size={19} aria-hidden="true" />

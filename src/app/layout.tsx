@@ -5,10 +5,10 @@ import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
 
 const siteUrl = "https://kencodehn.com";
-const siteName = "Ken Coding";
-const title = "Ken Coding | Sitios web profesionales que convierten";
+const siteName = "Ken Code";
+const title = "Ken Code | Sitios web profesionales que convierten";
 const description =
-  "Ken Coding crea sitios web modernos, rápidos y enfocados en ventas para negocios que quieren verse más profesionales, recibir más cotizaciones y crecer en línea.";
+  "Ken Code crea sitios web modernos, rápidos y enfocados en ventas para negocios que quieren verse más profesionales, recibir más cotizaciones y crecer en línea.";
 const ogImage = "/images/logo-kenneth.jpg";
 const favicon = "/images/fav-icon.jpg";
 
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   publisher: siteName,
   category: "Desarrollo web",
   keywords: [
-    "Ken Coding",
+    "Ken Code",
     "desarrollo web Honduras",
     "landing pages",
     "sitios web profesionales",
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
         url: ogImage,
         width: 1200,
         height: 630,
-        alt: "Ken Coding - Sitios web profesionales",
+        alt: "Ken Code - Sitios web profesionales",
         type: "image/jpeg",
       },
     ],

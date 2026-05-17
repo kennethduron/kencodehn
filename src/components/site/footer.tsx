@@ -3,6 +3,7 @@ import { Logo } from "@/components/site/logo";
 
 const email = "kencodehn@gmail.com";
 const phone = "+504 9911-2211";
+const facebookUrl = "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr";
 
 const footerLinks = [
   { label: "Servicios", href: "/#servicios" },
@@ -19,7 +20,7 @@ export function Footer() {
         <div>
           <Logo />
           <p className="mt-4 max-w-xl text-sm leading-6 text-kc-muted">
-            Ken Coding crea sitios web modernos, rapidos y enfocados en ventas
+            Ken Code crea sitios web modernos, rapidos y enfocados en ventas
             para negocios que quieren recibir mas cotizaciones.
           </p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-kc-muted">
@@ -31,11 +32,11 @@ export function Footer() {
             </a>
             <a
               className="transition hover:text-kc-cyan"
-              href="https://github.com/kennethduron/kencodehn"
+              href={facebookUrl}
               target="_blank"
               rel="noopener noreferrer"
             >
-              GitHub
+              Facebook
             </a>
           </div>
         </div>
@@ -53,7 +54,7 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10 py-5">
         <p className="kc-shell text-sm text-kc-muted">
-          © 2026 Ken Coding. Todos los derechos reservados.
+          © 2026 Ken Code. Todos los derechos reservados.
         </p>
       </div>
     </footer>

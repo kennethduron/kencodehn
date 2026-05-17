@@ -16,7 +16,7 @@ export function QuoteForm() {
 
   const whatsappHref = useMemo(() => {
     const message = [
-      "Hola Ken Coding. Quiero cotizar un proyecto web profesional.",
+      "Hola Ken Code. Quiero cotizar un proyecto web profesional.",
       `Nombre: ${form.name || "Por completar"}`,
       `Negocio: ${form.business || "Por completar"}`,
       `Tipo de proyecto: ${form.project}`,
