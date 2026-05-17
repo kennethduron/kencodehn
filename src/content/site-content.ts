@@ -64,6 +64,7 @@ const images = {
   kadsa: "/images/projects/kadsa.jpg",
   sariah: "/images/projects/sariahrivera.jpg",
   diaca: "/images/projects/cristian.jpg",
+  portfolio: "/images/projects/portfolio-anterior.png",
 };
 
 export const content: Record<Locale, SiteCopy> = {
@@ -217,6 +218,20 @@ export const content: Record<Locale, SiteCopy> = {
         image: images.haru,
         imageAlt: "Web corporativa de Haru Logistics Group con enfoque logistico",
         benefits: ["Credibilidad B2B", "Servicios claros", "Contacto comercial"],
+      },
+      {
+        slug: "portfolio-anterior",
+        name: "Portfolio anterior",
+        category: "Marca personal",
+        description: "Version previa del portfolio personal usada como referencia historica de proyectos.",
+        result: "El portfolio reunia proyectos publicados y facilitaba revisar trabajos anteriores desde un solo lugar.",
+        problem: "Era necesario centralizar proyectos, enlaces y presentacion profesional en una experiencia simple.",
+        solution:
+          "Se preparo una web personal con proyectos destacados, contacto y una primera base de presencia profesional.",
+        image: images.portfolio,
+        imageAlt: "Portfolio anterior de Kenneth Duron con identidad de marca personal",
+        externalUrl: "https://kennethduron.web.app",
+        benefits: ["Proyectos centralizados", "Marca personal", "Contacto visible"],
       },
     ],
     packages: [
@@ -427,6 +442,20 @@ export const content: Record<Locale, SiteCopy> = {
         image: images.haru,
         imageAlt: "Haru Logistics Group corporate logistics website",
         benefits: ["B2B credibility", "Clear services", "Commercial contact"],
+      },
+      {
+        slug: "portfolio-anterior",
+        name: "Previous Portfolio",
+        category: "Personal brand",
+        description: "Previous personal portfolio used as a historical reference for published projects.",
+        result: "The portfolio gathered published projects and made previous work easier to review in one place.",
+        problem: "Projects, links and professional presentation needed to be centralized in a simple experience.",
+        solution:
+          "A personal website was prepared with featured projects, contact paths and an early professional presence foundation.",
+        image: images.portfolio,
+        imageAlt: "Kenneth Duron previous portfolio with personal brand identity",
+        externalUrl: "https://kennethduron.web.app",
+        benefits: ["Centralized projects", "Personal brand", "Visible contact"],
       },
     ],
     packages: [
