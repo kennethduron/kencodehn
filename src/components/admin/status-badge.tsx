@@ -21,17 +21,17 @@ const priorityClass: Record<LeadPriority | TaskPriority, string> = {
 };
 
 export function LeadStatusBadge({ status }: { status: LeadStatus }) {
-  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${statusClass[status]}`}>{leadStatusLabels[status]}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-black shadow-sm ${statusClass[status]}`}>{leadStatusLabels[status]}</span>;
 }
 
 export function LeadPriorityBadge({ priority }: { priority: LeadPriority }) {
-  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${priorityClass[priority]}`}>{leadPriorityLabels[priority]}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-black shadow-sm ${priorityClass[priority]}`}>{leadPriorityLabels[priority]}</span>;
 }
 
 export function TaskStatusBadge({ status }: { status: TaskStatus }) {
-  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${statusClass[status]}`}>{taskStatusLabels[status]}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-black shadow-sm ${statusClass[status]}`}>{taskStatusLabels[status]}</span>;
 }
 
 export function TaskPriorityBadge({ priority }: { priority: TaskPriority }) {
-  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${priorityClass[priority]}`}>{taskPriorityLabels[priority]}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-black shadow-sm ${priorityClass[priority]}`}>{taskPriorityLabels[priority]}</span>;
 }

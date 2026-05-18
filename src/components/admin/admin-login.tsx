@@ -49,7 +49,7 @@ export function AdminLogin({ missingServerEnv = [], missingClientEnv = [] }: { m
 
   return (
     <main className="grid min-h-screen place-items-center bg-kc-bg px-4 py-10">
-      <section className="w-full max-w-md rounded-2xl border border-kc-cyan/20 bg-kc-bg-soft/86 p-6 shadow-[0_0_80px_rgba(0,217,255,0.12)]">
+      <section className="w-full max-w-md overflow-hidden rounded-2xl border border-kc-cyan/20 bg-kc-bg-soft/86 p-6 shadow-[0_0_80px_rgba(0,217,255,0.12)]">
         <div className="grid h-14 w-14 place-items-center rounded-2xl border border-kc-cyan/35 bg-kc-cyan/10 text-kc-cyan">
           <LockKeyhole size={25} aria-hidden="true" />
         </div>
@@ -57,7 +57,7 @@ export function AdminLogin({ missingServerEnv = [], missingClientEnv = [] }: { m
         <p className="mt-2 text-sm leading-6 text-kc-muted">Acceso privado para administrar leads, tareas y seguimientos. No hay registro publico.</p>
 
         {missing.length > 0 ? (
-          <div className="mt-5 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+          <div className="mt-5 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100 [overflow-wrap:anywhere]">
             Faltan variables para probar el login: <strong>{missing.join(", ")}</strong>
           </div>
         ) : null}
