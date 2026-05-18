@@ -64,6 +64,18 @@ function normalizeTaskType(value: unknown): TaskType {
   return "follow_up";
 }
 
+function normalizeNotificationType(value: unknown): AdminNotification["type"] {
+  const valid = ["lead", "task", "lead_new", "lead_status_changed", "lead_priority_changed", "note_added", "task_created", "task_updated", "task_completed", "task_overdue", "system"];
+  return valid.includes(String(value)) ? String(value) as AdminNotification["type"] : "system";
+}
+
+function normalizeSeverity(value: unknown): AdminNotification["severity"] {
+  if (value === "success" || value === "warning" || value === "danger") {
+    return value;
+  }
+  return "info";
+}
+
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -139,10 +151,14 @@ export function mapNotification(doc: QueryDocumentSnapshot<DocumentData>): Admin
     id: doc.id,
     title: String(data.title ?? "Notificacion"),
     message: String(data.message ?? ""),
-    type: data.type === "task" || data.type === "system" ? data.type : "lead",
+    type: normalizeNotificationType(data.type),
+    severity: normalizeSeverity(data.severity),
     leadId: data.leadId ? String(data.leadId) : null,
     taskId: data.taskId ? String(data.taskId) : null,
+    actionUrl: data.actionUrl ? String(data.actionUrl) : null,
     read: Boolean(data.read),
+    readAt: toIso(data.readAt),
+    deletedAt: toIso(data.deletedAt),
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
   };
 }
@@ -244,14 +260,14 @@ export async function checkOverdueTasks(admin?: AdminUser) {
     }
     const notifiedAt = now.toISOString();
     await doc.ref.set({ status: "overdue", overdueNotifiedAt: notifiedAt, updatedAt: notifiedAt }, { merge: true });
-    await db.collection("notifications").add({
+    await createNotification({
       title: "Tarea vencida",
       message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
-      type: "task",
+      type: "task_overdue",
+      severity: "danger",
       leadId: task.leadId,
       taskId: task.id,
-      read: false,
-      createdAt: notifiedAt,
+      actionUrl: task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas",
     });
     await addActivityLog({
       entityType: "task",
@@ -274,7 +290,37 @@ export async function listNotifications() {
     return [];
   }
   const snapshot = await db.collection("notifications").orderBy("createdAt", "desc").limit(100).get();
-  return snapshot.docs.map(mapNotification);
+  return snapshot.docs.map(mapNotification).filter((notification) => !notification.deletedAt);
+}
+
+export async function createNotification(input: {
+  title: string;
+  message: string;
+  type: AdminNotification["type"];
+  severity?: AdminNotification["severity"];
+  leadId?: string | null;
+  taskId?: string | null;
+  actionUrl?: string | null;
+}) {
+  const db = getAdminDb();
+  if (!db) {
+    return null;
+  }
+  const now = new Date().toISOString();
+  const doc = await db.collection("notifications").add({
+    title: input.title,
+    message: input.message,
+    type: input.type,
+    severity: input.severity ?? "info",
+    leadId: input.leadId ?? null,
+    taskId: input.taskId ?? null,
+    actionUrl: input.actionUrl ?? null,
+    read: false,
+    readAt: null,
+    deletedAt: null,
+    createdAt: now,
+  });
+  return doc.id;
 }
 
 export async function updateLead(id: string, updates: Partial<AdminLead>, admin: AdminUser) {
@@ -302,6 +348,26 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
           : changedFields.includes("estimatedValue")
             ? "lead_value_updated"
             : "lead_updated";
+  if (primaryAction === "lead_status_changed") {
+    await createNotification({
+      title: "Estado de lead actualizado",
+      message: `${String(beforeData?.name ?? "Lead")} cambio a ${String(updates.status)}.`,
+      type: "lead_status_changed",
+      severity: updates.status === "won" ? "success" : updates.status === "lost" ? "warning" : "info",
+      leadId: id,
+      actionUrl: `/admin/leads/${id}`,
+    });
+  }
+  if (primaryAction === "lead_priority_changed") {
+    await createNotification({
+      title: "Prioridad de lead actualizada",
+      message: `${String(beforeData?.name ?? "Lead")} ahora tiene prioridad ${String(updates.priority)}.`,
+      type: "lead_priority_changed",
+      severity: updates.priority === "high" ? "warning" : "info",
+      leadId: id,
+      actionUrl: `/admin/leads/${id}`,
+    });
+  }
   await addActivityLog({
     entityType: "lead",
     entityId: id,
@@ -327,6 +393,14 @@ export async function addNote(leadId: string, text: string, admin: AdminUser) {
     createdAt: now,
   });
   await db.collection("leads").doc(leadId).set({ updatedAt: now }, { merge: true });
+  await createNotification({
+    title: "Nota agregada",
+    message: `Se agrego una nota interna al lead.`,
+    type: "note_added",
+    severity: "info",
+    leadId,
+    actionUrl: `/admin/leads/${leadId}`,
+  });
   await addActivityLog({
     entityType: "note",
     entityId: doc.id,
@@ -366,14 +440,14 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
     updatedAt: now,
   };
   const doc = await db.collection("tasks").add(payload);
-  const notification = await db.collection("notifications").add({
+  const notificationId = await createNotification({
     title: "Nueva tarea creada",
     message: `${payload.title}${payload.leadName ? ` para ${payload.leadName}` : ""}.`,
-    type: "task",
+    type: "task_created",
+    severity: payload.priority === "high" ? "warning" : "info",
     leadId: payload.leadId,
     taskId: doc.id,
-    read: false,
-    createdAt: now,
+    actionUrl: payload.leadId ? `/admin/leads/${payload.leadId}` : "/admin/tareas",
   });
   await addActivityLog({
     entityType: "task",
@@ -382,7 +456,7 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
     taskId: doc.id,
     action: "task_created",
     before: null,
-    after: { ...payload, notificationId: notification.id },
+    after: { ...payload, notificationId },
     userEmail: admin.email,
   });
   return doc.id;
@@ -412,6 +486,27 @@ export async function updateTask(id: string, updates: Partial<AdminTask>, admin:
     payload.completedAt = null;
   }
   await ref.set(payload, { merge: true });
+  if (updates.status === "completed") {
+    await createNotification({
+      title: "Tarea completada",
+      message: `${String(beforeData?.title ?? updates.title ?? "Tarea")} fue marcada como completada.`,
+      type: "task_completed",
+      severity: "success",
+      leadId: beforeData?.leadId ? String(beforeData.leadId) : null,
+      taskId: id,
+      actionUrl: beforeData?.leadId ? `/admin/leads/${beforeData.leadId}` : "/admin/tareas",
+    });
+  } else if (Object.keys(updates).some((field) => ["title", "description", "date", "time", "priority", "type"].includes(field))) {
+    await createNotification({
+      title: "Tarea actualizada",
+      message: `${String(beforeData?.title ?? updates.title ?? "Tarea")} fue actualizada.`,
+      type: "task_updated",
+      severity: updates.priority === "high" ? "warning" : "info",
+      leadId: beforeData?.leadId ? String(beforeData.leadId) : null,
+      taskId: id,
+      actionUrl: beforeData?.leadId ? `/admin/leads/${beforeData.leadId}` : "/admin/tareas",
+    });
+  }
   await addActivityLog({
     entityType: "task",
     entityId: id,
@@ -444,19 +539,57 @@ export async function deleteTask(id: string, admin: AdminUser) {
   });
 }
 
-export async function markNotificationRead(id: string, admin: AdminUser) {
+export async function updateNotificationRead(id: string, read: boolean, admin: AdminUser) {
   const db = getAdminDb();
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");
   }
-  await db.collection("notifications").doc(id).set({ read: true, readAt: new Date().toISOString(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  await db.collection("notifications").doc(id).set({ read, readAt: read ? new Date().toISOString() : null, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   await addActivityLog({
     entityType: "notification",
     entityId: id,
     leadId: null,
-    action: "notification_read",
+    action: read ? "notification_read" : "notification_unread",
     before: null,
-    after: { read: true },
+    after: { read },
+    userEmail: admin.email,
+  });
+}
+
+export async function markAllNotificationsRead(admin: AdminUser) {
+  const db = getAdminDb();
+  if (!db) {
+    throw new Error("Firebase Admin no esta configurado.");
+  }
+  const now = new Date().toISOString();
+  const snapshot = await db.collection("notifications").where("read", "==", false).limit(100).get();
+  const batch = db.batch();
+  snapshot.docs.forEach((doc) => batch.set(doc.ref, { read: true, readAt: now, updatedAt: FieldValue.serverTimestamp() }, { merge: true }));
+  await batch.commit();
+  await addActivityLog({
+    entityType: "notification",
+    entityId: "all",
+    leadId: null,
+    action: "notifications_read_all",
+    before: null,
+    after: { count: snapshot.size },
+    userEmail: admin.email,
+  });
+}
+
+export async function deleteNotification(id: string, admin: AdminUser) {
+  const db = getAdminDb();
+  if (!db) {
+    throw new Error("Firebase Admin no esta configurado.");
+  }
+  await db.collection("notifications").doc(id).set({ deletedAt: new Date().toISOString(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  await addActivityLog({
+    entityType: "notification",
+    entityId: id,
+    leadId: null,
+    action: "notification_deleted",
+    before: null,
+    after: { deletedAt: true },
     userEmail: admin.email,
   });
 }

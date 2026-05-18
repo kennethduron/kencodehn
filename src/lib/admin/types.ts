@@ -67,10 +67,14 @@ export type AdminNotification = {
   id: string;
   title: string;
   message: string;
-  type: "lead" | "task" | "system";
+  type: "lead" | "task" | "lead_new" | "lead_status_changed" | "lead_priority_changed" | "note_added" | "task_created" | "task_updated" | "task_completed" | "task_overdue" | "system";
+  severity: "info" | "success" | "warning" | "danger";
   leadId: string | null;
   taskId: string | null;
+  actionUrl: string | null;
   read: boolean;
+  readAt: string | null;
+  deletedAt: string | null;
   createdAt: string;
 };
 

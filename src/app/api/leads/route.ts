@@ -49,10 +49,14 @@ export async function POST(request: NextRequest) {
       await db.collection("notifications").add({
         title: "Nueva solicitud recibida",
         message: `Nueva solicitud recibida de ${lead.name} para ${lead.project}.`,
-        type: "lead",
+        type: "lead_new",
+        severity: "success",
         leadId: doc.id,
         taskId: null,
+        actionUrl: `/admin/leads/${doc.id}`,
         read: false,
+        readAt: null,
+        deletedAt: null,
         createdAt: now,
       });
       await db.collection("activityLogs").add({

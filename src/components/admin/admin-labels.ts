@@ -92,7 +92,31 @@ export function timeAgo(value?: string | null) {
   }
   if (diff < day * 30) {
     const days = Math.max(1, Math.round(diff / day));
-    return `Hace ${days} dia${days === 1 ? "" : "s"}`;
+    if (days === 1) {
+      return "Ayer";
+    }
+    return `Hace ${days} dias`;
   }
   return shortDate(value);
 }
+
+export const notificationTypeLabels: Record<string, string> = {
+  lead: "Lead",
+  task: "Tarea",
+  lead_new: "Lead nuevo",
+  lead_status_changed: "Estado cambiado",
+  lead_priority_changed: "Prioridad cambiada",
+  note_added: "Nota agregada",
+  task_created: "Tarea creada",
+  task_updated: "Tarea actualizada",
+  task_completed: "Tarea completada",
+  task_overdue: "Tarea vencida",
+  system: "Sistema",
+};
+
+export const notificationSeverityLabels: Record<string, string> = {
+  info: "Info",
+  success: "Exito",
+  warning: "Atencion",
+  danger: "Urgente",
+};

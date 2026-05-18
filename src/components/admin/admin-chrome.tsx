@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Sparkles, Users, X } from "lucide-react";
 import { useState } from "react";
 import type { AdminUser } from "@/lib/admin/types";
+import { NotificationDropdown } from "./notification-dropdown";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: BarChart3 },
@@ -99,10 +100,7 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
                   <Search size={16} aria-hidden="true" />
                   <span>CRM listo</span>
                 </div>
-                <Link href="/admin/notificaciones" className="relative grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-kc-text transition hover:border-kc-cyan/35 hover:text-kc-cyan" aria-label="Notificaciones">
-                  <Bell size={18} aria-hidden="true" />
-                  {unreadCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-400 px-1 text-[0.64rem] font-black text-white">{unreadCount}</span> : null}
-                </Link>
+                <NotificationDropdown initialUnreadCount={unreadCount} />
                 <button
                   type="button"
                   onClick={logout}
