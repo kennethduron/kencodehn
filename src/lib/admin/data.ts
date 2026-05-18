@@ -1,5 +1,6 @@
 import { FieldValue, type DocumentData, type QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { formatActivityMessage, formatActivityTitle } from "@/lib/admin/activity";
 import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 
 function toIso(value: unknown): string | null {
@@ -165,40 +166,56 @@ export function mapNotification(doc: QueryDocumentSnapshot<DocumentData>): Admin
 
 export function mapActivityLog(doc: QueryDocumentSnapshot<DocumentData>): ActivityLog {
   const data = doc.data();
-  return {
+  const draft = {
     id: doc.id,
-    entityType: data.entityType === "note" || data.entityType === "task" || data.entityType === "notification" ? data.entityType : "lead",
+    entityType: data.entityType === "note" || data.entityType === "task" || data.entityType === "notification" || data.entityType === "system" ? data.entityType : "lead",
     entityId: String(data.entityId ?? ""),
     leadId: data.leadId ? String(data.leadId) : data.entityType === "lead" ? String(data.entityId ?? "") : null,
     taskId: data.taskId ? String(data.taskId) : null,
     noteId: data.noteId ? String(data.noteId) : null,
     action: String(data.action ?? "activity"),
+    title: String(data.title ?? ""),
+    description: String(data.description ?? ""),
     before: data.before ?? null,
     after: data.after ?? null,
     userEmail: String(data.userEmail ?? ""),
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
+  } satisfies ActivityLog;
+  return {
+    ...draft,
+    title: draft.title || formatActivityTitle(draft.action),
+    description: draft.description || formatActivityMessage(draft),
   };
 }
 
-export async function addActivityLog(entry: Omit<ActivityLog, "id" | "createdAt">) {
+export async function addActivityLog(entry: Omit<ActivityLog, "id" | "createdAt" | "title" | "description"> & { title?: string; description?: string }) {
   const db = getAdminDb();
   if (!db) {
     return;
   }
+  const draft = {
+    id: "draft",
+    createdAt: new Date().toISOString(),
+    title: entry.title || "",
+    description: entry.description || "",
+    ...entry,
+  } as ActivityLog;
   await db.collection("activityLogs").add({
     ...entry,
-    createdAt: new Date().toISOString(),
+    title: entry.title || formatActivityTitle(entry.action),
+    description: entry.description || formatActivityMessage(draft),
+    createdAt: draft.createdAt,
   });
 }
 
-export async function listActivityLogs(leadId?: string) {
+export async function listActivityLogs(leadId?: string, limit = 100) {
   const db = getAdminDb();
   if (!db) {
     return [];
   }
   const snapshot = leadId
-    ? await db.collection("activityLogs").where("leadId", "==", leadId).limit(100).get()
-    : await db.collection("activityLogs").orderBy("createdAt", "desc").limit(100).get();
+    ? await db.collection("activityLogs").where("leadId", "==", leadId).limit(limit).get()
+    : await db.collection("activityLogs").orderBy("createdAt", "desc").limit(limit).get();
   return snapshot.docs.map(mapActivityLog).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 

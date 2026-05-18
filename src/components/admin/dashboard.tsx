@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Clock3, TrendingDown, TrendingUp, Users } from "lucide-react";
-import type { AdminLead, AdminNotification, AdminTask } from "@/lib/admin/types";
-import { dateTime, leadStatusLabels, money, shortDate } from "./admin-labels";
+import type { ActivityLog, AdminLead, AdminNotification, AdminTask } from "@/lib/admin/types";
+import { activityHref, mapActivityTone } from "@/lib/admin/activity";
+import { leadStatusLabels, money, shortDate, timeAgo } from "./admin-labels";
 import { AdminBarChart, AdminDonutMetric } from "./admin-chart";
 import { KpiCard } from "./kpi-card";
 import { LeadList } from "./lead-list";
 
-export function AdminDashboard({ leads, tasks, notifications }: { leads: AdminLead[]; tasks: AdminTask[]; notifications: AdminNotification[] }) {
+export function AdminDashboard({ leads, tasks, notifications, activity }: { leads: AdminLead[]; tasks: AdminTask[]; notifications: AdminNotification[]; activity: ActivityLog[] }) {
   const total = leads.length;
   const newLeads = leads.filter((lead) => lead.status === "new").length;
   const contacted = leads.filter((lead) => lead.status === "contacted").length;
@@ -41,22 +42,7 @@ export function AdminDashboard({ leads, tasks, notifications }: { leads: AdminLe
     { label: leadStatusLabels.won, value: won, tone: "green" as const },
     { label: leadStatusLabels.lost, value: lost, tone: "rose" as const },
   ];
-  const recentActivity = [
-    ...leads.slice(0, 3).map((lead) => ({
-      id: `lead-${lead.id}`,
-      title: `Lead: ${lead.name}`,
-      detail: `${lead.project} - ${leadStatusLabels[lead.status]}`,
-      href: `/admin/leads/${lead.id}`,
-      date: lead.createdAt,
-    })),
-    ...notifications.slice(0, 3).map((notification) => ({
-      id: `notification-${notification.id}`,
-      title: notification.title,
-      detail: notification.message,
-      href: "/admin/notificaciones",
-      date: notification.createdAt,
-    })),
-  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  const recentActivity = activity.slice(0, 6);
 
   return (
     <div className="grid gap-6">
@@ -107,16 +93,19 @@ export function AdminDashboard({ leads, tasks, notifications }: { leads: AdminLe
         <article className="kc-admin-card p-5">
           <h2 className="font-display text-xl font-black text-kc-text">Actividad reciente</h2>
           <div className="mt-4 grid gap-3">
-            {recentActivity.map((item) => (
-              <Link key={item.id} href={item.href} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl border border-white/10 bg-kc-bg/48 p-4 transition hover:border-kc-cyan/35 hover:bg-white/[0.04]">
-                <span className="mt-1 h-2.5 w-2.5 rounded-full bg-kc-cyan shadow-[0_0_18px_rgba(0,217,255,0.45)]" />
+            {recentActivity.map((item) => {
+              const tone = mapActivityTone(item);
+              const dot = tone === "danger" ? "bg-rose-300" : tone === "warning" ? "bg-kc-lime" : tone === "success" ? "bg-kc-turquoise" : "bg-kc-cyan";
+              return (
+              <Link key={item.id} href={activityHref(item)} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl border border-white/10 bg-kc-bg/48 p-4 transition hover:border-kc-cyan/35 hover:bg-white/[0.04]">
+                <span className={`mt-1 h-2.5 w-2.5 rounded-full ${dot} shadow-[0_0_18px_rgba(0,217,255,0.35)]`} />
                 <span className="min-w-0">
                   <span className="block truncate font-bold text-kc-text">{item.title}</span>
-                  <span className="mt-1 block line-clamp-2 text-sm leading-6 text-kc-muted">{item.detail}</span>
-                  <span className="mt-2 block text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">{dateTime(item.date)}</span>
+                  <span className="mt-1 block line-clamp-2 text-sm leading-6 text-kc-muted">{item.description}</span>
+                  <span className="mt-2 block text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">{timeAgo(item.createdAt)}</span>
                 </span>
               </Link>
-            ))}
+            )})}
             {recentActivity.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">Aun no hay actividad reciente.</p> : null}
           </div>
         </article>

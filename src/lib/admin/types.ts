@@ -80,12 +80,14 @@ export type AdminNotification = {
 
 export type ActivityLog = {
   id: string;
-  entityType: "lead" | "note" | "task" | "notification";
+  entityType: "lead" | "note" | "task" | "notification" | "system";
   entityId: string;
   leadId: string | null;
   taskId?: string | null;
   noteId?: string | null;
   action: string;
+  title: string;
+  description: string;
   before: unknown;
   after: unknown;
   userEmail: string;

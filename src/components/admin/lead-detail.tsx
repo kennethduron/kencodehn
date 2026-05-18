@@ -5,28 +5,12 @@ import { FormEvent, useMemo, useState } from "react";
 import { ArrowLeft, CalendarPlus, CheckCircle2, Copy, Mail, Plus, Tag, X } from "lucide-react";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import type { ActivityLog, AdminLead, AdminNote, AdminTask, LeadPriority, LeadStatus } from "@/lib/admin/types";
+import { mapActivityTone } from "@/lib/admin/activity";
 import { whatsappLink } from "@/lib/site";
 import { dateTime, leadPriorityLabels, leadStatusLabels, money, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge, TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 
 const suggestedTags = ["urgente", "restaurante", "e-commerce", "seguimiento", "cotizacion", "interesado", "frio", "caliente"];
-
-function activityLabel(activity: ActivityLog) {
-  const labels: Record<string, string> = {
-    lead_created: "Lead creado",
-    lead_updated: "Lead actualizado",
-    lead_status_changed: "Estado actualizado",
-    lead_priority_changed: "Prioridad actualizada",
-    lead_followup_updated: "Seguimiento actualizado",
-    lead_tags_updated: "Tags actualizados",
-    lead_value_updated: "Valor estimado actualizado",
-    note_added: "Nota agregada",
-    task_created: "Tarea creada",
-    task_updated: "Tarea actualizada",
-    task_deleted: "Tarea eliminada",
-  };
-  return labels[activity.action] || "Actividad registrada";
-}
 
 export function LeadDetail({
   initialLead,
@@ -58,6 +42,8 @@ export function LeadDetail({
       entityId: lead.id,
       leadId: lead.id,
       action: "lead_created",
+      title: "Lead creado",
+      description: "Solicitud recibida desde el sitio publico.",
       before: null,
       after: null,
       userEmail: "Sitio publico",
@@ -337,18 +323,22 @@ export function LeadDetail({
       <section className="kc-admin-card p-5">
         <h2 className="font-display text-2xl font-black text-kc-text">Timeline de actividad</h2>
         <div className="mt-5 grid gap-4">
-          {timeline.map((item) => (
+          {timeline.map((item) => {
+            const tone = mapActivityTone(item);
+            const toneClass = tone === "danger" ? "border-rose-300/25 bg-rose-300/10 text-rose-200" : tone === "warning" ? "border-kc-lime/25 bg-kc-lime/10 text-kc-lime" : tone === "success" ? "border-kc-turquoise/25 bg-kc-turquoise/10 text-kc-turquoise" : "border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan";
+            return (
             <div key={item.id} className="grid grid-cols-[auto_1fr] gap-4">
-              <span className="mt-1 grid h-8 w-8 place-items-center rounded-full border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan"><CheckCircle2 size={16} /></span>
+              <span className={`mt-1 grid h-8 w-8 place-items-center rounded-full border ${toneClass}`}><CheckCircle2 size={16} /></span>
               <div className="rounded-xl border border-white/10 bg-kc-bg/50 p-4">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                  <p className="font-black text-kc-text">{activityLabel(item)}</p>
+                  <p className="font-black text-kc-text">{item.title}</p>
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">{timeAgo(item.createdAt)}</p>
                 </div>
+                <p className="mt-2 text-sm leading-6 text-kc-muted">{item.description}</p>
                 <p className="mt-1 text-sm text-kc-muted">{item.userEmail || "Sistema"} - {dateTime(item.createdAt)}</p>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </section>
     </div>

@@ -5,20 +5,20 @@ import { listActivityLogs } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
 
-const querySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(100),
+const activityQuerySchema = z.object({
+  leadId: z.string().trim().min(1).max(160).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
 }).strict();
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest) {
   const admin = await requireAdminFromRequest(request);
   if (!admin) {
     return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
   }
-  const { id } = await params;
-  const parsed = querySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
+  const parsed = activityQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Filtros invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  const activity = await listActivityLogs(id, parsed.data.limit);
+  const activity = await listActivityLogs(parsed.data.leadId, parsed.data.limit);
   return NextResponse.json({ ok: true, activity });
 }
