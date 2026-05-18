@@ -11,8 +11,8 @@ type ServiceCardProps = {
 
 export function ServiceCard({ title, summary, icon: Icon }: ServiceCardProps) {
   return (
-    <article className="kc-card rounded-xl p-5">
-      <span className="grid h-11 w-11 place-items-center rounded-lg border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan">
+    <article className="kc-card group rounded-xl p-5">
+      <span className="grid h-11 w-11 place-items-center rounded-lg border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan transition duration-300 group-hover:border-kc-cyan/45 group-hover:bg-kc-cyan/15">
         <Icon size={21} aria-hidden="true" />
       </span>
       <h3 className="mt-5 font-display text-xl font-bold text-kc-text">{title}</h3>
@@ -53,14 +53,14 @@ export function ProjectCard({
   unavailableLabel = "Link pendiente",
 }: ProjectCardProps) {
   return (
-    <article className="kc-card flex h-full flex-col overflow-hidden rounded-2xl">
+    <article className="kc-card group flex h-full flex-col overflow-hidden rounded-2xl">
       <div className="relative aspect-[16/10] overflow-hidden border-b border-white/10 bg-kc-bg-soft">
         <Image
           src={image}
           alt={imageAlt}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1180px) 50vw, 380px"
-          className="object-cover transition duration-500 hover:scale-[1.03]"
+          className="object-cover transition duration-700 group-hover:scale-[1.035]"
         />
       </div>
       <div className="flex flex-1 flex-col p-6">
@@ -81,7 +81,7 @@ export function ProjectCard({
               href={externalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-kc-electric px-4 py-2 text-sm font-bold text-white transition hover:bg-kc-cyan hover:text-kc-bg"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-kc-electric px-4 py-2 text-sm font-bold text-white shadow-[0_0_24px_rgba(0,109,255,0.2)] transition hover:-translate-y-0.5 hover:bg-kc-cyan hover:text-kc-bg hover:shadow-[0_0_32px_rgba(0,217,255,0.24)]"
             >
               {liveLabel}
               <ExternalLink size={16} aria-hidden="true" />
@@ -94,7 +94,7 @@ export function ProjectCard({
           )}
           <Link
             href={caseHref ?? `/proyectos/${slug}`}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-kc-border px-4 py-2 text-sm font-bold text-kc-text transition hover:border-kc-cyan hover:text-kc-cyan"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-kc-border px-4 py-2 text-sm font-bold text-kc-text transition hover:-translate-y-0.5 hover:border-kc-cyan hover:text-kc-cyan"
           >
             {caseLabel}
             <ExternalLink size={16} aria-hidden="true" />
@@ -162,10 +162,10 @@ export function PackageCard({
 }: PackageCardProps) {
   return (
     <article
-      className={`rounded-2xl border p-6 ${
+      className={`rounded-2xl border p-6 transition duration-200 hover:-translate-y-1 ${
         featured
-          ? "border-kc-lime/45 bg-kc-lime/[0.07] shadow-[0_0_54px_rgba(182,255,59,0.12)]"
-          : "border-white/10 bg-white/[0.04]"
+          ? "border-kc-lime/45 bg-kc-lime/[0.07] shadow-[0_0_54px_rgba(182,255,59,0.12)] hover:shadow-[0_0_64px_rgba(182,255,59,0.16)]"
+          : "border-white/10 bg-white/[0.04] hover:border-kc-cyan/35"
       }`}
     >
       <p className="text-sm font-black uppercase tracking-[0.2em] text-kc-cyan">{price}</p>
@@ -181,7 +181,7 @@ export function PackageCard({
       </ul>
       <Link
         href={quoteHref}
-        className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-white/8 px-4 py-2 text-sm font-black text-kc-text transition hover:bg-kc-cyan hover:text-kc-bg"
+        className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-white/8 px-4 py-2 text-sm font-black text-kc-text transition hover:-translate-y-0.5 hover:bg-kc-cyan hover:text-kc-bg"
       >
         {quoteLabel}
       </Link>

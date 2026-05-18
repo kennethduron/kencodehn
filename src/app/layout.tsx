@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: site.ogImage,
+        url: `${site.url}${site.ogImage}`,
         width: 1200,
         height: 630,
         alt: "Ken Code - Estudio internacional de desarrollo web",
@@ -70,7 +70,15 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
-    images: [site.ogImage],
+    images: [
+      {
+        url: `${site.url}${site.ogImage}`,
+        width: 1200,
+        height: 630,
+        alt: "Ken Code - Estudio internacional de desarrollo web",
+        type: "image/jpeg",
+      },
+    ],
   },
 };
 

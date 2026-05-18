@@ -4,13 +4,14 @@ export type Locale = "es" | "en";
 
 export const site = {
   name: "Ken Code",
-  url: "https://kencodehn.com",
+  url: "https://www.kencodehn.com",
+  apexUrl: "https://kencodehn.com",
   domain: "kencodehn.com",
   email: "kencodehn@gmail.com",
   phone: "+504 9911-2211",
   phoneRaw: "50499112211",
   facebook: "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr",
-  ogImage: "/images/logo-kenneth.jpg",
+  ogImage: "/images/og-ken-code.jpg",
   favicon: "/images/fav-icon.jpg",
   portrait: "/images/kenneth.jpg",
 };
@@ -140,7 +141,7 @@ export function createMetadata({
       type: "website",
       images: [
         {
-          url: site.ogImage,
+          url: absoluteUrl(site.ogImage),
           width: 1200,
           height: 630,
           alt: ogAlt,
@@ -152,7 +153,12 @@ export function createMetadata({
       card: "summary_large_image",
       title: fullTitle,
       description,
-      images: [site.ogImage],
+      images: [
+        {
+          url: absoluteUrl(site.ogImage),
+          alt: ogAlt,
+        },
+      ],
     },
   };
 }
