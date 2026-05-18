@@ -11,7 +11,7 @@ export const site = {
   phone: "+504 9911-2211",
   phoneRaw: "50499112211",
   facebook: "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr",
-  ogImage: "/images/og-ken-code.jpg",
+  ogImage: "/images/logo-kenneth.jpg",
   favicon: "/images/fav-icon.jpg",
   portrait: "/images/kenneth.jpg",
 };
@@ -142,8 +142,8 @@ export function createMetadata({
       images: [
         {
           url: absoluteUrl(site.ogImage),
-          width: 1200,
-          height: 630,
+          width: 785,
+          height: 981,
           alt: ogAlt,
           type: "image/jpeg",
         },
