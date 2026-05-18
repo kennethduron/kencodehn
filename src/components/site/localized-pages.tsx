@@ -9,7 +9,7 @@ import { Reveal } from "@/components/site/reveal";
 import { SectionIntro } from "@/components/site/section-intro";
 import { SocialLinks } from "@/components/site/social-links";
 import { getContent, type Project } from "@/content/site-content";
-import { absoluteUrl, site, whatsappLink, type Locale } from "@/lib/site";
+import { absoluteAssetUrl, absoluteUrl, site, whatsappLink, type Locale } from "@/lib/site";
 import { QuoteForm } from "./quote-form";
 
 const labels = {
@@ -104,8 +104,8 @@ export function HomeView({ locale }: { locale: Locale }) {
     "@type": "ProfessionalService",
     name: site.name,
     url: site.url,
-    image: `${site.url}${site.ogImage}`,
-    logo: `${site.url}${site.favicon}`,
+    image: absoluteAssetUrl(site.ogImage),
+    logo: absoluteAssetUrl(site.favicon),
     email: site.email,
     telephone: site.phone,
     areaServed: ["Global", "United States", "Canada", "Europe", "Latin America", "Honduras"],

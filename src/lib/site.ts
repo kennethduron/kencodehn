@@ -4,8 +4,8 @@ export type Locale = "es" | "en";
 
 export const site = {
   name: "Ken Code",
-  url: "https://www.kencodehn.com",
-  apexUrl: "https://kencodehn.com",
+  url: "https://kencodehn.com",
+  wwwUrl: "https://www.kencodehn.com",
   domain: "kencodehn.com",
   email: "kencodehn@gmail.com",
   phone: "+504 9911-2211",
@@ -72,6 +72,10 @@ export function whatsappLink(message: string) {
 
 export function absoluteUrl(path = "/") {
   return new URL(path, site.url).toString();
+}
+
+export function absoluteAssetUrl(path = "/") {
+  return new URL(path, site.wwwUrl).toString();
 }
 
 export function getAlternatePath(path: string, locale: Locale): string {
@@ -141,7 +145,7 @@ export function createMetadata({
       type: "website",
       images: [
         {
-          url: absoluteUrl(site.ogImage),
+          url: absoluteAssetUrl(site.ogImage),
           width: 785,
           height: 981,
           alt: ogAlt,
@@ -155,7 +159,7 @@ export function createMetadata({
       description,
       images: [
         {
-          url: absoluteUrl(site.ogImage),
+          url: absoluteAssetUrl(site.ogImage),
           alt: ogAlt,
         },
       ],
