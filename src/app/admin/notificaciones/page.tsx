@@ -1,23 +1,23 @@
 import { AdminChrome } from "@/components/admin/admin-chrome";
-import { AdminDashboard } from "@/components/admin/dashboard";
 import { AdminLogin } from "@/components/admin/admin-login";
+import { NotificationsPanel } from "@/components/admin/notifications-panel";
 import { getCurrentAdmin, getMissingAdminEnv, getMissingFirebaseClientEnv } from "@/lib/admin/auth";
-import { listLeads, listNotifications, listTasks } from "@/lib/admin/data";
+import { listNotifications } from "@/lib/admin/data";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function AdminNotificationsPage() {
   const admin = await getCurrentAdmin();
   if (!admin) {
     return <AdminLogin missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingFirebaseClientEnv()} />;
   }
 
-  const [leads, tasks, notifications] = await Promise.all([listLeads(), listTasks(), listNotifications()]);
+  const notifications = await listNotifications();
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (
     <AdminChrome admin={admin} unreadCount={unreadCount}>
-      <AdminDashboard leads={leads} tasks={tasks} notifications={notifications} />
+      <NotificationsPanel initialNotifications={notifications} />
     </AdminChrome>
   );
 }

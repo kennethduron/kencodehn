@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Facebook, Mail, MessageCircle } from "lucide-react";
+import { Facebook, Instagram, Mail } from "lucide-react";
+import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import { site, whatsappLink } from "@/lib/site";
 
 type SocialLinksProps = {
@@ -15,7 +16,7 @@ export function SocialLinks({ whatsappMessage, className = "" }: SocialLinksProp
     {
       label: "WhatsApp",
       href: whatsappLink(whatsappMessage),
-      icon: MessageCircle,
+      icon: WhatsAppIcon,
     },
     {
       label: "Correo",
@@ -26,6 +27,11 @@ export function SocialLinks({ whatsappMessage, className = "" }: SocialLinksProp
       label: "Facebook",
       href: site.facebook,
       icon: Facebook,
+    },
+    {
+      label: "Instagram",
+      href: site.instagram,
+      icon: Instagram,
     },
   ];
 

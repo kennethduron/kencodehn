@@ -14,8 +14,13 @@ export type PublicLeadInput = {
 
 export type LeadRecord = PublicLeadInput & {
   status: "new";
-  priority: "normal";
+  priority: "medium";
   source: "public_website";
+  estimatedValue: 0;
+  wonValue: 0;
+  lastContactAt: null;
+  nextAction: "";
+  followUpAt: null;
   createdAt: string;
   updatedAt: string;
   crm: {
@@ -42,8 +47,13 @@ export function createLeadRecord(input: PublicLeadInput, metadata: LeadRecord["m
   return {
     ...input,
     status: "new",
-    priority: "normal",
+    priority: "medium",
     source: "public_website",
+    estimatedValue: 0,
+    wonValue: 0,
+    lastContactAt: null,
+    nextAction: "",
+    followUpAt: null,
     createdAt: now,
     updatedAt: now,
     crm: {

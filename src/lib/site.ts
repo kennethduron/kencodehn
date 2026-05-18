@@ -11,6 +11,7 @@ export const site = {
   phone: "+504 9911-2211",
   phoneRaw: "50499112211",
   facebook: "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr",
+  instagram: "https://www.instagram.com/kencodehn",
   ogImage: "/images/logo-kenneth.jpg",
   favicon: "/images/fav-icon.jpg",
   portrait: "/images/kenneth.jpg",

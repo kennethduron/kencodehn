@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { createLeadRecord } from "@/lib/leads";
+import { sendLeadNotificationEmail } from "@/lib/email/lead-notification";
 
 export const runtime = "nodejs";
 
@@ -44,11 +45,33 @@ export async function POST(request: NextRequest) {
 
     try {
       const doc = await db.collection("leads").add(lead);
+      const now = new Date().toISOString();
+      await db.collection("notifications").add({
+        title: "Nueva solicitud recibida",
+        message: `Nueva solicitud recibida de ${lead.name} para ${lead.project}.`,
+        type: "lead",
+        leadId: doc.id,
+        taskId: null,
+        read: false,
+        createdAt: now,
+      });
+      await db.collection("activityLogs").add({
+        entityType: "lead",
+        entityId: doc.id,
+        action: "lead_created",
+        before: null,
+        after: { source: "public_website", notification: true },
+        userEmail: "system",
+        createdAt: now,
+      });
+      const email = await sendLeadNotificationEmail(lead, doc.id);
 
       return NextResponse.json({
         ok: true,
         persisted: true,
         leadId: doc.id,
+        notificationCreated: true,
+        email,
         message: "Lead saved.",
       });
     } catch (error) {

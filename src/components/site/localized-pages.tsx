@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ExternalLink, Facebook, MailCheck, MessageCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, Facebook, Instagram, MailCheck, MessageCircle } from "lucide-react";
 import { BenefitList, PackageCard, ProjectCard, ScreenshotPanel, ServiceCard } from "@/components/site/cards";
 import { CTASection } from "@/components/site/cta-section";
 import { JsonLd } from "@/components/site/json-ld";
@@ -8,6 +8,7 @@ import { PageHero } from "@/components/site/page-hero";
 import { Reveal } from "@/components/site/reveal";
 import { SectionIntro } from "@/components/site/section-intro";
 import { SocialLinks } from "@/components/site/social-links";
+import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import { getContent, type Project } from "@/content/site-content";
 import { absoluteAssetUrl, absoluteUrl, site, whatsappLink, type Locale } from "@/lib/site";
 import { QuoteForm } from "./quote-form";
@@ -109,7 +110,7 @@ export function HomeView({ locale }: { locale: Locale }) {
     email: site.email,
     telephone: site.phone,
     areaServed: ["Global", "United States", "Canada", "Europe", "Latin America", "Honduras"],
-    sameAs: [site.facebook],
+    sameAs: [site.facebook, site.instagram],
     makesOffer: data.services.map((service) => service.title),
     inLanguage: locale,
   };
@@ -401,17 +402,18 @@ export function ContactView({ locale }: { locale: Locale }) {
     name: locale === "es" ? "Contacto Ken Code" : "Contact Ken Code",
     url: absoluteUrl(path(locale, "/contacto", "/en/contact")),
     inLanguage: locale,
-    about: { "@type": "ProfessionalService", name: site.name, email: site.email, telephone: site.phone },
+    about: { "@type": "ProfessionalService", name: site.name, email: site.email, telephone: site.phone, sameAs: [site.facebook, site.instagram] },
   };
   const contactItems = [
     {
       label: "WhatsApp",
       value: site.phone,
       href: whatsappLink(locale === "es" ? "Hola Ken Code. Quiero informacion para una solucion web profesional. Podemos trabajar de forma remota." : "Hello Ken Code. I want information about a professional web solution. We can work remotely."),
-      icon: MessageCircle,
+      icon: WhatsAppIcon,
     },
     { label: locale === "es" ? "Correo" : "Email", value: site.email, href: `mailto:${site.email}?subject=${locale === "es" ? "Cotizacion web Ken Code" : "Ken Code web quote"}`, icon: MailCheck },
     { label: "Facebook", value: locale === "es" ? "Ken Code en Facebook" : "Ken Code on Facebook", href: site.facebook, icon: Facebook },
+    { label: "Instagram", value: "@kencodehn", href: site.instagram, icon: Instagram },
   ];
 
   return (
@@ -506,7 +508,7 @@ export function AboutView({ locale }: { locale: Locale }) {
   const data = getContent(locale);
   return (
     <main className="min-h-screen overflow-x-hidden">
-      <JsonLd data={{ "@context": "https://schema.org", "@type": "Person", name: "Kenneth Duron", brand: site.name, url: absoluteUrl(path(locale, "/sobre-mi", "/en/about")), image: `${site.url}${site.portrait}`, sameAs: [site.facebook], jobTitle: locale === "es" ? "Desarrollador web" : "Web developer", worksFor: { "@type": "Organization", name: site.name, url: site.url }, inLanguage: locale }} />
+      <JsonLd data={{ "@context": "https://schema.org", "@type": "Person", name: "Kenneth Duron", brand: site.name, url: absoluteUrl(path(locale, "/sobre-mi", "/en/about")), image: `${site.url}${site.portrait}`, sameAs: [site.facebook, site.instagram], jobTitle: locale === "es" ? "Desarrollador web" : "Web developer", worksFor: { "@type": "Organization", name: site.name, url: site.url }, inLanguage: locale }} />
       <PageHero
         eyebrow={locale === "es" ? "Sobre mi" : "About"}
         title={locale === "es" ? "Construyo paginas web premium con estrategia de negocio y bases solidas." : "I build premium websites with business strategy and solid foundations."}

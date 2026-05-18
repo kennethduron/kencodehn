@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { Footer } from "@/components/site/footer";
-import { FloatingContact } from "@/components/site/floating-contact";
-import { Header } from "@/components/site/header";
+import { PublicShell } from "@/components/site/public-shell";
 import { site, seoKeywords } from "@/lib/site";
 
 const title = "Ken Code | Estudio internacional de desarrollo web";
@@ -91,10 +89,7 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body>
         <div className="pointer-events-none fixed inset-0 -z-10 kc-grid-bg" />
-        <Header />
-        {children}
-        <Footer />
-        <FloatingContact />
+        <PublicShell>{children}</PublicShell>
       </body>
     </html>
   );

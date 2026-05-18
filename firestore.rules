@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function adminUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.active == true;
+    }
+
+    match /adminUsers/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    match /leads/{leadId} {
+      allow read: if adminUser();
+      allow write: if false;
+    }
+
+    match /notes/{noteId} {
+      allow read: if adminUser();
+      allow write: if false;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if adminUser();
+      allow write: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if adminUser();
+      allow write: if false;
+    }
+
+    match /activityLogs/{logId} {
+      allow read: if adminUser();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
