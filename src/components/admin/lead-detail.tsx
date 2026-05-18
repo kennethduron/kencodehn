@@ -1,22 +1,78 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { ArrowLeft, Mail } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
+import { ArrowLeft, CalendarPlus, CheckCircle2, Copy, Mail, Plus, Tag, X } from "lucide-react";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
-import type { AdminLead, AdminNote, AdminTask, LeadPriority, LeadStatus } from "@/lib/admin/types";
+import type { ActivityLog, AdminLead, AdminNote, AdminTask, LeadPriority, LeadStatus } from "@/lib/admin/types";
 import { whatsappLink } from "@/lib/site";
-import { dateTime, leadPriorityLabels, leadStatusLabels, shortDate, taskTypeLabels } from "./admin-labels";
-import { LeadPriorityBadge, LeadStatusBadge, TaskStatusBadge } from "./status-badge";
+import { dateTime, leadPriorityLabels, leadStatusLabels, money, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
+import { LeadPriorityBadge, LeadStatusBadge, TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 
-export function LeadDetail({ initialLead, initialNotes, initialTasks }: { initialLead: AdminLead; initialNotes: AdminNote[]; initialTasks: AdminTask[] }) {
+const suggestedTags = ["urgente", "restaurante", "e-commerce", "seguimiento", "cotizacion", "interesado", "frio", "caliente"];
+
+function activityLabel(activity: ActivityLog) {
+  const labels: Record<string, string> = {
+    lead_created: "Lead creado",
+    lead_updated: "Lead actualizado",
+    lead_status_changed: "Estado actualizado",
+    lead_priority_changed: "Prioridad actualizada",
+    lead_followup_updated: "Seguimiento actualizado",
+    lead_tags_updated: "Tags actualizados",
+    lead_value_updated: "Valor estimado actualizado",
+    note_added: "Nota agregada",
+    task_created: "Tarea creada",
+    task_updated: "Tarea actualizada",
+    task_deleted: "Tarea eliminada",
+  };
+  return labels[activity.action] || "Actividad registrada";
+}
+
+export function LeadDetail({
+  initialLead,
+  initialNotes,
+  initialTasks,
+  initialActivity,
+}: {
+  initialLead: AdminLead;
+  initialNotes: AdminNote[];
+  initialTasks: AdminTask[];
+  initialActivity: ActivityLog[];
+}) {
   const [lead, setLead] = useState(initialLead);
   const [notes, setNotes] = useState(initialNotes);
   const [tasks, setTasks] = useState(initialTasks);
+  const [activity, setActivity] = useState(initialActivity);
   const [noteText, setNoteText] = useState("");
   const [taskTitle, setTaskTitle] = useState("Seguimiento");
   const [taskDate, setTaskDate] = useState("");
   const [taskTime, setTaskTime] = useState("09:00");
+  const [tagInput, setTagInput] = useState("");
+  const [toast, setToast] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  const timeline = useMemo(() => {
+    const createdItem: ActivityLog = {
+      id: `created-${lead.id}`,
+      entityType: "lead",
+      entityId: lead.id,
+      leadId: lead.id,
+      action: "lead_created",
+      before: null,
+      after: null,
+      userEmail: "Sitio publico",
+      createdAt: lead.createdAt,
+    };
+    return [createdItem, ...activity].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [activity, lead.createdAt, lead.id]);
+
+  async function refreshActivity() {
+    const response = await fetch(`/api/admin/leads/${lead.id}/activity`);
+    const result = await response.json();
+    if (result.ok) {
+      setActivity(result.activity);
+    }
+  }
 
   async function updateLead(updates: Partial<AdminLead>) {
     const response = await fetch(`/api/admin/leads/${lead.id}`, {
@@ -27,21 +83,31 @@ export function LeadDetail({ initialLead, initialNotes, initialTasks }: { initia
     const result = await response.json();
     if (result.ok && result.lead) {
       setLead(result.lead);
+      await refreshActivity();
+      showToast("Lead actualizado");
+      return;
     }
+    showToast(result.message || "No se pudo actualizar");
   }
 
   async function addNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsSavingNote(true);
     const response = await fetch(`/api/admin/leads/${lead.id}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: noteText }),
     });
     const result = await response.json();
+    setIsSavingNote(false);
     if (result.ok) {
       setNotes(result.notes);
       setNoteText("");
+      await refreshActivity();
+      showToast("Nota agregada");
+      return;
     }
+    showToast(result.message || "No se pudo agregar la nota");
   }
 
   async function addTask(event: FormEvent<HTMLFormElement>) {
@@ -70,55 +136,105 @@ export function LeadDetail({ initialLead, initialNotes, initialTasks }: { initia
       setTaskTitle("Seguimiento");
       setTaskDate("");
       setTaskTime("09:00");
+      await refreshActivity();
+      showToast("Tarea creada");
+      return;
     }
+    showToast(result.message || "No se pudo crear la tarea");
+  }
+
+  function addTag(value: string) {
+    const tag = value.trim().toLowerCase();
+    if (!tag || lead.tags.includes(tag)) return;
+    updateLead({ tags: [...lead.tags, tag].slice(0, 12) });
+    setTagInput("");
+  }
+
+  function removeTag(value: string) {
+    updateLead({ tags: lead.tags.filter((tag) => tag !== value) });
+  }
+
+  function copy(value: string, label: string) {
+    navigator.clipboard?.writeText(value);
+    showToast(`${label} copiado`);
+  }
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 2200);
   }
 
   return (
     <div className="grid gap-6">
+      {toast ? <div className="fixed right-4 top-20 z-50 rounded-xl border border-kc-cyan/30 bg-kc-bg-soft px-4 py-3 text-sm font-bold text-kc-text shadow-2xl shadow-black/30">{toast}</div> : null}
+
       <Link href="/admin/leads" className="inline-flex w-fit items-center gap-2 text-sm font-black text-kc-cyan hover:text-kc-turquoise">
         <ArrowLeft size={16} aria-hidden="true" />
         Volver a leads
       </Link>
 
-      <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <article className="kc-admin-card p-6">
           <div className="flex flex-wrap gap-2">
             <LeadStatusBadge status={lead.status} />
             <LeadPriorityBadge priority={lead.priority} />
             <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-kc-muted">{shortDate(lead.createdAt)}</span>
           </div>
-          <h1 className="mt-5 font-display text-4xl font-black text-kc-text">{lead.name}</h1>
-          <p className="mt-2 text-lg font-bold text-kc-cyan">{lead.business}</p>
-          <p className="mt-5 whitespace-pre-wrap text-base leading-8 text-kc-muted">{lead.message}</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <h1 className="font-display text-3xl font-black text-kc-text sm:text-4xl">{lead.name}</h1>
+              <p className="mt-2 text-lg font-bold text-kc-cyan">{lead.business}</p>
+              <p className="mt-2 text-sm text-kc-muted">{lead.project} - {lead.budget || "Presupuesto sin definir"}</p>
+            </div>
+            <div className="rounded-2xl border border-kc-lime/20 bg-kc-lime/10 p-4 lg:min-w-44">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-kc-lime">Valor estimado</p>
+              <p className="mt-2 font-display text-3xl font-black text-kc-text">{money(lead.estimatedValue)}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {[
-              ["WhatsApp", lead.phone],
+              ["Telefono", lead.phone],
               ["Correo", lead.email],
-              ["Proyecto", lead.project],
-              ["Presupuesto", lead.budget || "Sin definir"],
               ["Idioma", lead.locale.toUpperCase()],
               ["Origen", lead.sourcePath],
+              ["Ultimo contacto", lead.lastContactAt ? dateTime(lead.lastContactAt) : "Sin registrar"],
+              ["Seguimiento", lead.followUpAt ? dateTime(lead.followUpAt) : "Sin fecha"],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl border border-white/10 bg-kc-bg/55 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">{label}</p>
-                <p className="mt-2 text-sm font-bold text-kc-text">{value}</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-kc-muted">{label}</p>
+                <p className="mt-2 break-words text-sm font-bold text-kc-text">{value}</p>
               </div>
             ))}
           </div>
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-kc-bg/45 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-kc-muted">Mensaje original</p>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-kc-text">{lead.message || "Sin mensaje."}</p>
+          </div>
+
           <div className="mt-6 flex flex-wrap gap-2">
             <Link href={whatsappLink(`Hola ${lead.name}. Te contacto de Ken Code sobre tu solicitud para ${lead.project}.`)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-kc-turquoise px-4 text-sm font-black text-kc-bg">
               <WhatsAppIcon size={18} />
-              Abrir WhatsApp
+              WhatsApp
             </Link>
             <Link href={`mailto:${lead.email}?subject=Solicitud Ken Code`} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text">
               <Mail size={16} aria-hidden="true" />
-              Enviar correo
+              Correo
             </Link>
+            <button type="button" onClick={() => copy(lead.phone, "Telefono")} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text">
+              <Copy size={16} aria-hidden="true" />
+              Telefono
+            </button>
+            <button type="button" onClick={() => copy(lead.email, "Correo")} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text">
+              <Copy size={16} aria-hidden="true" />
+              Correo
+            </button>
           </div>
         </article>
 
         <aside className="grid gap-4">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <div className="kc-admin-card p-5">
             <h2 className="font-display text-xl font-black text-kc-text">Gestion comercial</h2>
             <div className="mt-4 grid gap-3">
               <label className="grid gap-2 text-sm font-bold text-kc-muted">
@@ -135,11 +251,15 @@ export function LeadDetail({ initialLead, initialNotes, initialTasks }: { initia
               </label>
               <label className="grid gap-2 text-sm font-bold text-kc-muted">
                 Valor estimado
-                <input type="number" defaultValue={lead.estimatedValue} onBlur={(event) => updateLead({ estimatedValue: Number(event.target.value) })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
+                <input type="number" min="0" value={lead.estimatedValue} onChange={(event) => setLead((current) => ({ ...current, estimatedValue: Number(event.target.value) }))} onBlur={(event) => updateLead({ estimatedValue: Number(event.target.value) })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-kc-muted">
                 Proxima accion
-                <input defaultValue={lead.nextAction} onBlur={(event) => updateLead({ nextAction: event.target.value })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
+                <input value={lead.nextAction} onChange={(event) => setLead((current) => ({ ...current, nextAction: event.target.value }))} onBlur={(event) => updateLead({ nextAction: event.target.value })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                Fecha de seguimiento
+                <input type="datetime-local" value={lead.followUpAt ? lead.followUpAt.slice(0, 16) : ""} onChange={(event) => updateLead({ followUpAt: event.target.value ? new Date(event.target.value).toISOString() : null })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => updateLead({ status: "won", wonValue: lead.estimatedValue || lead.wonValue })} className="min-h-11 rounded-xl bg-emerald-300 px-3 text-sm font-black text-kc-bg">Ganado</button>
@@ -147,49 +267,89 @@ export function LeadDetail({ initialLead, initialNotes, initialTasks }: { initia
               </div>
             </div>
           </div>
+
+          <div className="kc-admin-card p-5">
+            <h2 className="flex items-center gap-2 font-display text-xl font-black text-kc-text"><Tag size={18} /> Tags</h2>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {lead.tags.map((tag) => (
+                <button key={tag} type="button" onClick={() => removeTag(tag)} className="inline-flex items-center gap-1 rounded-full border border-kc-cyan/25 bg-kc-cyan/10 px-3 py-1 text-xs font-black text-kc-cyan">
+                  {tag} <X size={13} aria-hidden="true" />
+                </button>
+              ))}
+              {lead.tags.length === 0 ? <p className="text-sm text-kc-muted">Sin tags todavia.</p> : null}
+            </div>
+            <form className="mt-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); addTag(tagInput); }}>
+              <input value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="Nuevo tag" className="min-h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm text-kc-text" />
+              <button className="grid h-11 w-11 place-items-center rounded-xl bg-kc-electric text-white" aria-label="Agregar tag"><Plus size={17} /></button>
+            </form>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {suggestedTags.filter((tag) => !lead.tags.includes(tag)).map((tag) => (
+                <button key={tag} type="button" onClick={() => addTag(tag)} className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-kc-muted transition hover:border-kc-cyan/35 hover:text-kc-cyan">{tag}</button>
+              ))}
+            </div>
+          </div>
         </aside>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+      <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        <article className="kc-admin-card p-5">
           <h2 className="font-display text-2xl font-black text-kc-text">Notas internas</h2>
           <form className="mt-4 grid gap-3" onSubmit={addNote}>
             <textarea value={noteText} onChange={(event) => setNoteText(event.target.value)} rows={4} placeholder="Agregar nota privada..." className="rounded-xl border border-white/10 bg-kc-bg p-4 text-sm text-kc-text outline-none focus:border-kc-cyan" required />
-            <button className="min-h-11 rounded-xl bg-kc-electric px-4 text-sm font-black text-white">Agregar nota</button>
+            <button disabled={isSavingNote} className="min-h-11 rounded-xl bg-kc-electric px-4 text-sm font-black text-white disabled:opacity-60">{isSavingNote ? "Guardando..." : "Agregar nota"}</button>
           </form>
           <div className="mt-5 grid gap-3">
             {notes.map((note) => (
               <div key={note.id} className="rounded-xl border border-white/10 bg-kc-bg/55 p-4">
                 <p className="whitespace-pre-wrap text-sm leading-7 text-kc-text">{note.text}</p>
-                <p className="mt-3 text-xs font-bold text-kc-muted">{note.createdByEmail} - {dateTime(note.createdAt)}</p>
+                <p className="mt-3 text-xs font-bold text-kc-muted">{note.createdByEmail} - {timeAgo(note.createdAt)}</p>
               </div>
             ))}
-            {notes.length === 0 ? <p className="text-sm text-kc-muted">No hay notas todavia.</p> : null}
+            {notes.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">No hay notas todavia.</p> : null}
           </div>
         </article>
 
-        <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-          <h2 className="font-display text-2xl font-black text-kc-text">Tareas y seguimientos</h2>
+        <article className="kc-admin-card p-5">
+          <h2 className="font-display text-2xl font-black text-kc-text">Tareas relacionadas</h2>
           <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={addTask}>
             <input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text sm:col-span-2" required />
             <input type="date" value={taskDate} onChange={(event) => setTaskDate(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" required />
             <input type="time" value={taskTime} onChange={(event) => setTaskTime(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" required />
-            <button className="min-h-11 rounded-xl bg-kc-electric px-4 text-sm font-black text-white sm:col-span-2">Crear tarea</button>
+            <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-kc-electric px-4 text-sm font-black text-white sm:col-span-2"><CalendarPlus size={16} /> Crear tarea</button>
           </form>
           <div className="mt-5 grid gap-3">
             {tasks.map((task) => (
               <div key={task.id} className="rounded-xl border border-white/10 bg-kc-bg/55 p-4">
                 <div className="flex flex-wrap gap-2">
                   <TaskStatusBadge status={task.status} />
+                  <TaskPriorityBadge priority={task.priority} />
                   <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-kc-muted">{taskTypeLabels[task.type]}</span>
                 </div>
                 <p className="mt-3 font-bold text-kc-text">{task.title}</p>
                 <p className="mt-1 text-sm text-kc-muted">{task.date} {task.time}</p>
               </div>
             ))}
-            {tasks.length === 0 ? <p className="text-sm text-kc-muted">No hay tareas para este lead.</p> : null}
+            {tasks.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">No hay tareas para este lead.</p> : null}
           </div>
         </article>
+      </section>
+
+      <section className="kc-admin-card p-5">
+        <h2 className="font-display text-2xl font-black text-kc-text">Timeline de actividad</h2>
+        <div className="mt-5 grid gap-4">
+          {timeline.map((item) => (
+            <div key={item.id} className="grid grid-cols-[auto_1fr] gap-4">
+              <span className="mt-1 grid h-8 w-8 place-items-center rounded-full border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan"><CheckCircle2 size={16} /></span>
+              <div className="rounded-xl border border-white/10 bg-kc-bg/50 p-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                  <p className="font-black text-kc-text">{activityLabel(item)}</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">{timeAgo(item.createdAt)}</p>
+                </div>
+                <p className="mt-1 text-sm text-kc-muted">{item.userEmail || "Sistema"} - {dateTime(item.createdAt)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

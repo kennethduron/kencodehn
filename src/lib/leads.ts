@@ -21,6 +21,7 @@ export type LeadRecord = PublicLeadInput & {
   lastContactAt: null;
   nextAction: "";
   followUpAt: null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
   crm: {
@@ -54,6 +55,7 @@ export function createLeadRecord(input: PublicLeadInput, metadata: LeadRecord["m
     lastContactAt: null,
     nextAction: "",
     followUpAt: null,
+    tags: [input.locale, input.project].filter(Boolean),
     createdAt: now,
     updatedAt: now,
     crm: {

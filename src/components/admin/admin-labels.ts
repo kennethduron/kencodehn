@@ -68,3 +68,31 @@ export function dateTime(value?: string | null) {
     minute: "2-digit",
   }).format(new Date(value));
 }
+
+export function timeAgo(value?: string | null) {
+  if (!value) {
+    return "Sin fecha";
+  }
+  const date = new Date(value);
+  const diff = Date.now() - date.getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (Math.abs(diff) < minute) {
+    return "Hace unos segundos";
+  }
+  if (diff < hour) {
+    const minutes = Math.max(1, Math.round(diff / minute));
+    return `Hace ${minutes} minuto${minutes === 1 ? "" : "s"}`;
+  }
+  if (diff < day) {
+    const hours = Math.max(1, Math.round(diff / hour));
+    return `Hace ${hours} hora${hours === 1 ? "" : "s"}`;
+  }
+  if (diff < day * 30) {
+    const days = Math.max(1, Math.round(diff / day));
+    return `Hace ${days} dia${days === 1 ? "" : "s"}`;
+  }
+  return shortDate(value);
+}

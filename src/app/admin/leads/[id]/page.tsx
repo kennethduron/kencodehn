@@ -3,7 +3,7 @@ import { AdminChrome } from "@/components/admin/admin-chrome";
 import { AdminLogin } from "@/components/admin/admin-login";
 import { LeadDetail } from "@/components/admin/lead-detail";
 import { getCurrentAdmin, getMissingAdminEnv, getMissingFirebaseClientEnv } from "@/lib/admin/auth";
-import { getLead, listNotes, listNotifications, listTasks } from "@/lib/admin/data";
+import { getLead, listActivityLogs, listNotes, listNotifications, listTasks } from "@/lib/admin/data";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
   }
 
   const { id } = await params;
-  const [lead, notes, tasks, notifications] = await Promise.all([getLead(id), listNotes(id), listTasks(id), listNotifications()]);
+  const [lead, notes, tasks, activity, notifications] = await Promise.all([getLead(id), listNotes(id), listTasks(id), listActivityLogs(id), listNotifications()]);
   if (!lead) {
     notFound();
   }
@@ -22,7 +22,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
 
   return (
     <AdminChrome admin={admin} unreadCount={unreadCount}>
-      <LeadDetail initialLead={lead} initialNotes={notes} initialTasks={tasks} />
+      <LeadDetail initialLead={lead} initialNotes={notes} initialTasks={tasks} initialActivity={activity} />
     </AdminChrome>
   );
 }

@@ -29,6 +29,7 @@ export type AdminLead = {
   lastContactAt: string | null;
   nextAction: string;
   followUpAt: string | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -75,6 +76,9 @@ export type ActivityLog = {
   id: string;
   entityType: "lead" | "note" | "task" | "notification";
   entityId: string;
+  leadId: string | null;
+  taskId?: string | null;
+  noteId?: string | null;
   action: string;
   before: unknown;
   after: unknown;

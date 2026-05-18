@@ -10,10 +10,11 @@ const leadUpdateSchema = z.object({
   priority: z.enum(["low", "medium", "high"]).optional(),
   estimatedValue: z.coerce.number().min(0).optional(),
   wonValue: z.coerce.number().min(0).optional(),
-  lastContactAt: z.string().nullable().optional(),
-  nextAction: z.string().max(240).optional(),
-  followUpAt: z.string().nullable().optional(),
-});
+  lastContactAt: z.string().trim().max(40).nullable().optional(),
+  nextAction: z.string().trim().max(240).optional(),
+  followUpAt: z.string().trim().max(40).nullable().optional(),
+  tags: z.array(z.string().trim().min(1).max(32)).max(12).optional(),
+}).strict();
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdminFromRequest(request);
@@ -34,7 +35,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
   }
   const { id } = await params;
-  const updates = leadUpdateSchema.parse(await request.json());
+  const parsed = leadUpdateSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ ok: false, message: "Datos invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const updates = parsed.data;
   await updateLead(id, updates, admin);
   const lead = await getLead(id);
   return NextResponse.json({ ok: true, lead });

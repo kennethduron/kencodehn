@@ -64,6 +64,13 @@ function normalizeTaskType(value: unknown): TaskType {
   return "follow_up";
 }
 
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((item) => String(item).trim()).filter(Boolean).slice(0, 12);
+}
+
 export function mapLead(doc: QueryDocumentSnapshot<DocumentData>): AdminLead {
   const data = doc.data();
   return {
@@ -85,6 +92,7 @@ export function mapLead(doc: QueryDocumentSnapshot<DocumentData>): AdminLead {
     lastContactAt: toIso(data.lastContactAt),
     nextAction: String(data.nextAction ?? ""),
     followUpAt: toIso(data.followUpAt),
+    tags: toStringArray(data.tags).length ? toStringArray(data.tags) : toStringArray(data.crm?.tags),
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(data.updatedAt) ?? toIso(data.createdAt) ?? new Date(0).toISOString(),
   };
@@ -137,6 +145,23 @@ export function mapNotification(doc: QueryDocumentSnapshot<DocumentData>): Admin
   };
 }
 
+export function mapActivityLog(doc: QueryDocumentSnapshot<DocumentData>): ActivityLog {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    entityType: data.entityType === "note" || data.entityType === "task" || data.entityType === "notification" ? data.entityType : "lead",
+    entityId: String(data.entityId ?? ""),
+    leadId: data.leadId ? String(data.leadId) : data.entityType === "lead" ? String(data.entityId ?? "") : null,
+    taskId: data.taskId ? String(data.taskId) : null,
+    noteId: data.noteId ? String(data.noteId) : null,
+    action: String(data.action ?? "activity"),
+    before: data.before ?? null,
+    after: data.after ?? null,
+    userEmail: String(data.userEmail ?? ""),
+    createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
+  };
+}
+
 export async function addActivityLog(entry: Omit<ActivityLog, "id" | "createdAt">) {
   const db = getAdminDb();
   if (!db) {
@@ -146,6 +171,17 @@ export async function addActivityLog(entry: Omit<ActivityLog, "id" | "createdAt"
     ...entry,
     createdAt: new Date().toISOString(),
   });
+}
+
+export async function listActivityLogs(leadId?: string) {
+  const db = getAdminDb();
+  if (!db) {
+    return [];
+  }
+  const snapshot = leadId
+    ? await db.collection("activityLogs").where("leadId", "==", leadId).limit(100).get()
+    : await db.collection("activityLogs").orderBy("createdAt", "desc").limit(100).get();
+  return snapshot.docs.map(mapActivityLog).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function listLeads() {
@@ -211,11 +247,25 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
     updatedAt: new Date().toISOString(),
   };
   await ref.set(payload, { merge: true });
+  const beforeData = before.exists ? before.data() : null;
+  const changedFields = Object.keys(updates);
+  const primaryAction = changedFields.includes("status")
+    ? "lead_status_changed"
+    : changedFields.includes("priority")
+      ? "lead_priority_changed"
+      : changedFields.some((field) => ["nextAction", "followUpAt", "lastContactAt"].includes(field))
+        ? "lead_followup_updated"
+        : changedFields.includes("tags")
+          ? "lead_tags_updated"
+          : changedFields.includes("estimatedValue")
+            ? "lead_value_updated"
+            : "lead_updated";
   await addActivityLog({
     entityType: "lead",
     entityId: id,
-    action: "lead_updated",
-    before: before.exists ? before.data() : null,
+    leadId: id,
+    action: primaryAction,
+    before: beforeData,
     after: payload,
     userEmail: admin.email,
   });
@@ -238,6 +288,8 @@ export async function addNote(leadId: string, text: string, admin: AdminUser) {
   await addActivityLog({
     entityType: "note",
     entityId: doc.id,
+    leadId,
+    noteId: doc.id,
     action: "note_added",
     before: null,
     after: { leadId, text },
@@ -282,6 +334,8 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
   await addActivityLog({
     entityType: "task",
     entityId: doc.id,
+    leadId: payload.leadId,
+    taskId: doc.id,
     action: "task_created",
     before: null,
     after: { ...payload, notificationId: notification.id },
@@ -301,6 +355,8 @@ export async function updateTask(id: string, updates: Partial<AdminTask>, admin:
   await addActivityLog({
     entityType: "task",
     entityId: id,
+    leadId: before.exists ? String(before.data()?.leadId ?? "") || null : null,
+    taskId: id,
     action: "task_updated",
     before: before.exists ? before.data() : null,
     after: updates,
@@ -319,6 +375,8 @@ export async function deleteTask(id: string, admin: AdminUser) {
   await addActivityLog({
     entityType: "task",
     entityId: id,
+    leadId: before.exists ? String(before.data()?.leadId ?? "") || null : null,
+    taskId: id,
     action: "task_deleted",
     before: before.exists ? before.data() : null,
     after: null,
@@ -335,6 +393,7 @@ export async function markNotificationRead(id: string, admin: AdminUser) {
   await addActivityLog({
     entityType: "notification",
     entityId: id,
+    leadId: null,
     action: "notification_read",
     before: null,
     after: { read: true },

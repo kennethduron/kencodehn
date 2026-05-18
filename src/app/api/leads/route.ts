@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       await db.collection("activityLogs").add({
         entityType: "lead",
         entityId: doc.id,
+        leadId: doc.id,
         action: "lead_created",
         before: null,
         after: { source: "public_website", notification: true },
