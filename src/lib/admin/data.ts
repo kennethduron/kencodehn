@@ -1,6 +1,7 @@
 import { FieldValue, type DocumentData, type QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { formatActivityMessage, formatActivityTitle } from "@/lib/admin/activity";
+import { sendLeadStatusEmail, sendTaskOverdueEmail } from "@/lib/email/service";
 import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 
 function toIso(value: unknown): string | null {
@@ -296,6 +297,7 @@ export async function checkOverdueTasks(admin?: AdminUser) {
       after: { status: "overdue", overdueNotifiedAt: notifiedAt },
       userEmail: admin?.email ?? "system",
     });
+    await sendTaskOverdueEmail({ ...task, status: "overdue", overdueNotifiedAt: notifiedAt });
     changed.push(task.id);
   }
   return changed;
@@ -374,6 +376,25 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
       leadId: id,
       actionUrl: `/admin/leads/${id}`,
     });
+    if (updates.status === "won" || updates.status === "quoted") {
+      await sendLeadStatusEmail(
+        {
+          id,
+          name: String(beforeData?.name ?? ""),
+          business: String(beforeData?.business ?? ""),
+          email: String(beforeData?.email ?? ""),
+          phone: String(beforeData?.phone ?? ""),
+          project: String(beforeData?.project ?? ""),
+          budget: String(beforeData?.budget ?? ""),
+          message: String(beforeData?.message ?? ""),
+          status: updates.status,
+          priority: beforeData?.priority === "high" || beforeData?.priority === "low" ? beforeData.priority : "medium",
+          estimatedValue: toNumber(beforeData?.estimatedValue),
+          nextAction: String(beforeData?.nextAction ?? ""),
+        },
+        updates.status,
+      );
+    }
   }
   if (primaryAction === "lead_priority_changed") {
     await createNotification({
