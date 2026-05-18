@@ -125,6 +125,8 @@ export function mapTask(doc: QueryDocumentSnapshot<DocumentData>): AdminTask {
     status: normalizeTaskStatus(data.status),
     type: normalizeTaskType(data.type),
     reminderAt: toIso(data.reminderAt),
+    completedAt: toIso(data.completedAt),
+    overdueNotifiedAt: toIso(data.overdueNotifiedAt),
     createdBy: String(data.createdBy ?? ""),
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(data.updatedAt) ?? new Date(0).toISOString(),
@@ -226,6 +228,46 @@ export async function listTasks(leadId?: string) {
   return snapshot.docs.map(mapTask).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export async function checkOverdueTasks(admin?: AdminUser) {
+  const db = getAdminDb();
+  if (!db) {
+    return [];
+  }
+  const now = new Date();
+  const snapshot = await db.collection("tasks").where("status", "in", ["pending", "in_progress"]).limit(200).get();
+  const changed: string[] = [];
+
+  for (const doc of snapshot.docs) {
+    const task = mapTask(doc);
+    if (!task.dueAt || new Date(task.dueAt) >= now || task.overdueNotifiedAt) {
+      continue;
+    }
+    const notifiedAt = now.toISOString();
+    await doc.ref.set({ status: "overdue", overdueNotifiedAt: notifiedAt, updatedAt: notifiedAt }, { merge: true });
+    await db.collection("notifications").add({
+      title: "Tarea vencida",
+      message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
+      type: "task",
+      leadId: task.leadId,
+      taskId: task.id,
+      read: false,
+      createdAt: notifiedAt,
+    });
+    await addActivityLog({
+      entityType: "task",
+      entityId: task.id,
+      leadId: task.leadId,
+      taskId: task.id,
+      action: "task_overdue",
+      before: { status: task.status },
+      after: { status: "overdue", overdueNotifiedAt: notifiedAt },
+      userEmail: admin?.email ?? "system",
+    });
+    changed.push(task.id);
+  }
+  return changed;
+}
+
 export async function listNotifications() {
   const db = getAdminDb();
   if (!db) {
@@ -317,6 +359,8 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
     status: normalizeTaskStatus(input.status),
     type: normalizeTaskType(input.type),
     reminderAt: dueAt,
+    completedAt: input.status === "completed" ? now : null,
+    overdueNotifiedAt: null,
     createdBy: admin.email,
     createdAt: now,
     updatedAt: now,
@@ -351,7 +395,23 @@ export async function updateTask(id: string, updates: Partial<AdminTask>, admin:
   }
   const ref = db.collection("tasks").doc(id);
   const before = await ref.get();
-  await ref.set({ ...updates, updatedAt: new Date().toISOString() }, { merge: true });
+  const beforeData = before.exists ? before.data() : {};
+  const date = updates.date ?? String(beforeData?.date ?? "");
+  const time = updates.time ?? String(beforeData?.time ?? "");
+  const now = new Date().toISOString();
+  const payload: Record<string, unknown> = { ...updates, updatedAt: now };
+  if (updates.date !== undefined || updates.time !== undefined) {
+    payload.dueAt = date ? new Date(`${date}T${time || "09:00"}:00`).toISOString() : null;
+    payload.reminderAt = payload.dueAt;
+    payload.overdueNotifiedAt = null;
+  }
+  if (updates.status === "completed") {
+    payload.completedAt = now;
+  }
+  if (updates.status && updates.status !== "completed") {
+    payload.completedAt = null;
+  }
+  await ref.set(payload, { merge: true });
   await addActivityLog({
     entityType: "task",
     entityId: id,
@@ -359,7 +419,7 @@ export async function updateTask(id: string, updates: Partial<AdminTask>, admin:
     taskId: id,
     action: "task_updated",
     before: before.exists ? before.data() : null,
-    after: updates,
+    after: payload,
     userEmail: admin.email,
   });
 }

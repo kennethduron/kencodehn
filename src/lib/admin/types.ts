@@ -56,6 +56,8 @@ export type AdminTask = {
   status: TaskStatus;
   type: TaskType;
   reminderAt: string | null;
+  completedAt: string | null;
+  overdueNotifiedAt: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
