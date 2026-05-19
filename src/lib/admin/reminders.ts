@@ -1,5 +1,5 @@
 import { getAdminDb } from "@/lib/firebase/admin";
-import { addActivityLog, createNotification, listTasks } from "@/lib/admin/data";
+import { addActivityLog, listTasks } from "@/lib/admin/data";
 import type { AdminTask, AdminUser } from "@/lib/admin/types";
 import { sendTaskOverdueEmail, sendTaskReminderEmail } from "@/lib/email/service";
 import { sendPushToAdmins } from "@/lib/push/service";
@@ -17,56 +17,81 @@ function reminderText(kind: ReminderKind) {
   return { title: "Tarea vencida", label: "Tarea vencida", field: "overdueNotifiedAt" };
 }
 
+async function safeStep(label: string, taskId: string, action: () => Promise<unknown>) {
+  try {
+    await action();
+  } catch (error) {
+    console.warn(`[Ken Code cron reminder secondary failed] ${label}`, { taskId, error });
+  }
+}
+
 async function dispatchTaskReminder(task: AdminTask, kind: ReminderKind, admin: AdminUser) {
   const db = getAdminDb();
   if (!db) return false;
   const meta = reminderText(kind);
   const now = new Date().toISOString();
   const ref = db.collection("tasks").doc(task.id);
+  const notificationRef = db.collection("notifications").doc();
   const actionUrl = task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas";
   const message = `${task.title}${task.leadName ? ` para ${task.leadName}` : ""}.`;
+  const notificationType = kind === "due" ? "task_due" : kind === "overdue" ? "task_overdue" : "task_reminder";
+  const severity = kind === "overdue" ? "danger" : task.priority === "high" ? "warning" : "info";
+  const taskUpdate =
+    kind === "overdue"
+      ? { status: "overdue", overdueNotifiedAt: now, overdueEmailSentAt: now, updatedAt: now }
+      : { [meta.field]: now, updatedAt: now };
 
-  await createNotification({
+  const batch = db.batch();
+  batch.set(ref, taskUpdate, { merge: true });
+  batch.set(notificationRef, {
     title: meta.title,
     message,
-    type: kind === "due" ? "task_due" : kind === "overdue" ? "task_overdue" : "task_reminder",
-    severity: kind === "overdue" ? "danger" : task.priority === "high" ? "warning" : "info",
-    leadId: task.leadId,
+    type: notificationType,
+    severity,
+    leadId: task.leadId ?? null,
     taskId: task.id,
     actionUrl,
+    read: false,
+    readAt: null,
+    deletedAt: null,
+    createdAt: now,
   });
-  if (kind === "overdue") {
-    await ref.set({ status: "overdue", overdueNotifiedAt: now, overdueEmailSentAt: now, updatedAt: now }, { merge: true });
-    await sendTaskOverdueEmail({ ...task, status: "overdue", overdueNotifiedAt: now, overdueEmailSentAt: now });
-  } else {
-    await ref.set({ [meta.field]: now, updatedAt: now }, { merge: true });
-    await sendTaskReminderEmail(task, meta.label);
-  }
-  await sendPushToAdmins({
-    type: kind === "overdue" ? "task_overdue" : kind === "due" ? "task_due" : "task_reminder",
-    title: meta.title,
-    message,
-    actionUrl,
-    relatedLeadId: task.leadId,
-    relatedTaskId: task.id,
-  });
-  await addActivityLog({
-    entityType: "task",
-    entityId: task.id,
-    leadId: task.leadId,
-    taskId: task.id,
-    action: kind === "overdue" ? "task_overdue" : "task_reminder_sent",
-    before: { status: task.status },
-    after: { reminder: kind, sentAt: now },
-    userEmail: admin.email,
-  });
+  await batch.commit();
+
+  await safeStep("email", task.id, () =>
+    kind === "overdue"
+      ? sendTaskOverdueEmail({ ...task, status: "overdue", overdueNotifiedAt: now, overdueEmailSentAt: now })
+      : sendTaskReminderEmail(task, meta.label),
+  );
+  await safeStep("push", task.id, () =>
+    sendPushToAdmins({
+      type: kind === "overdue" ? "task_overdue" : kind === "due" ? "task_due" : "task_reminder",
+      title: meta.title,
+      message,
+      actionUrl,
+      relatedLeadId: task.leadId,
+      relatedTaskId: task.id,
+    }),
+  );
+  await safeStep("activityLog", task.id, () =>
+    addActivityLog({
+      entityType: "task",
+      entityId: task.id,
+      leadId: task.leadId,
+      taskId: task.id,
+      action: kind === "overdue" ? "task_overdue" : "task_reminder_sent",
+      before: { status: task.status },
+      after: { reminder: kind, sentAt: now, notificationId: notificationRef.id },
+      userEmail: admin.email,
+    }),
+  );
   return true;
 }
 
 export async function processTaskReminders(admin: AdminUser = { uid: "system", email: "cron@kencodehn.com", role: "admin" }) {
   const tasks = await listTasks();
   const now = Date.now();
-  const results = { checked: tasks.length, reminder1Day: 0, reminder1Hour: 0, due: 0, overdue: 0 };
+  const results = { checked: tasks.length, reminder1Day: 0, reminder1Hour: 0, due: 0, overdue: 0, failed: 0 };
 
   for (const task of tasks) {
     if (!task.dueAt || task.status === "completed") continue;
@@ -74,20 +99,25 @@ export async function processTaskReminders(admin: AdminUser = { uid: "system", e
     if (!Number.isFinite(due)) continue;
     const diff = due - now;
 
-    if (diff > hour && diff <= day && !task.reminder1DaySentAt) {
-      if (await dispatchTaskReminder(task, "1day", admin)) results.reminder1Day += 1;
-      continue;
-    }
-    if (diff > 0 && diff <= hour && !task.reminder1HourSentAt) {
-      if (await dispatchTaskReminder(task, "1hour", admin)) results.reminder1Hour += 1;
-      continue;
-    }
-    if (diff <= 0 && diff >= -10 * minute && !task.dueNotificationSentAt) {
-      if (await dispatchTaskReminder(task, "due", admin)) results.due += 1;
-      continue;
-    }
-    if (diff < 0 && !task.overdueNotifiedAt) {
-      if (await dispatchTaskReminder(task, "overdue", admin)) results.overdue += 1;
+    try {
+      if (diff > hour && diff <= day && !task.reminder1DaySentAt) {
+        if (await dispatchTaskReminder(task, "1day", admin)) results.reminder1Day += 1;
+        continue;
+      }
+      if (diff > 0 && diff <= hour && !task.reminder1HourSentAt) {
+        if (await dispatchTaskReminder(task, "1hour", admin)) results.reminder1Hour += 1;
+        continue;
+      }
+      if (diff <= 0 && diff >= -10 * minute && !task.dueNotificationSentAt) {
+        if (await dispatchTaskReminder(task, "due", admin)) results.due += 1;
+        continue;
+      }
+      if (diff < 0 && !task.overdueNotifiedAt) {
+        if (await dispatchTaskReminder(task, "overdue", admin)) results.overdue += 1;
+      }
+    } catch (error) {
+      results.failed += 1;
+      console.warn("[Ken Code cron reminder failed]", { taskId: task.id, error });
     }
   }
   return results;
