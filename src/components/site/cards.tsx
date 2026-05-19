@@ -7,10 +7,11 @@ type ServiceCardProps = {
   title: string;
   summary: string;
   icon: LucideIcon;
+  href?: string;
 };
 
-export function ServiceCard({ title, summary, icon: Icon }: ServiceCardProps) {
-  return (
+export function ServiceCard({ title, summary, icon: Icon, href }: ServiceCardProps) {
+  const content = (
     <article className="kc-card group rounded-xl p-5">
       <span className="grid h-11 w-11 place-items-center rounded-lg border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan transition duration-300 group-hover:border-kc-cyan/45 group-hover:bg-kc-cyan/15">
         <Icon size={21} aria-hidden="true" />
@@ -18,6 +19,14 @@ export function ServiceCard({ title, summary, icon: Icon }: ServiceCardProps) {
       <h3 className="mt-5 font-display text-xl font-bold text-kc-text">{title}</h3>
       <p className="mt-3 text-sm leading-7 text-kc-muted">{summary}</p>
     </article>
+  );
+
+  if (!href) return content;
+
+  return (
+    <Link href={href} className="block h-full transition hover:-translate-y-0.5">
+      {content}
+    </Link>
   );
 }
 

@@ -9,6 +9,7 @@ import { Reveal } from "@/components/site/reveal";
 import { SectionIntro } from "@/components/site/section-intro";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import { getContent, type Project } from "@/content/site-content";
+import { seoServices } from "@/content/seo-services";
 import { absoluteAssetUrl, absoluteUrl, site, whatsappLink, type Locale } from "@/lib/site";
 import { QuoteForm } from "./quote-form";
 
@@ -252,9 +253,13 @@ export function ServicesView({ locale }: { locale: Locale }) {
     hasOfferCatalog: {
       "@type": "OfferCatalog",
       name: locale === "es" ? "Servicios web" : "Web services",
-      itemListElement: data.services.map((service) => ({
+      itemListElement: (locale === "es" ? seoServices : data.services).map((service) => ({
         "@type": "Offer",
-        itemOffered: { "@type": "Service", name: service.title, description: service.summary },
+        itemOffered: {
+          "@type": "Service",
+          name: service.title,
+          description: "metaDescription" in service ? service.metaDescription : service.summary,
+        },
       })),
     },
   };
@@ -271,6 +276,29 @@ export function ServicesView({ locale }: { locale: Locale }) {
       />
 
       <section className="kc-shell py-12">
+        {locale === "es" ? (
+          <div className="mb-12">
+            <SectionIntro
+              eyebrow="Servicios SEO"
+              title="Soluciones especificas para busquedas comerciales reales."
+              copy="Estas paginas ayudan a negocios, restaurantes, tiendas, empresas de servicios y clientes internacionales a encontrar la solucion exacta que necesitan."
+            />
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {seoServices.map((service, index) => {
+                const Icon = data.services[index % data.services.length].icon;
+                return (
+                  <ServiceCard
+                    key={service.slug}
+                    title={service.title}
+                    summary={service.metaDescription}
+                    icon={Icon}
+                    href={`/servicios/${service.slug}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {data.services.map((service) => (
             <ServiceCard key={service.slug} title={service.title} summary={service.detail} icon={service.icon} />

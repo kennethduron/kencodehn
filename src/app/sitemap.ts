@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { projects } from "@/content/site-content";
+import { seoServices } from "@/content/seo-services";
 import { absoluteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -78,5 +79,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ];
   });
 
-  return [...routeEntries, ...projectEntries];
+  const serviceEntries = seoServices.map((service) => ({
+    url: absoluteUrl(`/servicios/${service.slug}`),
+    lastModified,
+    changeFrequency: "monthly" as const,
+    priority: 0.82,
+  }));
+
+  return [...routeEntries, ...serviceEntries, ...projectEntries];
 }

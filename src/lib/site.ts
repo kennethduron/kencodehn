@@ -102,7 +102,7 @@ type PageMetadata = {
   path: string;
   keywords?: string[];
   locale?: Locale;
-  alternatePath?: string;
+  alternatePath?: string | null;
 };
 
 export function createMetadata({
@@ -115,7 +115,7 @@ export function createMetadata({
 }: PageMetadata): Metadata {
   const canonical = absoluteUrl(path);
   const fullTitle = title.includes(site.name) ? title : `${title} | ${site.name}`;
-  const resolvedAlternatePath = alternatePath ?? getAlternatePath(path, locale);
+  const resolvedAlternatePath = alternatePath === null ? null : alternatePath ?? getAlternatePath(path, locale);
   const esPath = locale === "es" ? path : resolvedAlternatePath;
   const enPath = locale === "en" ? path : resolvedAlternatePath;
   const keywordBase = locale === "es" ? seoKeywordsEs : seoKeywordsEn;
@@ -130,11 +130,17 @@ export function createMetadata({
     keywords: [...keywordBase, ...keywords],
     alternates: {
       canonical,
-      languages: {
-        es: absoluteUrl(esPath),
-        en: absoluteUrl(enPath),
-        "x-default": absoluteUrl(esPath),
-      },
+      languages:
+        resolvedAlternatePath === null
+          ? {
+              [locale]: canonical,
+              "x-default": canonical,
+            }
+          : {
+              es: absoluteUrl(esPath ?? path),
+              en: absoluteUrl(enPath ?? path),
+              "x-default": absoluteUrl(esPath ?? path),
+            },
     },
     openGraph: {
       title: fullTitle,

@@ -4,9 +4,9 @@ import { createMetadata } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Servicios de desarrollo web",
   description:
-    "Servicios de Ken Code para landing pages, sitios web de negocios, e-commerce, panel administrativo futuro, SEO basico y contacto por WhatsApp para clientes locales e internacionales.",
+    "Servicios de Ken Code para paginas web en Honduras, landing pages, e-commerce, CRM, restaurantes, negocios locales y desarrollo web internacional.",
   path: "/servicios",
-  keywords: ["servicios web Honduras", "landing pages Honduras", "desarrollo web internacional", "sitios web para negocios"],
+  keywords: ["servicios web Honduras", "landing pages Honduras", "ecommerce Honduras", "CRM para empresas", "paginas web para restaurantes"],
 });
 
 export default function ServicesPage() {
