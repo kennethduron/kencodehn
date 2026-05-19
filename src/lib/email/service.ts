@@ -60,6 +60,13 @@ function getEmailTarget() {
   return process.env.ADMIN_NOTIFICATION_EMAIL || site.email;
 }
 
+function getReplyTo(input: SendEmailInput) {
+  if (input.type === "client_lead_confirmation") {
+    return site.email;
+  }
+  return undefined;
+}
+
 function getResendClient() {
   if (!process.env.RESEND_API_KEY) {
     return null;
@@ -149,6 +156,7 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
       subject: parsed.data.subject,
       text: parsed.data.text,
       html: parsed.data.html,
+      replyTo: getReplyTo(parsed.data),
     });
     if (error) {
       console.warn("[Ken Code email send failed]", error);
