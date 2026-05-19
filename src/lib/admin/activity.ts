@@ -7,7 +7,7 @@ const actionTitles: Record<string, string> = {
   lead_updated: "Lead actualizado",
   lead_status_changed: "Estado de lead actualizado",
   lead_priority_changed: "Prioridad de lead actualizada",
-  lead_value_updated: "Valor estimado actualizado",
+  lead_value_updated: "Informacion comercial actualizada",
   lead_tags_updated: "Tags actualizados",
   lead_followup_updated: "Seguimiento actualizado",
   note_added: "Nota interna agregada",
@@ -41,8 +41,17 @@ export function formatActivityMessage(activity: ActivityLog) {
   if (activity.action === "lead_priority_changed" && after.priority) {
     return `Prioridad cambiada a ${String(after.priority)}.`;
   }
-  if (activity.action === "lead_value_updated" && after.estimatedValue !== undefined) {
-    return `Valor estimado actualizado a ${String(after.estimatedValue)}.`;
+  if (activity.action === "lead_value_updated") {
+    if (after.monthlyFee !== undefined) {
+      return `Mensualidad actualizada a ${String(after.monthlyFee)}.`;
+    }
+    if (after.initialProjectAmount !== undefined) {
+      return `Monto inicial actualizado a ${String(after.initialProjectAmount)}.`;
+    }
+    if (after.estimatedValue !== undefined) {
+      return `Valor estimado actualizado a ${String(after.estimatedValue)}.`;
+    }
+    return "Informacion comercial del lead actualizada.";
   }
   if (activity.action === "lead_followup_updated") {
     return "Seguimiento comercial actualizado.";

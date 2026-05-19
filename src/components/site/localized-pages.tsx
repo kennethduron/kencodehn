@@ -102,17 +102,45 @@ export function HomeView({ locale }: { locale: Locale }) {
   const featuredProjects = data.projects.slice(0, 3);
   const homeSchema = {
     "@context": "https://schema.org",
-    "@type": "ProfessionalService",
-    name: site.name,
-    url: site.url,
-    image: absoluteAssetUrl(site.ogImage),
-    logo: absoluteAssetUrl(site.favicon),
-    email: site.email,
-    telephone: site.phone,
-    areaServed: ["Global", "United States", "Canada", "Europe", "Latin America", "Honduras"],
-    sameAs: [site.facebook, site.instagram],
-    makesOffer: data.services.map((service) => service.title),
-    inLanguage: locale,
+    "@graph": [
+      {
+        "@type": "ProfessionalService",
+        "@id": `${site.url}#organization`,
+        name: site.name,
+        alternateName: ["Kencodehn", "Ken Code Honduras"],
+        url: site.url,
+        image: absoluteAssetUrl(site.ogImage),
+        logo: absoluteAssetUrl(site.favicon),
+        email: site.email,
+        telephone: site.phone,
+        founder: { "@id": `${site.url}#kenneth-duron` },
+        areaServed: ["Global", "United States", "Latin America", "Honduras"],
+        sameAs: [site.facebook, site.instagram],
+        makesOffer: data.services.map((service) => service.title),
+        inLanguage: locale,
+      },
+      {
+        "@type": "Person",
+        "@id": `${site.url}#kenneth-duron`,
+        name: "Kenneth Duron",
+        alternateName: ["Kenneth Durón", "Kenneth Asael Duron Paz"],
+        url: absoluteUrl(path(locale, "/sobre-mi", "/en/about")),
+        image: absoluteAssetUrl(site.portrait),
+        jobTitle: locale === "es" ? "Desarrollador web" : "Web developer",
+        worksFor: { "@id": `${site.url}#organization` },
+        sameAs: [site.facebook, site.instagram],
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${site.url}#website`,
+        name: site.name,
+        alternateName: ["Kencodehn", "Ken Code Honduras"],
+        url: site.url,
+        publisher: { "@id": `${site.url}#organization` },
+        author: { "@id": `${site.url}#kenneth-duron` },
+        inLanguage: locale,
+      },
+    ],
   };
 
   return (
@@ -527,7 +555,7 @@ export function AboutView({ locale }: { locale: Locale }) {
   const data = getContent(locale);
   return (
     <main className="min-h-screen overflow-x-hidden">
-      <JsonLd data={{ "@context": "https://schema.org", "@type": "Person", name: "Kenneth Duron", brand: site.name, url: absoluteUrl(path(locale, "/sobre-mi", "/en/about")), image: `${site.url}${site.portrait}`, sameAs: [site.facebook, site.instagram], jobTitle: locale === "es" ? "Desarrollador web" : "Web developer", worksFor: { "@type": "Organization", name: site.name, url: site.url }, inLanguage: locale }} />
+      <JsonLd data={{ "@context": "https://schema.org", "@type": "Person", "@id": `${site.url}#kenneth-duron`, name: "Kenneth Duron", alternateName: ["Kenneth Durón", "Kenneth Asael Duron Paz"], brand: site.name, url: absoluteUrl(path(locale, "/sobre-mi", "/en/about")), image: `${site.url}${site.portrait}`, sameAs: [site.facebook, site.instagram], jobTitle: locale === "es" ? "Desarrollador web" : "Web developer", worksFor: { "@type": "Organization", "@id": `${site.url}#organization`, name: site.name, url: site.url }, inLanguage: locale }} />
       <PageHero
         eyebrow={locale === "es" ? "Sobre mi" : "About"}
         title={locale === "es" ? "Construyo paginas web premium con estrategia de negocio y bases solidas." : "I build premium websites with business strategy and solid foundations."}

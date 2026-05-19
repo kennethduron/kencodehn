@@ -1,4 +1,4 @@
-import type { LeadPriority, LeadStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
+import type { LeadPriority, LeadStatus, PaymentStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 import { formatHondurasDate, formatHondurasDateTime } from "@/lib/time";
 
 export const leadStatusLabels: Record<LeadStatus, string> = {
@@ -14,6 +14,15 @@ export const leadPriorityLabels: Record<LeadPriority, string> = {
   low: "Baja",
   medium: "Media",
   high: "Alta",
+};
+
+export const paymentStatusLabels: Record<PaymentStatus, string> = {
+  not_started: "Sin iniciar",
+  pending: "Pendiente",
+  partial: "Parcial",
+  paid: "Pagado",
+  overdue: "Vencido",
+  active: "Mensualidad activa",
 };
 
 export const taskStatusLabels: Record<TaskStatus, string> = {

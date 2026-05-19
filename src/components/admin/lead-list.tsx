@@ -52,7 +52,7 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
       .sort((a, b) => {
         if (sort === "oldest") return a.createdAt.localeCompare(b.createdAt);
         if (sort === "high_priority") return priorityRank[b.priority] - priorityRank[a.priority] || b.createdAt.localeCompare(a.createdAt);
-        if (sort === "estimated_value") return b.estimatedValue - a.estimatedValue || b.createdAt.localeCompare(a.createdAt);
+        if (sort === "estimated_value") return (b.initialProjectAmount || b.estimatedValue) - (a.initialProjectAmount || a.estimatedValue) || b.createdAt.localeCompare(a.createdAt);
         if (sort === "next_followup") return (a.followUpAt || "9999").localeCompare(b.followUpAt || "9999");
         return b.createdAt.localeCompare(a.createdAt);
       });
@@ -200,7 +200,10 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
                     {priorities.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
                 </td>
-                <td className="px-4 py-4 font-bold text-kc-text">{money(lead.estimatedValue)}</td>
+                <td className="px-4 py-4">
+                  <p className="font-bold text-kc-text">{money(lead.initialProjectAmount || lead.estimatedValue)}</p>
+                  {lead.monthlyFee > 0 ? <p className="mt-1 text-xs font-bold text-kc-cyan">{money(lead.monthlyFee)}/mes</p> : null}
+                </td>
                 <td className="px-4 py-4 text-sm text-kc-muted">{lead.followUpAt ? shortDate(lead.followUpAt) : lead.nextAction || "Sin seguimiento"}</td>
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-2">
@@ -232,6 +235,16 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
             <h2 className="mt-4 font-display text-2xl font-black text-kc-text">{lead.name}</h2>
             <p className="mt-1 text-sm font-semibold text-kc-cyan">{lead.business}</p>
             <p className="mt-3 text-sm leading-7 text-kc-muted">{lead.project} - {lead.budget || "Por definir"}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-white/10 bg-kc-bg/50 p-3">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-kc-muted">Inicial</p>
+                <p className="mt-1 font-black text-kc-text">{money(lead.initialProjectAmount || lead.estimatedValue)}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-kc-bg/50 p-3">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-kc-muted">Mensual</p>
+                <p className="mt-1 font-black text-kc-text">{lead.monthlyFee > 0 ? `${money(lead.monthlyFee)}/mes` : "Sin mensualidad"}</p>
+              </div>
+            </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <select value={lead.status} onChange={(event) => updateLead(lead.id, { status: event.target.value as LeadStatus })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
                 {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}

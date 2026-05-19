@@ -20,6 +20,12 @@ export function AdminDashboard({ leads, tasks, notifications, activity }: { lead
   const overdueTasks = tasks.filter((task) => task.status === "overdue" || (task.dueAt && new Date(task.dueAt) < new Date() && task.status !== "completed")).length;
   const potentialValue = leads.reduce((sum, lead) => sum + lead.estimatedValue, 0);
   const wonValue = leads.reduce((sum, lead) => sum + lead.wonValue, 0);
+  const potentialInitialRevenue = leads.reduce((sum, lead) => sum + (lead.initialProjectAmount || lead.estimatedValue), 0);
+  const wonInitialRevenue = leads.filter((lead) => lead.status === "won").reduce((sum, lead) => sum + (lead.initialProjectAmount || lead.wonValue || lead.estimatedValue), 0);
+  const potentialMonthlyRevenue = leads.reduce((sum, lead) => sum + lead.monthlyFee, 0);
+  const activeMonthlyRevenue = leads.filter((lead) => lead.status === "won" || lead.paymentStatus === "active").reduce((sum, lead) => sum + lead.monthlyFee, 0);
+  const leadsWithMonthly = leads.filter((lead) => lead.monthlyFee > 0).length;
+  const wonWithMonthly = leads.filter((lead) => lead.monthlyFee > 0 && lead.status === "won").length;
   const conversion = total ? Math.round((won / total) * 100) : 0;
   const unread = notifications.filter((notification) => !notification.read).length;
   const today = todayInHonduras();
@@ -32,6 +38,10 @@ export function AdminDashboard({ leads, tasks, notifications, activity }: { lead
     { label: "Tareas pendientes", value: pendingTasks, detail: `${todayTasks} para hoy`, icon: CalendarClock, accent: overdueTasks ? "rose" as const : "blue" as const },
     { label: "Sin leer", value: unread, detail: "Notificaciones internas", icon: Bell, accent: unread ? "rose" as const : "slate" as const },
     { label: "Valor potencial", value: money(potentialValue), detail: "Estimado del pipeline", icon: CircleDollarSign, accent: "lime" as const },
+    { label: "Inicial potencial", value: money(potentialInitialRevenue), detail: "Monto inicial de proyectos", icon: CircleDollarSign, accent: "lime" as const },
+    { label: "Inicial ganado", value: money(wonInitialRevenue), detail: "Proyectos cerrados", icon: TrendingUp, accent: "green" as const },
+    { label: "Mensualidad potencial", value: `${money(potentialMonthlyRevenue)}/mes`, detail: `${leadsWithMonthly} leads con mensualidad`, icon: CircleDollarSign, accent: "blue" as const },
+    { label: "Mensualidad activa", value: `${money(activeMonthlyRevenue)}/mes`, detail: `${wonWithMonthly} clientes ganados`, icon: TrendingUp, accent: "green" as const },
     { label: "Conversion", value: `${conversion}%`, detail: "Ganados sobre total", icon: TrendingUp, accent: "green" as const },
     { label: "Tareas vencidas", value: overdueTasks, detail: overdueTasks ? "Requieren accion" : "Todo bajo control", icon: Clock3, accent: overdueTasks ? "rose" as const : "slate" as const },
   ];

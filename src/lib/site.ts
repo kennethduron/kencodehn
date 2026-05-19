@@ -30,6 +30,12 @@ export const routes = [
 
 export const seoKeywordsEs = [
   "Ken Code",
+  "Kencodehn",
+  "Kenneth Duron",
+  "Kenneth Durón",
+  "Kenneth Asael Duron Paz",
+  "desarrollador web Kenneth Duron",
+  "Ken Code Honduras",
   "desarrollo web internacional",
   "landing pages",
   "sitios web profesionales",

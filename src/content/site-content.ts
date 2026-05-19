@@ -11,7 +11,6 @@ import {
   SearchCheck,
   ShieldCheck,
   ShoppingCart,
-  Wand2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Locale } from "@/lib/site";
@@ -100,14 +99,6 @@ export const content: Record<Locale, SiteCopy> = {
         detail:
           "La web publica queda preparada para una fase privada posterior, sin mezclar informacion interna con la experiencia del cliente.",
         icon: Blocks,
-      },
-      {
-        slug: "rediseno-web",
-        title: "Rediseno web",
-        summary: "Mejoras visuales, estructurales y de rendimiento para sitios existentes.",
-        detail:
-          "Jerarquia mas clara, navegacion simple, optimizacion para celulares y una presencia digital mas confiable.",
-        icon: Wand2,
       },
       {
         slug: "whatsapp-integrado",
@@ -311,14 +302,6 @@ export const content: Record<Locale, SiteCopy> = {
         detail:
           "The public website stays ready for a future private phase without mixing internal information into the customer experience.",
         icon: Blocks,
-      },
-      {
-        slug: "website-redesign",
-        title: "Website redesign",
-        summary: "Visual, structural and performance improvements for existing websites.",
-        detail:
-          "Sharper hierarchy, simpler navigation, mobile optimization and a more reliable digital presence.",
-        icon: Wand2,
       },
       {
         slug: "whatsapp-contact",

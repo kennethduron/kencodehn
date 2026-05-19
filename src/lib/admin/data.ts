@@ -5,7 +5,7 @@ import { sendLeadStatusEmail, sendTaskOverdueEmail } from "@/lib/email/service";
 import { sendPushToAdmins } from "@/lib/push/service";
 import { getAdminSettings } from "@/lib/admin/settings";
 import { HONDURAS_TIME_ZONE, hondurasDateTimeToIso } from "@/lib/time";
-import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
+import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, PaymentStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 
 function toIso(value: unknown): string | null {
   if (!value) {
@@ -46,6 +46,13 @@ function normalizePriority(value: unknown): LeadPriority {
     return value;
   }
   return "medium";
+}
+
+function normalizePaymentStatus(value: unknown): PaymentStatus {
+  if (value === "pending" || value === "partial" || value === "paid" || value === "overdue" || value === "active") {
+    return value;
+  }
+  return "not_started";
 }
 
 function normalizeTaskStatus(value: unknown): TaskStatus {
@@ -105,6 +112,11 @@ export function mapLead(doc: QueryDocumentSnapshot<DocumentData>): AdminLead {
     status: normalizeStatus(data.status),
     priority: normalizePriority(data.priority),
     estimatedValue: toNumber(data.estimatedValue),
+    initialProjectAmount: toNumber(data.initialProjectAmount ?? data.projectValue ?? data.estimatedValue),
+    monthlyFee: toNumber(data.monthlyFee),
+    paymentStatus: normalizePaymentStatus(data.paymentStatus),
+    billingStartDate: toIso(data.billingStartDate),
+    billingNotes: String(data.billingNotes ?? ""),
     wonValue: toNumber(data.wonValue),
     lastContactAt: toIso(data.lastContactAt),
     nextAction: String(data.nextAction ?? ""),
@@ -389,7 +401,7 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
         ? "lead_followup_updated"
         : changedFields.includes("tags")
           ? "lead_tags_updated"
-          : changedFields.includes("estimatedValue")
+          : changedFields.some((field) => ["estimatedValue", "initialProjectAmount", "monthlyFee", "paymentStatus", "billingStartDate", "billingNotes"].includes(field))
             ? "lead_value_updated"
             : "lead_updated";
   if (primaryAction === "lead_status_changed") {
@@ -415,6 +427,11 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
           status: updates.status,
           priority: beforeData?.priority === "high" || beforeData?.priority === "low" ? beforeData.priority : "medium",
           estimatedValue: toNumber(beforeData?.estimatedValue),
+          initialProjectAmount: toNumber(beforeData?.initialProjectAmount ?? beforeData?.projectValue ?? beforeData?.estimatedValue),
+          monthlyFee: toNumber(beforeData?.monthlyFee),
+          paymentStatus: normalizePaymentStatus(beforeData?.paymentStatus),
+          billingStartDate: toIso(beforeData?.billingStartDate),
+          billingNotes: String(beforeData?.billingNotes ?? ""),
           nextAction: String(beforeData?.nextAction ?? ""),
         },
         updates.status,

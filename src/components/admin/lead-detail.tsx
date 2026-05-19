@@ -4,10 +4,10 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { ArrowLeft, CalendarPlus, CheckCircle2, Copy, Mail, Plus, Tag, X } from "lucide-react";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
-import type { ActivityLog, AdminLead, AdminNote, AdminTask, LeadPriority, LeadStatus } from "@/lib/admin/types";
+import type { ActivityLog, AdminLead, AdminNote, AdminTask, LeadPriority, LeadStatus, PaymentStatus } from "@/lib/admin/types";
 import { mapActivityTone } from "@/lib/admin/activity";
 import { whatsappLink } from "@/lib/site";
-import { dateTime, leadPriorityLabels, leadStatusLabels, money, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
+import { dateTime, leadPriorityLabels, leadStatusLabels, money, paymentStatusLabels, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge, TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 import { Toast, Tooltip } from "./ui";
 
@@ -176,8 +176,9 @@ export function LeadDetail({
               <p className="mt-2 text-sm text-kc-muted">{lead.project} - {lead.budget || "Por definir"}</p>
             </div>
             <div className="rounded-2xl border border-kc-lime/20 bg-kc-lime/10 p-4 lg:min-w-44">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-kc-lime">Valor estimado</p>
-              <p className="mt-2 font-display text-3xl font-black text-kc-text">{money(lead.estimatedValue)}</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-kc-lime">Monto inicial</p>
+              <p className="mt-2 font-display text-3xl font-black text-kc-text">{money(lead.initialProjectAmount || lead.estimatedValue)}</p>
+              <p className="mt-1 text-xs font-bold text-kc-muted">{lead.monthlyFee > 0 ? `${money(lead.monthlyFee)}/mes` : "Sin mensualidad"}</p>
             </div>
           </div>
 
@@ -189,6 +190,8 @@ export function LeadDetail({
               ["Origen", lead.sourcePath],
               ["Ultimo contacto", lead.lastContactAt ? dateTime(lead.lastContactAt) : "Sin registrar"],
               ["Seguimiento", lead.followUpAt ? dateTime(lead.followUpAt) : "Sin fecha"],
+              ["Estado de pago", paymentStatusLabels[lead.paymentStatus]],
+              ["Inicio mensualidad", lead.billingStartDate ? shortDate(lead.billingStartDate) : "Sin fecha"],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl border border-white/10 bg-kc-bg/55 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-kc-muted">{label}</p>
@@ -200,6 +203,25 @@ export function LeadDetail({
           <div className="mt-6 rounded-2xl border border-white/10 bg-kc-bg/45 p-5">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-kc-muted">Mensaje original</p>
             <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-kc-text">{lead.message || "Sin mensaje."}</p>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-kc-cyan/20 bg-kc-cyan/5 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-kc-cyan">Gestion de cobro</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">Inicial</p>
+                <p className="mt-1 font-display text-2xl font-black text-kc-text">{money(lead.initialProjectAmount || lead.estimatedValue)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">Mensualidad</p>
+                <p className="mt-1 font-display text-2xl font-black text-kc-text">{lead.monthlyFee > 0 ? `${money(lead.monthlyFee)}/mes` : "Sin mensualidad"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">Pago</p>
+                <p className="mt-1 font-display text-2xl font-black text-kc-text">{paymentStatusLabels[lead.paymentStatus]}</p>
+              </div>
+            </div>
+            {lead.billingNotes ? <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-kc-muted">{lead.billingNotes}</p> : null}
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
@@ -243,6 +265,28 @@ export function LeadDetail({
                 <input type="number" min="0" value={lead.estimatedValue} onChange={(event) => setLead((current) => ({ ...current, estimatedValue: Number(event.target.value) }))} onBlur={(event) => updateLead({ estimatedValue: Number(event.target.value) })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                Monto inicial del proyecto
+                <input type="number" min="0" value={lead.initialProjectAmount} onChange={(event) => setLead((current) => ({ ...current, initialProjectAmount: Number(event.target.value) }))} onBlur={(event) => updateLead({ initialProjectAmount: Number(event.target.value) })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                Mensualidad
+                <input type="number" min="0" value={lead.monthlyFee} onChange={(event) => setLead((current) => ({ ...current, monthlyFee: Number(event.target.value) }))} onBlur={(event) => updateLead({ monthlyFee: Number(event.target.value) })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                Estado de pago
+                <select value={lead.paymentStatus} onChange={(event) => updateLead({ paymentStatus: event.target.value as PaymentStatus })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text">
+                  {Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                Inicio de mensualidad
+                <input type="date" value={lead.billingStartDate ? lead.billingStartDate.slice(0, 10) : ""} onChange={(event) => updateLead({ billingStartDate: event.target.value ? `${event.target.value}T00:00:00.000Z` : null })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                Notas de cobro
+                <textarea value={lead.billingNotes} onChange={(event) => setLead((current) => ({ ...current, billingNotes: event.target.value }))} onBlur={(event) => updateLead({ billingNotes: event.target.value })} rows={3} className="rounded-xl border border-white/10 bg-kc-bg px-3 py-3 text-kc-text" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-kc-muted">
                 Proxima accion
                 <input value={lead.nextAction} onChange={(event) => setLead((current) => ({ ...current, nextAction: event.target.value }))} onBlur={(event) => updateLead({ nextAction: event.target.value })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
               </label>
@@ -251,7 +295,7 @@ export function LeadDetail({
                 <input type="datetime-local" value={lead.followUpAt ? lead.followUpAt.slice(0, 16) : ""} onChange={(event) => updateLead({ followUpAt: event.target.value ? new Date(event.target.value).toISOString() : null })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
               </label>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => updateLead({ status: "won", wonValue: lead.estimatedValue || lead.wonValue })} className="min-h-11 rounded-xl bg-emerald-300 px-3 text-sm font-black text-kc-bg">Ganado</button>
+                <button type="button" onClick={() => updateLead({ status: "won", wonValue: lead.initialProjectAmount || lead.estimatedValue || lead.wonValue, paymentStatus: lead.monthlyFee > 0 ? "active" : lead.paymentStatus })} className="min-h-11 rounded-xl bg-emerald-300 px-3 text-sm font-black text-kc-bg">Ganado</button>
                 <button type="button" onClick={() => updateLead({ status: "lost" })} className="min-h-11 rounded-xl bg-rose-300 px-3 text-sm font-black text-kc-bg">Perdido</button>
               </div>
             </div>

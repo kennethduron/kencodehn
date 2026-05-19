@@ -1,5 +1,6 @@
 export type LeadStatus = "new" | "contacted" | "conversation" | "quoted" | "won" | "lost";
 export type LeadPriority = "low" | "medium" | "high";
+export type PaymentStatus = "not_started" | "pending" | "partial" | "paid" | "overdue" | "active";
 export type TaskStatus = "pending" | "in_progress" | "completed" | "overdue";
 export type TaskPriority = "low" | "medium" | "high";
 export type TaskType = "call" | "whatsapp" | "email" | "meeting" | "proposal" | "follow_up";
@@ -41,6 +42,11 @@ export type AdminLead = {
   status: LeadStatus;
   priority: LeadPriority;
   estimatedValue: number;
+  initialProjectAmount: number;
+  monthlyFee: number;
+  paymentStatus: PaymentStatus;
+  billingStartDate: string | null;
+  billingNotes: string;
   wonValue: number;
   lastContactAt: string | null;
   nextAction: string;

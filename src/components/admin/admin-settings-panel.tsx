@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Bell, LockKeyhole, Mail, MonitorSmartphone, Palette, ShieldCheck, Smartphone } from "lucide-react";
 import type { AdminSettings } from "@/lib/admin/types";
 import { PushSettings } from "./push-settings";
-import { Toast } from "./ui";
+import { ConfirmDialog, Toast } from "./ui";
 
 type SettingKey = keyof Omit<AdminSettings, "updatedAt" | "updatedBy">;
 
@@ -85,6 +85,17 @@ const groups: Array<{
   },
 ];
 
+const sensitiveDisableMessages: Partial<Record<SettingKey, string>> = {
+  emailNotificationsEnabled: "Podrias dejar de recibir correos importantes cuando lleguen leads o tareas que requieren atencion.",
+  pushNotificationsEnabled: "Podrias dejar de recibir avisos en este dispositivo o navegador.",
+  internalNotificationsEnabled: "El CRM dejara de crear badges y avisos internos para eventos importantes.",
+  taskReminder1DayEnabled: "El cron no enviara recordatorios un dia antes de las tareas.",
+  taskReminder1HourEnabled: "El cron no enviara recordatorios una hora antes de las tareas.",
+  taskDueEnabled: "El cron no avisara cuando una tarea llegue a la hora exacta configurada.",
+  taskOverdueEnabled: "El cron no avisara automaticamente cuando una tarea este vencida.",
+  dailySummaryEnabled: "No recibiras el resumen diario cuando esa funcion se active por completo.",
+};
+
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
   return (
     <button
@@ -105,6 +116,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: () =
 export function AdminSettingsPanel({ initialSettings }: { initialSettings: AdminSettings }) {
   const [settings, setSettings] = useState(initialSettings);
   const [savingKey, setSavingKey] = useState<SettingKey | null>(null);
+  const [pendingToggle, setPendingToggle] = useState<SettingKey | null>(null);
   const [toast, setToast] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
 
@@ -112,6 +124,14 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
     setToastVariant(variant);
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
+  }
+
+  function requestToggle(key: SettingKey) {
+    if (settings[key] && sensitiveDisableMessages[key]) {
+      setPendingToggle(key);
+      return;
+    }
+    toggle(key);
   }
 
   async function toggle(key: SettingKey) {
@@ -150,6 +170,22 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
   return (
     <div className="grid gap-6">
       <Toast message={toast} variant={toastVariant} />
+      <ConfirmDialog
+        open={Boolean(pendingToggle)}
+        title="Confirmar cambio importante"
+        description={pendingToggle ? `Seguro que deseas desactivar esta preferencia? ${sensitiveDisableMessages[pendingToggle]}` : ""}
+        confirmText="Si, desactivar"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={savingKey === pendingToggle}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={async () => {
+          if (!pendingToggle) return;
+          const key = pendingToggle;
+          setPendingToggle(null);
+          await toggle(key);
+        }}
+      />
       <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
         <p className="text-xs font-black uppercase tracking-[0.22em] text-kc-cyan">Configuracion</p>
         <h1 className="mt-2 font-display text-3xl font-black text-kc-text">Preferencias del CRM</h1>
@@ -182,7 +218,7 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
                     </div>
                     <div className="flex items-center justify-between gap-3 sm:justify-end">
                       <span className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted sm:hidden">{settings[item.key] ? "Activo" : "Inactivo"}</span>
-                      <Switch checked={Boolean(settings[item.key])} onChange={() => toggle(item.key)} label={item.label} />
+                      <Switch checked={Boolean(settings[item.key])} onChange={() => requestToggle(item.key)} label={item.label} />
                     </div>
                   </div>
                 ))}

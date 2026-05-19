@@ -35,7 +35,7 @@ export const seoServices: SeoService[] = [
     includes: ["Estructura comercial", "Diseno responsive", "Secciones de servicios", "Formulario de contacto", "WhatsApp integrado", "Metadata SEO", "Sitemap y robots", "Soporte de lanzamiento"],
     process: ["Diagnostico del negocio", "Estructura de la pagina", "Diseno visual", "Desarrollo", "Revision en celular", "Lanzamiento", "Soporte inicial"],
     relatedProjects: ["bekys-cake", "asesoria-educativa-diaca", "sariah-rivera-servicios-legales"],
-    relatedServices: ["paginas-web-para-negocios-locales", "landing-pages", "redisenio-web"],
+    relatedServices: ["paginas-web-para-negocios-locales", "landing-pages", "desarrollo-web-internacional"],
     faq: [
       { question: "Cuanto cuesta una pagina web en Honduras?", answer: "Depende del alcance, cantidad de secciones, contenido y funciones. Ken Code trabaja con cotizacion personalizada para recomendar una solucion realista." },
       { question: "La pagina funciona en celular?", answer: "Si. Cada pagina se construye responsive para que se vea profesional en telefono, tablet y escritorio." },
@@ -61,7 +61,7 @@ export const seoServices: SeoService[] = [
     includes: ["Hero persuasivo", "Beneficios", "Seccion de confianza", "Preguntas frecuentes", "Formulario", "CTA final", "Open Graph", "SEO tecnico base"],
     process: ["Analisis de la oferta", "Definicion del mensaje", "Wireframe", "Diseno", "Desarrollo", "Pruebas", "Lanzamiento"],
     relatedProjects: ["bekys-cake", "casa-brava-menu", "kadsa"],
-    relatedServices: ["paginas-web-honduras", "paginas-web-para-negocios-locales", "redisenio-web"],
+    relatedServices: ["paginas-web-honduras", "paginas-web-para-negocios-locales", "desarrollo-web-internacional"],
     faq: [
       { question: "Para que sirve una landing page?", answer: "Sirve para enfocar una oferta especifica y aumentar la probabilidad de que el visitante contacte o solicite informacion." },
       { question: "Es mejor que una pagina completa?", answer: "Depende del objetivo. Para campanas o servicios puntuales, una landing suele convertir mejor. Para una marca completa, conviene un sitio web." },
@@ -165,7 +165,7 @@ export const seoServices: SeoService[] = [
     includes: ["Inicio", "Servicios", "Galeria o productos", "Contacto", "Formulario", "WhatsApp", "Preguntas frecuentes", "Sitemap"],
     process: ["Diagnostico", "Mapa de contenido", "Diseno", "Desarrollo", "Revision con el negocio", "Publicacion", "Soporte"],
     relatedProjects: ["bekys-cake", "asesoria-educativa-diaca", "kadsa"],
-    relatedServices: ["paginas-web-honduras", "landing-pages", "redisenio-web"],
+    relatedServices: ["paginas-web-honduras", "landing-pages", "desarrollo-web-internacional"],
     faq: [
       { question: "Una web ayuda aunque ya tenga redes sociales?", answer: "Si. Las redes ayudan a comunicar, pero una web propia da mas confianza, orden y control sobre la informacion." },
       { question: "Puedo empezar con pocas secciones?", answer: "Si. Se puede iniciar con lo esencial y crecer cuando el negocio tenga mas contenido o necesidades." },
@@ -199,32 +199,6 @@ export const seoServices: SeoService[] = [
     ],
     keywords: ["desarrollo web internacional", "web development Honduras", "remote web developer", "desarrollo web remoto"],
     cta: "Cotizar proyecto internacional",
-  },
-  {
-    slug: "redisenio-web",
-    title: "Redisenio web",
-    metaTitle: "Redisenio web profesional para negocios | Ken Code",
-    metaDescription:
-      "Redisenio web para negocios que necesitan mejorar claridad, velocidad, experiencia movil, SEO base y conversion sin perder su identidad.",
-    h1: "Redisenio web para convertir una pagina antigua en una presencia profesional",
-    intro:
-      "Si tu web se ve desactualizada, carga lento o no convierte visitantes, un redisenio puede mejorar la confianza, la claridad y el contacto comercial.",
-    problem:
-      "Una pagina antigua puede hacer que el negocio parezca descuidado, confundir al visitante o perder clientes por mala experiencia movil.",
-    solution:
-      "Reordenamos la estructura, mejoramos jerarquia visual, contenido, velocidad, responsive y llamados a la accion para que la web vuelva a trabajar por el negocio.",
-    benefits: ["Mejor primera impresion", "Mas claridad", "Experiencia movil moderna", "SEO tecnico actualizado", "CTA visibles", "Base preparada para crecer"],
-    includes: ["Auditoria visual", "Reestructura de contenido", "Nuevo diseno", "Responsive", "Optimización de metadata", "Formularios", "WhatsApp", "Lanzamiento asistido"],
-    process: ["Revision del sitio actual", "Diagnostico", "Nueva estructura", "Diseno", "Migracion de contenido", "Pruebas", "Publicacion"],
-    relatedProjects: ["asesoria-educativa-diaca", "sariah-rivera-servicios-legales", "kenneth-logistics-group"],
-    relatedServices: ["paginas-web-honduras", "landing-pages", "desarrollo-web-internacional"],
-    faq: [
-      { question: "Puedo mantener mi dominio?", answer: "Si. El redisenio puede publicarse manteniendo el dominio actual, cuidando la configuracion para no perder continuidad." },
-      { question: "Se puede mejorar el SEO?", answer: "Si. Se revisan metadata, estructura, URLs, contenido y sitemap para dejar una base tecnica mas ordenada." },
-      { question: "Cuanto cambia la web actual?", answer: "Depende del diagnostico. A veces basta mejorar estructura y diseno; otras veces conviene reconstruir la experiencia completa." },
-    ],
-    keywords: ["redisenio web", "redisenio de paginas web", "mejorar sitio web", "web profesional para negocios"],
-    cta: "Cotizar redisenio",
   },
 ];
 

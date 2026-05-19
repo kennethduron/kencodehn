@@ -43,7 +43,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
       submit: "Enviar solicitud",
       submitting: "Enviando solicitud",
       note: "Tu solicitud quedara registrada para seguimiento interno. WhatsApp sigue disponible para contacto directo.",
-      redesign: "Rediseno web",
       success: "Hemos recibido tu solicitud correctamente. Muy pronto nos comunicaremos contigo.",
       error: "No pudimos enviar la solicitud en este momento. Intenta nuevamente o usa WhatsApp directo.",
       invalidEmail: "Ingresa un correo valido.",
@@ -69,7 +68,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
       submit: "Send request",
       submitting: "Sending request",
       note: "Your request will be registered for internal follow-up. WhatsApp remains available for direct contact.",
-      redesign: "Website redesign",
       success: "We have received your request successfully. We will contact you very soon.",
       error: "We could not send the request right now. Please try again or use direct WhatsApp.",
       invalidEmail: "Enter a valid email.",
@@ -231,7 +229,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
               <option>{locale === "es" ? "Web para negocios" : "Web Business"}</option>
               <option>Web Pro + Panel</option>
               <option>{locale === "es" ? "Tienda en linea" : "E-commerce"}</option>
-              <option>{text.redesign}</option>
             </select>
             {errors.project ? <span className="text-xs font-bold text-red-300">{errors.project}</span> : null}
           </label>
