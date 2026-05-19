@@ -21,7 +21,12 @@ export function getFirebaseClient(): FirebaseClientConfigStatus {
     return { ok: false, missing };
   }
 
-  const app = getApps().length ? getApp() : initializeApp(config as Required<typeof config>);
+  const app = getApps().length
+    ? getApp()
+    : initializeApp({
+        ...(config as Required<typeof config>),
+        ...(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ? { messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID } : {}),
+      });
   return {
     ok: true,
     app,

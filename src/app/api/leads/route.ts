@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { createLeadRecord } from "@/lib/leads";
 import { sendLeadNotificationEmail } from "@/lib/email/lead-notification";
+import { sendPushToAdmins } from "@/lib/push/service";
 
 export const runtime = "nodejs";
 
@@ -70,6 +71,13 @@ export async function POST(request: NextRequest) {
         createdAt: now,
       });
       const email = await sendLeadNotificationEmail(lead, doc.id);
+      const push = await sendPushToAdmins({
+        type: "lead_new",
+        title: "Nuevo lead recibido",
+        message: `${lead.name} solicito ${lead.project}.`,
+        actionUrl: `/admin/leads/${doc.id}`,
+        relatedLeadId: doc.id,
+      });
 
       return NextResponse.json({
         ok: true,
@@ -77,6 +85,7 @@ export async function POST(request: NextRequest) {
         leadId: doc.id,
         notificationCreated: true,
         email,
+        push,
         message: "Lead saved.",
       });
     } catch (error) {

@@ -148,8 +148,8 @@ export async function sendNewLeadEmail(lead: LeadRecord | Partial<AdminLead>, le
   return sendEmail({ ...template, type: "lead_new", relatedLeadId: leadId });
 }
 
-export async function sendTaskReminderEmail(task: Partial<AdminTask>) {
-  const template = taskReminderTemplate(task);
+export async function sendTaskReminderEmail(task: Partial<AdminTask>, reminderLabel?: string) {
+  const template = taskReminderTemplate(task, reminderLabel);
   return sendEmail({
     ...template,
     type: "task_reminder",

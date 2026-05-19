@@ -128,9 +128,10 @@ export function newLeadTemplate(lead: LeadEmailData, leadId: string): EmailTempl
   };
 }
 
-export function taskReminderTemplate(task: Partial<AdminTask>): EmailTemplate {
+export function taskReminderTemplate(task: Partial<AdminTask>, reminderLabel = "Recordatorio de tarea"): EmailTemplate {
   const url = taskUrl(task);
   const rows: Array<[string, unknown]> = [
+    ["Tipo de aviso", reminderLabel],
     ["Tarea", task.title],
     ["Lead", task.leadName],
     ["Fecha", task.date],
@@ -138,10 +139,10 @@ export function taskReminderTemplate(task: Partial<AdminTask>): EmailTemplate {
     ["Prioridad", task.priority],
     ["Tipo", task.type],
   ];
-  const title = "Recordatorio de tarea";
+  const title = reminderLabel;
   const intro = "Hay una tarea programada que requiere seguimiento.";
   return {
-    subject: `Recordatorio: ${safe(task.title, "Tarea pendiente")}`,
+    subject: `${reminderLabel}: ${safe(task.title, "Tarea pendiente")}`,
     text: renderText(title, intro, rows, url),
     html: renderLayout(title, intro, rows, "Ver tarea", url),
   };

@@ -56,7 +56,11 @@ export type AdminTask = {
   status: TaskStatus;
   type: TaskType;
   reminderAt: string | null;
+  reminder1DaySentAt: string | null;
+  reminder1HourSentAt: string | null;
+  dueNotificationSentAt: string | null;
   completedAt: string | null;
+  overdueEmailSentAt: string | null;
   overdueNotifiedAt: string | null;
   createdBy: string;
   createdAt: string;
@@ -67,7 +71,7 @@ export type AdminNotification = {
   id: string;
   title: string;
   message: string;
-  type: "lead" | "task" | "lead_new" | "lead_status_changed" | "lead_priority_changed" | "note_added" | "task_created" | "task_updated" | "task_completed" | "task_overdue" | "system";
+  type: "lead" | "task" | "lead_new" | "lead_status_changed" | "lead_priority_changed" | "note_added" | "task_created" | "task_updated" | "task_completed" | "task_reminder" | "task_due" | "task_overdue" | "system";
   severity: "info" | "success" | "warning" | "danger";
   leadId: string | null;
   taskId: string | null;

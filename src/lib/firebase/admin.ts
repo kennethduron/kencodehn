@@ -1,9 +1,11 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getMessaging, type Messaging } from "firebase-admin/messaging";
 
 let firestore: Firestore | null = null;
 let auth: Auth | null = null;
+let messaging: Messaging | null = null;
 
 function getServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
@@ -76,6 +78,31 @@ export function getAdminAuth() {
     return auth;
   } catch (error) {
     console.warn("[Ken Code Firebase Auth warning] Unable to initialize Firebase Admin Auth.", error);
+    return null;
+  }
+}
+
+export function getAdminMessaging() {
+  if (messaging) {
+    return messaging;
+  }
+
+  const serviceAccount = getServiceAccount();
+  if (!serviceAccount) {
+    return null;
+  }
+
+  try {
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert(serviceAccount),
+      });
+    }
+
+    messaging = getMessaging();
+    return messaging;
+  } catch (error) {
+    console.warn("[Ken Code Firebase Messaging warning] Unable to initialize Firebase Admin Messaging.", error);
     return null;
   }
 }

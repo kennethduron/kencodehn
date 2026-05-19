@@ -2,6 +2,7 @@ import { FieldValue, type DocumentData, type QueryDocumentSnapshot } from "fireb
 import { getAdminDb } from "@/lib/firebase/admin";
 import { formatActivityMessage, formatActivityTitle } from "@/lib/admin/activity";
 import { sendLeadStatusEmail, sendTaskOverdueEmail } from "@/lib/email/service";
+import { sendPushToAdmins } from "@/lib/push/service";
 import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 
 function toIso(value: unknown): string | null {
@@ -67,7 +68,7 @@ function normalizeTaskType(value: unknown): TaskType {
 }
 
 function normalizeNotificationType(value: unknown): AdminNotification["type"] {
-  const valid = ["lead", "task", "lead_new", "lead_status_changed", "lead_priority_changed", "note_added", "task_created", "task_updated", "task_completed", "task_overdue", "system"];
+  const valid = ["lead", "task", "lead_new", "lead_status_changed", "lead_priority_changed", "note_added", "task_created", "task_updated", "task_completed", "task_reminder", "task_due", "task_overdue", "system"];
   return valid.includes(String(value)) ? String(value) as AdminNotification["type"] : "system";
 }
 
@@ -139,7 +140,11 @@ export function mapTask(doc: QueryDocumentSnapshot<DocumentData>): AdminTask {
     status: normalizeTaskStatus(data.status),
     type: normalizeTaskType(data.type),
     reminderAt: toIso(data.reminderAt),
+    reminder1DaySentAt: toIso(data.reminder1DaySentAt),
+    reminder1HourSentAt: toIso(data.reminder1HourSentAt),
+    dueNotificationSentAt: toIso(data.dueNotificationSentAt),
     completedAt: toIso(data.completedAt),
+    overdueEmailSentAt: toIso(data.overdueEmailSentAt),
     overdueNotifiedAt: toIso(data.overdueNotifiedAt),
     createdBy: String(data.createdBy ?? ""),
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
@@ -298,6 +303,14 @@ export async function checkOverdueTasks(admin?: AdminUser) {
       userEmail: admin?.email ?? "system",
     });
     await sendTaskOverdueEmail({ ...task, status: "overdue", overdueNotifiedAt: notifiedAt });
+    await sendPushToAdmins({
+      type: "task_overdue",
+      title: "Tarea vencida",
+      message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
+      actionUrl: task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas",
+      relatedLeadId: task.leadId,
+      relatedTaskId: task.id,
+    });
     changed.push(task.id);
   }
   return changed;
@@ -471,7 +484,11 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
     status: normalizeTaskStatus(input.status),
     type: normalizeTaskType(input.type),
     reminderAt: dueAt,
+    reminder1DaySentAt: null,
+    reminder1HourSentAt: null,
+    dueNotificationSentAt: null,
     completedAt: input.status === "completed" ? now : null,
+    overdueEmailSentAt: null,
     overdueNotifiedAt: null,
     createdBy: admin.email,
     createdAt: now,
@@ -515,6 +532,10 @@ export async function updateTask(id: string, updates: Partial<AdminTask>, admin:
   if (updates.date !== undefined || updates.time !== undefined) {
     payload.dueAt = date ? new Date(`${date}T${time || "09:00"}:00`).toISOString() : null;
     payload.reminderAt = payload.dueAt;
+    payload.reminder1DaySentAt = null;
+    payload.reminder1HourSentAt = null;
+    payload.dueNotificationSentAt = null;
+    payload.overdueEmailSentAt = null;
     payload.overdueNotifiedAt = null;
   }
   if (updates.status === "completed") {

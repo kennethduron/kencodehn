@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Sparkles, Users, X } from "lucide-react";
+import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Settings, Sparkles, Users, X } from "lucide-react";
 import { useState } from "react";
 import type { AdminUser } from "@/lib/admin/types";
 import { NotificationDropdown } from "./notification-dropdown";
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/leads", label: "Leads", icon: Users },
   { href: "/admin/tareas", label: "Tareas", icon: ClipboardList },
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
+  { href: "/admin/configuracion/notificaciones", label: "Config.", icon: Settings },
 ];
 
 export function AdminChrome({ children, admin, unreadCount = 0 }: { children: React.ReactNode; admin: AdminUser; unreadCount?: number }) {
@@ -116,7 +117,7 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
         </section>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-white/10 bg-kc-bg-soft/96 p-2 backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-white/10 bg-kc-bg-soft/96 p-2 backdrop-blur-xl lg:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));

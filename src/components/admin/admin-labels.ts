@@ -110,6 +110,8 @@ export const notificationTypeLabels: Record<string, string> = {
   task_created: "Tarea creada",
   task_updated: "Tarea actualizada",
   task_completed: "Tarea completada",
+  task_reminder: "Recordatorio",
+  task_due: "Tarea en hora",
   task_overdue: "Tarea vencida",
   system: "Sistema",
 };
