@@ -93,7 +93,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: () =
       aria-checked={checked}
       aria-label={label}
       onClick={onChange}
-      className={`relative h-7 w-12 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kc-cyan ${
+      className={`relative h-7 w-12 shrink-0 rounded-full border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kc-cyan ${
         checked ? "border-kc-cyan/50 bg-kc-cyan" : "border-white/15 bg-white/10"
       }`}
     >
@@ -174,13 +174,16 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
               </div>
               <div className="mt-5 grid gap-3">
                 {group.items.map((item) => (
-                  <div key={item.key} className="flex items-start justify-between gap-4 rounded-xl border border-white/10 bg-kc-bg/55 p-4">
+                  <div key={item.key} className="grid gap-4 rounded-xl border border-white/10 bg-kc-bg/55 p-4 sm:grid-cols-[1fr_auto] sm:items-start">
                     <div className="min-w-0">
                       <p className="font-bold text-kc-text">{item.label}</p>
                       <p className="mt-1 text-sm leading-6 text-kc-muted">{item.description}</p>
                       {savingKey === item.key ? <p className="mt-2 text-xs font-bold text-kc-cyan">Guardando...</p> : null}
                     </div>
-                    <Switch checked={Boolean(settings[item.key])} onChange={() => toggle(item.key)} label={item.label} />
+                    <div className="flex items-center justify-between gap-3 sm:justify-end">
+                      <span className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted sm:hidden">{settings[item.key] ? "Activo" : "Inactivo"}</span>
+                      <Switch checked={Boolean(settings[item.key])} onChange={() => toggle(item.key)} label={item.label} />
+                    </div>
                   </div>
                 ))}
               </div>

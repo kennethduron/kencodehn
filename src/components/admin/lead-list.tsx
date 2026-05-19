@@ -231,7 +231,7 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
             </div>
             <h2 className="mt-4 font-display text-2xl font-black text-kc-text">{lead.name}</h2>
             <p className="mt-1 text-sm font-semibold text-kc-cyan">{lead.business}</p>
-            <p className="mt-3 text-sm leading-7 text-kc-muted">{lead.project} - {lead.budget || "Presupuesto sin definir"}</p>
+            <p className="mt-3 text-sm leading-7 text-kc-muted">{lead.project} - {lead.budget || "Por definir"}</p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <select value={lead.status} onChange={(event) => updateLead(lead.id, { status: event.target.value as LeadStatus })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
                 {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}

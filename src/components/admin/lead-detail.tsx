@@ -173,7 +173,7 @@ export function LeadDetail({
             <div className="min-w-0">
               <h1 className="font-display text-3xl font-black text-kc-text sm:text-4xl">{lead.name}</h1>
               <p className="mt-2 text-lg font-bold text-kc-cyan">{lead.business}</p>
-              <p className="mt-2 text-sm text-kc-muted">{lead.project} - {lead.budget || "Presupuesto sin definir"}</p>
+              <p className="mt-2 text-sm text-kc-muted">{lead.project} - {lead.budget || "Por definir"}</p>
             </div>
             <div className="rounded-2xl border border-kc-lime/20 bg-kc-lime/10 p-4 lg:min-w-44">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-kc-lime">Valor estimado</p>

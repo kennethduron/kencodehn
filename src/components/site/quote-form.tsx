@@ -21,7 +21,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
     email: "",
     phone: "",
     project: locale === "es" ? "Pagina de aterrizaje" : "Landing Page",
-    budget: "",
     message: "",
   });
 
@@ -37,7 +36,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
       phone: "Telefono o WhatsApp",
       phonePlaceholder: "+504 0000-0000",
       project: "Proyecto",
-      budget: "Presupuesto",
       details: "Detalles del proyecto",
       detailsPlaceholder: "Cuentame que necesitas, que vendes y cuando quieres lanzar.",
       submit: "Enviar solicitud",
@@ -58,7 +56,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
       phone: "Phone or WhatsApp",
       phonePlaceholder: "+1 000 000 0000",
       project: "Project",
-      budget: "Budget",
       details: "Project details",
       detailsPlaceholder: "Tell me what you need, what you sell and when you want to launch.",
       submit: "Send request",
@@ -117,7 +114,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
         email: "",
         phone: "",
         project: locale === "es" ? "Pagina de aterrizaje" : "Landing Page",
-        budget: "",
         message: "",
       });
     } catch {
@@ -164,7 +160,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
               placeholder={text.emailPlaceholder}
               autoComplete="email"
               type="email"
-              required
             />
           </label>
           <label className="grid gap-2 text-sm font-bold text-kc-text">
@@ -180,7 +175,7 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
           </label>
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4">
           <label className="grid gap-2 text-sm font-bold text-kc-text">
             {text.project}
             <select
@@ -194,16 +189,6 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
               <option>{locale === "es" ? "Tienda en linea" : "E-commerce"}</option>
               <option>{text.redesign}</option>
             </select>
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-kc-text">
-            {text.budget}
-            <input
-              value={form.budget}
-              onChange={(event) => updateField("budget", event.target.value)}
-              className="min-h-12 rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
-              placeholder={locale === "es" ? "Ej. USD 500 - USD 1,500" : "Ex. USD 500 - USD 1,500"}
-              inputMode="text"
-            />
           </label>
         </div>
 

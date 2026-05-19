@@ -1,6 +1,7 @@
 import type { AdminLead, AdminTask, LeadStatus } from "@/lib/admin/types";
 import type { LeadRecord } from "@/lib/leads";
 import { site } from "@/lib/site";
+import { formatHondurasDateTime, HONDURAS_TIME_ZONE_LABEL } from "@/lib/time";
 
 export type EmailTemplate = {
   subject: string;
@@ -62,7 +63,7 @@ function renderRows(rows: Array<[string, unknown]>) {
     .join("");
 }
 
-function renderLayout(title: string, intro: string, rows: Array<[string, unknown]>, ctaLabel: string, ctaUrl: string) {
+function renderLayout(title: string, intro: string, rows: Array<[string, unknown]>, ctaLabel: string, ctaUrl: string, audience: "admin" | "client" = "admin") {
   return `<!doctype html>
 <html lang="es">
   <head>
@@ -77,7 +78,7 @@ function renderLayout(title: string, intro: string, rows: Array<[string, unknown
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:${panelColor};border:1px solid rgba(148,163,184,.22);border-radius:18px;overflow:hidden;">
             <tr>
               <td style="padding:26px 28px 14px;">
-                <div style="color:${brandColor};font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;">Ken Code CRM</div>
+                <div style="color:${brandColor};font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;">${audience === "client" ? "Ken Code" : "Ken Code CRM"}</div>
                 <h1 style="margin:12px 0 8px;color:${textColor};font-size:26px;line-height:1.2;">${escapeHtml(title)}</h1>
                 <p style="margin:0;color:${mutedColor};font-size:15px;line-height:1.7;">${escapeHtml(intro)}</p>
               </td>
@@ -92,7 +93,7 @@ function renderLayout(title: string, intro: string, rows: Array<[string, unknown
             <tr>
               <td style="padding:0 28px 28px;">
                 <a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:${brandColor};color:#03131a;text-decoration:none;font-weight:800;border-radius:12px;padding:13px 18px;">${escapeHtml(ctaLabel)}</a>
-                <p style="margin:18px 0 0;color:${mutedColor};font-size:12px;line-height:1.6;">Este correo fue preparado por el CRM privado de Ken Code. Si el boton no abre, entra a ${escapeHtml(site.url)}/admin.</p>
+                <p style="margin:18px 0 0;color:${mutedColor};font-size:12px;line-height:1.6;">${audience === "client" ? `Puedes responder este correo o escribirnos por WhatsApp. Web: ${escapeHtml(site.url)}` : `Este correo fue preparado por el CRM privado de Ken Code. Si el boton no abre, entra a ${escapeHtml(site.url)}/admin.`}</p>
               </td>
             </tr>
           </table>
@@ -108,6 +109,10 @@ function renderText(title: string, intro: string, rows: Array<[string, unknown]>
   return `Ken Code CRM\n\n${title}\n${intro}\n\n${body}\n\nAbrir CRM: ${ctaUrl}`;
 }
 
+function taskDateTime(task: Partial<AdminTask>) {
+  return task.dueAt ? `${formatHondurasDateTime(task.dueAt)} (${HONDURAS_TIME_ZONE_LABEL})` : `${safe(task.date)} ${safe(task.time, "")}`.trim();
+}
+
 export function newLeadTemplate(lead: LeadEmailData, leadId: string): EmailTemplate {
   const url = leadUrl(leadId);
   const rows: Array<[string, unknown]> = [
@@ -116,7 +121,6 @@ export function newLeadTemplate(lead: LeadEmailData, leadId: string): EmailTempl
     ["Correo", lead.email],
     ["Telefono", lead.phone],
     ["Proyecto", lead.project],
-    ["Presupuesto", lead.budget],
     ["Mensaje", lead.message],
   ];
   const title = "Nuevo lead recibido";
@@ -134,8 +138,7 @@ export function taskReminderTemplate(task: Partial<AdminTask>, reminderLabel = "
     ["Tipo de aviso", reminderLabel],
     ["Tarea", task.title],
     ["Lead", task.leadName],
-    ["Fecha", task.date],
-    ["Hora", task.time],
+    ["Fecha y hora", taskDateTime(task)],
     ["Prioridad", task.priority],
     ["Tipo", task.type],
   ];
@@ -153,7 +156,7 @@ export function taskOverdueTemplate(task: Partial<AdminTask>): EmailTemplate {
   const rows: Array<[string, unknown]> = [
     ["Tarea", task.title],
     ["Lead", task.leadName],
-    ["Vencia", `${safe(task.date)} ${safe(task.time, "")}`.trim()],
+    ["Vencia", taskDateTime(task)],
     ["Prioridad", task.priority],
     ["Descripcion", task.description],
   ];
@@ -163,6 +166,23 @@ export function taskOverdueTemplate(task: Partial<AdminTask>): EmailTemplate {
     subject: `Tarea vencida: ${safe(task.title, "Seguimiento pendiente")}`,
     text: renderText(title, intro, rows, url),
     html: renderLayout(title, intro, rows, "Atender tarea", url),
+  };
+}
+
+export function clientLeadConfirmationTemplate(lead: LeadEmailData): EmailTemplate {
+  const title = "Hemos recibido tu solicitud";
+  const intro = `Hola ${safe(lead.name, "gracias por escribirnos")}, gracias por contactar a Ken Code. Recibimos tu solicitud correctamente y revisaremos los detalles para responderte lo antes posible.`;
+  const rows: Array<[string, unknown]> = [
+    ["Nombre", lead.name],
+    ["Proyecto", lead.project],
+    ["Mensaje recibido", lead.message],
+    ["WhatsApp Ken Code", site.phone],
+    ["Correo", site.email],
+  ];
+  return {
+    subject: "Hemos recibido tu solicitud | Ken Code",
+    text: `Ken Code\n\n${intro}\n\nMuy pronto nos comunicaremos contigo para conocer mejor tu proyecto y ayudarte con una solucion web profesional.\n\nWhatsApp: ${site.phone}\nCorreo: ${site.email}\nWeb: ${site.url}\n\nAtentamente,\nKen Code`,
+    html: renderLayout(title, `${intro} Muy pronto nos comunicaremos contigo para conocer mejor tu proyecto y ayudarte con una solucion web profesional.`, rows, "Visitar Ken Code", site.url, "client"),
   };
 }
 

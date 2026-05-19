@@ -1,4 +1,5 @@
 import type { LeadPriority, LeadStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
+import { formatHondurasDate, formatHondurasDateTime } from "@/lib/time";
 
 export const leadStatusLabels: Record<LeadStatus, string> = {
   new: "Nuevo",
@@ -49,24 +50,14 @@ export function shortDate(value?: string | null) {
   if (!value) {
     return "Sin fecha";
   }
-  return new Intl.DateTimeFormat("es-HN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
+  return formatHondurasDate(value);
 }
 
 export function dateTime(value?: string | null) {
   if (!value) {
     return "Sin fecha";
   }
-  return new Intl.DateTimeFormat("es-HN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return formatHondurasDateTime(value);
 }
 
 export function timeAgo(value?: string | null) {

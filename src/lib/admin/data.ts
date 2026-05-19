@@ -4,6 +4,7 @@ import { formatActivityMessage, formatActivityTitle } from "@/lib/admin/activity
 import { sendLeadStatusEmail, sendTaskOverdueEmail } from "@/lib/email/service";
 import { sendPushToAdmins } from "@/lib/push/service";
 import { getAdminSettings } from "@/lib/admin/settings";
+import { HONDURAS_TIME_ZONE, hondurasDateTimeToIso } from "@/lib/time";
 import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 
 function toIso(value: unknown): string | null {
@@ -136,6 +137,7 @@ export function mapTask(doc: QueryDocumentSnapshot<DocumentData>): AdminTask {
     leadName: data.leadName ? String(data.leadName) : null,
     date: String(data.date ?? ""),
     time: String(data.time ?? ""),
+    timezone: String(data.timezone ?? HONDURAS_TIME_ZONE),
     dueAt: toIso(data.dueAt),
     priority: normalizeTaskPriority(data.priority),
     status: normalizeTaskStatus(data.status),
@@ -481,7 +483,7 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
     throw new Error("Firebase Admin no esta configurado.");
   }
   const now = new Date().toISOString();
-  const dueAt = input.date ? new Date(`${input.date}T${input.time || "09:00"}:00`).toISOString() : null;
+  const dueAt = hondurasDateTimeToIso(input.date, input.time || "09:00");
   const payload = {
     title: input.title || "Seguimiento",
     description: input.description || "",
@@ -489,6 +491,7 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
     leadName: input.leadName || null,
     date: input.date || "",
     time: input.time || "",
+    timezone: HONDURAS_TIME_ZONE,
     dueAt,
     priority: normalizeTaskPriority(input.priority),
     status: normalizeTaskStatus(input.status),
@@ -540,8 +543,9 @@ export async function updateTask(id: string, updates: Partial<AdminTask>, admin:
   const now = new Date().toISOString();
   const payload: Record<string, unknown> = { ...updates, updatedAt: now };
   if (updates.date !== undefined || updates.time !== undefined) {
-    payload.dueAt = date ? new Date(`${date}T${time || "09:00"}:00`).toISOString() : null;
+    payload.dueAt = hondurasDateTimeToIso(date, time || "09:00");
     payload.reminderAt = payload.dueAt;
+    payload.timezone = HONDURAS_TIME_ZONE;
     payload.reminder1DaySentAt = null;
     payload.reminder1HourSentAt = null;
     payload.dueNotificationSentAt = null;

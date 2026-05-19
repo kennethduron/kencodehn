@@ -3,6 +3,7 @@ import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Clock3, TrendingDown
 import type { ActivityLog, AdminLead, AdminNotification, AdminTask } from "@/lib/admin/types";
 import { activityHref, mapActivityTone } from "@/lib/admin/activity";
 import { leadStatusLabels, money, shortDate, timeAgo } from "./admin-labels";
+import { todayInHonduras } from "@/lib/time";
 import { AdminBarChart, AdminDonutMetric } from "./admin-chart";
 import { KpiCard } from "./kpi-card";
 import { LeadList } from "./lead-list";
@@ -21,7 +22,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity }: { lead
   const wonValue = leads.reduce((sum, lead) => sum + lead.wonValue, 0);
   const conversion = total ? Math.round((won / total) * 100) : 0;
   const unread = notifications.filter((notification) => !notification.read).length;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInHonduras();
   const todayTasks = tasks.filter((task) => task.date === today && task.status !== "completed").length;
 
   const cards = [

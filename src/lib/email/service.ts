@@ -7,6 +7,7 @@ import type { LeadRecord } from "@/lib/leads";
 import { site } from "@/lib/site";
 import {
   dailySummaryTemplate,
+  clientLeadConfirmationTemplate,
   leadStatusTemplate,
   newLeadTemplate,
   taskOverdueTemplate,
@@ -14,7 +15,13 @@ import {
   type EmailTemplate,
 } from "@/lib/email/templates";
 
-export type EmailType = "lead_new" | "task_reminder" | "task_overdue" | "lead_status" | "daily_summary";
+export type EmailType =
+  | "admin_new_lead_notification"
+  | "client_lead_confirmation"
+  | "task_reminder"
+  | "task_overdue"
+  | "status_update"
+  | "daily_summary";
 
 export type EmailSendResult = {
   sent: boolean;
@@ -40,7 +47,7 @@ type SendEmailInput = EmailTemplate & {
 let resend: Resend | null = null;
 
 const sendEmailSchema = z.object({
-  type: z.enum(["lead_new", "task_reminder", "task_overdue", "lead_status", "daily_summary"]),
+  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary"]),
   to: z.string().email().optional().nullable(),
   subject: z.string().trim().min(3).max(180),
   text: z.string().trim().min(10).max(10000),
@@ -85,6 +92,7 @@ async function logEmail(input: SendEmailInput, result: EmailSendResult) {
       subject: input.subject,
       sent: result.sent,
       reason: result.reason ?? null,
+      providerId: result.id ?? null,
       providerMessageId: result.id ?? null,
       relatedLeadId: input.relatedLeadId ?? null,
       relatedTaskId: input.relatedTaskId ?? null,
@@ -103,7 +111,10 @@ async function withLog(input: SendEmailInput, result: EmailSendResult): Promise<
 }
 
 export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult> {
-  const to = input.to || getEmailTarget();
+  const to = input.type === "client_lead_confirmation" ? input.to : input.to || getEmailTarget();
+  if (input.type === "client_lead_confirmation" && !to) {
+    return withLog({ ...input, to, subject: input.subject || "Confirmacion Ken Code" }, { sent: false, reason: "email_to_missing" });
+  }
   const parsed = sendEmailSchema.safeParse({ ...input, to });
   if (!parsed.success) {
     console.warn("[Ken Code email input warning]", parsed.error.issues);
@@ -113,7 +124,7 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
   const client = getResendClient();
   const settings = await getAdminSettings();
 
-  if (!settings.emailNotificationsEnabled) {
+  if (!settings.emailNotificationsEnabled && parsed.data.type !== "client_lead_confirmation") {
     return withLog(parsed.data, { sent: false, reason: "email_notifications_disabled" });
   }
 
@@ -152,7 +163,12 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
 
 export async function sendNewLeadEmail(lead: LeadRecord | Partial<AdminLead>, leadId: string) {
   const template = newLeadTemplate(lead, leadId);
-  return sendEmail({ ...template, type: "lead_new", relatedLeadId: leadId });
+  return sendEmail({ ...template, type: "admin_new_lead_notification", relatedLeadId: leadId });
+}
+
+export async function sendClientLeadConfirmationEmail(lead: LeadRecord | Partial<AdminLead>, leadId: string) {
+  const template = clientLeadConfirmationTemplate(lead);
+  return sendEmail({ ...template, type: "client_lead_confirmation", to: lead.email, relatedLeadId: leadId });
 }
 
 export async function sendTaskReminderEmail(task: Partial<AdminTask>, reminderLabel?: string) {
@@ -177,7 +193,7 @@ export async function sendTaskOverdueEmail(task: Partial<AdminTask>) {
 
 export async function sendLeadStatusEmail(lead: Partial<AdminLead> & { id: string }, status: LeadStatus) {
   const template = leadStatusTemplate(lead, status);
-  return sendEmail({ ...template, type: "lead_status", relatedLeadId: lead.id });
+  return sendEmail({ ...template, type: "status_update", relatedLeadId: lead.id });
 }
 
 export async function sendDailySummaryEmail(summary: Parameters<typeof dailySummaryTemplate>[0]) {

@@ -6,7 +6,7 @@ export type PublicLeadInput = {
   email: string;
   phone: string;
   project: string;
-  budget: string;
+  budget?: string | null;
   message: string;
   locale: Locale;
   sourcePath: string;
@@ -47,6 +47,7 @@ export function createLeadRecord(input: PublicLeadInput, metadata: LeadRecord["m
 
   return {
     ...input,
+    budget: input.budget || "Por definir",
     status: "new",
     priority: "medium",
     source: "public_website",

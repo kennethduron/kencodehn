@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { createLeadRecord } from "@/lib/leads";
-import { sendLeadNotificationEmail } from "@/lib/email/lead-notification";
+import { sendLeadClientConfirmationEmail, sendLeadNotificationEmail } from "@/lib/email/lead-notification";
 import { sendPushToAdmins } from "@/lib/push/service";
 import { getAdminSettings } from "@/lib/admin/settings";
 
@@ -20,11 +20,11 @@ function optionalText(fallback = "") {
 const leadSchema = z.object({
   name: z.string().trim().min(1).max(120),
   business: optionalText("Sin negocio especificado").pipe(z.string().max(160)),
-  email: z.string().trim().email().max(180),
+  email: z.union([z.string().trim().email().max(180), z.literal(""), z.null(), z.undefined()]).transform((value) => value || ""),
   phone: z.string().trim().min(3).max(40),
   project: optionalText("Solicitud web").pipe(z.string().max(120)),
-  budget: optionalText("").pipe(z.string().max(80)),
-  message: optionalText("Sin mensaje adicional.").pipe(z.string().max(2000)),
+  budget: optionalText("Por definir").pipe(z.string().max(80)),
+  message: z.string().trim().min(5).max(2000),
   locale: z.enum(["es", "en"]).default("es"),
   sourcePath: z.string().trim().max(240).default("/cotizar"),
 });
@@ -110,6 +110,11 @@ export async function POST(request: NextRequest) {
       () => sendLeadNotificationEmail(lead, doc.id),
       { sent: false as const, reason: "resend_send_failed" as const, logged: false },
     );
+    const clientEmail = await safeSecondary(
+      "clientEmail",
+      () => sendLeadClientConfirmationEmail(lead, doc.id),
+      { sent: false as const, reason: "email_to_missing" as const, logged: false },
+    );
     const push = await safeSecondary(
       "push",
       () =>
@@ -129,6 +134,7 @@ export async function POST(request: NextRequest) {
       leadId: doc.id,
       notificationCreated: Boolean(notificationId),
       email,
+      clientEmail,
       push,
       message: "Lead saved.",
     });

@@ -67,6 +67,7 @@ export type AdminTask = {
   leadName: string | null;
   date: string;
   time: string;
+  timezone: string;
   dueAt: string | null;
   priority: TaskPriority;
   status: TaskStatus;

@@ -7,6 +7,7 @@ import type { AdminLead, AdminTask, TaskPriority, TaskStatus, TaskType } from "@
 import { shortDate, taskPriorityLabels, taskStatusLabels, taskTypeLabels, timeAgo } from "./admin-labels";
 import { TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 import { ConfirmDialog, Toast, Tooltip } from "./ui";
+import { addDaysInHonduras, HONDURAS_TIME_ZONE_LABEL, todayInHonduras } from "@/lib/time";
 
 type ViewMode = "list" | "calendar";
 type DateFilter = "all" | "today" | "overdue" | "upcoming";
@@ -28,16 +29,13 @@ function isOverdue(task: AdminTask) {
 }
 
 function isToday(task: AdminTask) {
-  return task.date === new Date().toISOString().slice(0, 10);
+  return task.date === todayInHonduras();
 }
 
 function weekDays() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return date;
+    const date = addDaysInHonduras(index);
+    return { date, iso: `${date}T12:00:00.000Z` };
   });
 }
 
@@ -184,6 +182,7 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-kc-cyan">Tareas</p>
           <h1 className="mt-2 font-display text-3xl font-black text-kc-text sm:text-4xl">Agenda comercial</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-kc-muted">Planifica llamadas, reuniones, cotizaciones y seguimientos sin perder vencimientos.</p>
+          <p className="mt-2 text-xs font-bold uppercase tracking-[0.14em] text-kc-cyan">Todas las tareas y recordatorios se calculan con la {HONDURAS_TIME_ZONE_LABEL}.</p>
         </div>
         <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-1">
           <button type="button" onClick={() => setView("list")} className={`min-h-10 rounded-xl px-4 text-sm font-black ${view === "list" ? "bg-kc-cyan/15 text-kc-cyan" : "text-kc-muted"}`}>Lista</button>
@@ -250,11 +249,11 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
       {view === "calendar" ? (
         <section className="grid gap-3 lg:grid-cols-7">
           {weekDays().map((day) => {
-            const key = day.toISOString().slice(0, 10);
+            const key = day.date;
             const dayTasks = filtered.filter((task) => task.date === key);
             return (
               <article key={key} className="kc-admin-card min-h-44 p-4">
-                <p className="font-black text-kc-text">{shortDate(day.toISOString())}</p>
+                <p className="font-black text-kc-text">{shortDate(day.iso)}</p>
                 <div className="mt-3 grid gap-2">
                   {dayTasks.map((task) => (
                     <button key={task.id} type="button" onClick={() => setEditing(task)} className="rounded-xl border border-white/10 bg-kc-bg/55 p-3 text-left transition hover:border-kc-cyan/30">
