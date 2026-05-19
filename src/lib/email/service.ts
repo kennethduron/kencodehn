@@ -17,7 +17,13 @@ export type EmailType = "lead_new" | "task_reminder" | "task_overdue" | "lead_st
 
 export type EmailSendResult = {
   sent: boolean;
-  reason?: "resend_not_configured" | "resend_from_missing" | "email_to_missing" | "resend_send_failed" | "invalid_email_input";
+  reason?:
+    | "resend_not_configured"
+    | "resend_from_missing"
+    | "email_to_missing"
+    | "resend_send_failed"
+    | "invalid_email_input"
+    | "sender_domain_not_allowed";
   id?: string | null;
   logged?: boolean;
 };
@@ -53,6 +59,16 @@ function getResendClient() {
     resend = new Resend(process.env.RESEND_API_KEY);
   }
   return resend;
+}
+
+function getSenderAddress(from: string) {
+  const match = from.match(/<([^>]+)>/);
+  return (match?.[1] ?? from).trim().toLowerCase();
+}
+
+function isAllowedSender(from: string) {
+  const address = getSenderAddress(from);
+  return address.endsWith(`@${site.domain}`);
 }
 
 async function logEmail(input: SendEmailInput, result: EmailSendResult) {
@@ -99,6 +115,10 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
   }
   if (!from) {
     return withLog(parsed.data, { sent: false, reason: "resend_from_missing" });
+  }
+  if (!isAllowedSender(from)) {
+    console.warn("[Ken Code email sender blocked]", getSenderAddress(from));
+    return withLog(parsed.data, { sent: false, reason: "sender_domain_not_allowed" });
   }
   if (!to) {
     return withLog(parsed.data, { sent: false, reason: "email_to_missing" });
