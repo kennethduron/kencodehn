@@ -8,6 +8,7 @@ import type { AdminLead, LeadPriority, LeadStatus } from "@/lib/admin/types";
 import { whatsappLink } from "@/lib/site";
 import { leadPriorityLabels, leadStatusLabels, money, shortDate } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge } from "./status-badge";
+import { Toast, Tooltip } from "./ui";
 
 const statuses = Object.entries(leadStatusLabels) as [LeadStatus, string][];
 const priorities = Object.entries(leadPriorityLabels) as [LeadPriority, string][];
@@ -29,6 +30,7 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
   const [source, setSource] = useState("all");
   const [sort, setSort] = useState<SortKey>("recent");
   const [toast, setToast] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
 
   const projects = useMemo(() => uniqueValues(leads, "project"), [leads]);
   const sources = useMemo(() => uniqueValues(leads, "sourcePath"), [leads]);
@@ -65,10 +67,10 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
     const result = await response.json();
     if (result.ok && result.lead) {
       setLeads((current) => current.map((lead) => (lead.id === id ? result.lead : lead)));
-      showToast("Lead actualizado");
+      showToast("Guardado correctamente.");
       return;
     }
-    showToast(result.message || "No se pudo actualizar");
+    showToast(result.message || "Error al guardar.", "error");
   }
 
   async function createQuickTask(lead: AdminLead) {
@@ -89,24 +91,25 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
         type: "follow_up",
       }),
     });
-    showToast(response.ok ? "Tarea creada para manana" : "No se pudo crear la tarea");
+    showToast(response.ok ? "Tarea creada." : "Error al guardar.", response.ok ? "success" : "error");
   }
 
-  function showToast(message: string) {
+  function showToast(message: string, variant: "success" | "error" | "info" = "success") {
+    setToastVariant(variant);
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
   }
 
   function copy(value: string, label: string) {
     navigator.clipboard?.writeText(value);
-    showToast(`${label} copiado`);
+    showToast(`${label} copiado al portapapeles.`);
   }
 
   const filtersActive = [status, priority, project, locale, source].some((value) => value !== "all") || query.trim() !== "";
 
   return (
     <section className="grid gap-5">
-      {toast ? <div className="fixed right-4 top-20 z-50 rounded-xl border border-kc-cyan/30 bg-kc-bg-soft px-4 py-3 text-sm font-bold text-kc-text shadow-2xl shadow-black/30">{toast}</div> : null}
+      <Toast message={toast} variant={toastVariant} />
 
       <div className="kc-admin-card p-4">
         <div className="grid gap-3 lg:grid-cols-[1fr_repeat(6,minmax(0,170px))]">
@@ -201,9 +204,15 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
                 <td className="px-4 py-4 text-sm text-kc-muted">{lead.followUpAt ? shortDate(lead.followUpAt) : lead.nextAction || "Sin seguimiento"}</td>
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-2">
-                    <Link href={`/admin/leads/${lead.id}`} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-kc-cyan" aria-label="Ver detalle"><ExternalLink size={16} /></Link>
-                    <Link href={whatsappLink(`Hola ${lead.name}. Te contacto de Ken Code sobre tu solicitud para ${lead.project}.`)} target="_blank" rel="noopener noreferrer" className="grid h-10 w-10 place-items-center rounded-xl border border-kc-turquoise/30 text-kc-turquoise" aria-label="WhatsApp"><WhatsAppIcon size={16} /></Link>
-                    <button type="button" onClick={() => createQuickTask(lead)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-kc-text" aria-label="Crear tarea"><CalendarPlus size={16} /></button>
+                    <Tooltip label="Ver detalle">
+                      <Link href={`/admin/leads/${lead.id}`} title="Ver detalle" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-kc-cyan" aria-label="Ver detalle"><ExternalLink size={16} /></Link>
+                    </Tooltip>
+                    <Tooltip label="Abrir WhatsApp">
+                      <Link href={whatsappLink(`Hola ${lead.name}. Te contacto de Ken Code sobre tu solicitud para ${lead.project}.`)} target="_blank" rel="noopener noreferrer" title="Abrir WhatsApp" className="grid h-10 w-10 place-items-center rounded-xl border border-kc-turquoise/30 text-kc-turquoise" aria-label="Abrir WhatsApp"><WhatsAppIcon size={16} /></Link>
+                    </Tooltip>
+                    <Tooltip label="Crear tarea">
+                      <button type="button" onClick={() => createQuickTask(lead)} title="Crear tarea" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-kc-text" aria-label="Crear tarea"><CalendarPlus size={16} /></button>
+                    </Tooltip>
                   </div>
                 </td>
               </tr>

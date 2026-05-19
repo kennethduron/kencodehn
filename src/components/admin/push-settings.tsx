@@ -4,6 +4,7 @@ import { Bell, BellOff, CheckCircle2, Send, ShieldAlert, Smartphone } from "luci
 import { useEffect, useMemo, useState } from "react";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { getFirebaseClient } from "@/lib/firebase/client";
+import { ConfirmDialog, Toast } from "./ui";
 
 type Device = {
   id: string;
@@ -22,6 +23,9 @@ export function PushSettings() {
   const [token, setToken] = useState<string | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [busy, setBusy] = useState(false);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const [toast, setToast] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
   const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
 
@@ -101,10 +105,12 @@ export function PushSettings() {
       setToken(nextToken);
       setState("active");
       setMessage("Notificaciones activadas en este dispositivo.");
+      showToast("Guardado correctamente.");
       await loadDevices();
     } catch (error) {
       setState("error");
       setMessage(error instanceof Error ? error.message : "No se pudo activar push.");
+      showToast("Error al guardar.", "error");
     } finally {
       setBusy(false);
     }
@@ -116,6 +122,7 @@ export function PushSettings() {
       const response = await fetch("/api/admin/push/test", { method: "POST" });
       const data = await response.json();
       setMessage(response.ok ? `Prueba enviada. Dispositivos: ${data.result?.sent ?? 0}.` : data.message || "No se pudo enviar prueba.");
+      showToast(response.ok ? "Notificacion de prueba enviada." : "No se pudo enviar. Intentalo nuevamente.", response.ok ? "success" : "error");
     } finally {
       setBusy(false);
     }
@@ -136,14 +143,25 @@ export function PushSettings() {
       setState("pending");
       setToken(null);
       setMessage("Dispositivo desactivado para futuros push.");
+      setConfirmDeactivate(false);
+      showToast("Eliminado correctamente.");
       await loadDevices();
+    } catch {
+      showToast("No se pudo eliminar. Intentalo nuevamente.", "error");
     } finally {
       setBusy(false);
     }
   }
 
+  function showToast(nextMessage: string, variant: "success" | "error" | "info" = "success") {
+    setToastVariant(variant);
+    setToast(nextMessage);
+    window.setTimeout(() => setToast(""), 2200);
+  }
+
   return (
     <div className="grid gap-6">
+      <Toast message={toast} variant={toastVariant} />
       <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
@@ -165,7 +183,7 @@ export function PushSettings() {
           <button type="button" onClick={sendTest} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-kc-text">
             <Send size={17} /> Enviar notificacion de prueba
           </button>
-          <button type="button" onClick={deactivate} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-300/25 bg-rose-400/10 px-4 text-sm font-bold text-rose-100">
+          <button type="button" onClick={() => setConfirmDeactivate(true)} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-300/25 bg-rose-400/10 px-4 text-sm font-bold text-rose-100">
             <BellOff size={17} /> Desactivar este dispositivo
           </button>
         </div>
@@ -187,6 +205,17 @@ export function PushSettings() {
           ))}
         </div>
       </section>
+      <ConfirmDialog
+        open={confirmDeactivate}
+        title="Desactivar dispositivo"
+        description="Estas seguro de que deseas eliminar este dispositivo de las notificaciones push? Esta accion no se puede deshacer."
+        confirmText="Si, eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={busy}
+        onCancel={() => setConfirmDeactivate(false)}
+        onConfirm={deactivate}
+      />
     </div>
   );
 }

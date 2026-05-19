@@ -9,6 +9,7 @@ import { mapActivityTone } from "@/lib/admin/activity";
 import { whatsappLink } from "@/lib/site";
 import { dateTime, leadPriorityLabels, leadStatusLabels, money, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge, TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
+import { Toast, Tooltip } from "./ui";
 
 const suggestedTags = ["urgente", "restaurante", "e-commerce", "seguimiento", "cotizacion", "interesado", "frio", "caliente"];
 
@@ -33,6 +34,7 @@ export function LeadDetail({
   const [taskTime, setTaskTime] = useState("09:00");
   const [tagInput, setTagInput] = useState("");
   const [toast, setToast] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
   const [isSavingNote, setIsSavingNote] = useState(false);
 
   const timeline = useMemo(() => {
@@ -70,10 +72,10 @@ export function LeadDetail({
     if (result.ok && result.lead) {
       setLead(result.lead);
       await refreshActivity();
-      showToast("Lead actualizado");
+      showToast("Guardado correctamente.");
       return;
     }
-    showToast(result.message || "No se pudo actualizar");
+    showToast(result.message || "Error al guardar.", "error");
   }
 
   async function addNote(event: FormEvent<HTMLFormElement>) {
@@ -90,10 +92,10 @@ export function LeadDetail({
       setNotes(result.notes);
       setNoteText("");
       await refreshActivity();
-      showToast("Nota agregada");
+      showToast("Nota agregada.");
       return;
     }
-    showToast(result.message || "No se pudo agregar la nota");
+    showToast(result.message || "Error al guardar.", "error");
   }
 
   async function addTask(event: FormEvent<HTMLFormElement>) {
@@ -123,10 +125,10 @@ export function LeadDetail({
       setTaskDate("");
       setTaskTime("09:00");
       await refreshActivity();
-      showToast("Tarea creada");
+      showToast("Tarea creada.");
       return;
     }
-    showToast(result.message || "No se pudo crear la tarea");
+    showToast(result.message || "Error al guardar.", "error");
   }
 
   function addTag(value: string) {
@@ -142,17 +144,18 @@ export function LeadDetail({
 
   function copy(value: string, label: string) {
     navigator.clipboard?.writeText(value);
-    showToast(`${label} copiado`);
+    showToast(`${label} copiado al portapapeles.`);
   }
 
-  function showToast(message: string) {
+  function showToast(message: string, variant: "success" | "error" | "info" = "success") {
+    setToastVariant(variant);
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
   }
 
   return (
     <div className="grid gap-6">
-      {toast ? <div className="fixed right-4 top-20 z-50 rounded-xl border border-kc-cyan/30 bg-kc-bg-soft px-4 py-3 text-sm font-bold text-kc-text shadow-2xl shadow-black/30">{toast}</div> : null}
+      <Toast message={toast} variant={toastVariant} />
 
       <Link href="/admin/leads" className="inline-flex w-fit items-center gap-2 text-sm font-black text-kc-cyan hover:text-kc-turquoise">
         <ArrowLeft size={16} aria-hidden="true" />
@@ -266,7 +269,9 @@ export function LeadDetail({
             </div>
             <form className="mt-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); addTag(tagInput); }}>
               <input value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="Nuevo tag" className="min-h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm text-kc-text" />
-              <button className="grid h-11 w-11 place-items-center rounded-xl bg-kc-electric text-white" aria-label="Agregar tag"><Plus size={17} /></button>
+              <Tooltip label="Agregar tag">
+                <button className="grid h-11 w-11 place-items-center rounded-xl bg-kc-electric text-white" aria-label="Agregar tag" title="Agregar tag"><Plus size={17} /></button>
+              </Tooltip>
             </form>
             <div className="mt-3 flex flex-wrap gap-2">
               {suggestedTags.filter((tag) => !lead.tags.includes(tag)).map((tag) => (

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Check, CheckCheck, Search, Trash2, Undo2 } from "lucide-react";
 import type { AdminNotification } from "@/lib/admin/types";
 import { notificationSeverityLabels, notificationTypeLabels, timeAgo } from "./admin-labels";
+import { ConfirmDialog, Toast } from "./ui";
 
 const severityClass: Record<AdminNotification["severity"], string> = {
   info: "border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan",
@@ -20,6 +21,9 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
   const [severityFilter, setSeverityFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
+  const [confirmDelete, setConfirmDelete] = useState<AdminNotification | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const types = useMemo(() => Array.from(new Set(notifications.map((notification) => notification.type))).sort(), [notifications]);
   const filtered = useMemo(() => {
@@ -38,7 +42,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
       setNotifications(result.notifications);
       return true;
     }
-    showToast(result.message || "No se pudo completar la accion");
+    showToast(result.message || "No se pudo completar la accion", "error");
     return false;
   }
 
@@ -50,7 +54,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
     });
     const result = await response.json();
     if (await refreshFromResult(result)) {
-      showToast(read ? "Marcada como leida" : "Marcada como no leida");
+      showToast(read ? "Notificacion marcada como leida." : "Notificacion marcada como no leida.");
     }
   }
 
@@ -62,19 +66,23 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
     });
     const result = await response.json();
     if (await refreshFromResult(result)) {
-      showToast("Todas marcadas como leidas");
+      showToast("Todas marcadas como leidas.");
     }
   }
 
   async function remove(id: string) {
+    setIsDeleting(true);
     const response = await fetch(`/api/admin/notifications/${id}`, { method: "DELETE" });
     const result = await response.json();
+    setIsDeleting(false);
     if (await refreshFromResult(result)) {
-      showToast("Notificacion eliminada");
+      setConfirmDelete(null);
+      showToast("Eliminado correctamente.");
     }
   }
 
-  function showToast(message: string) {
+  function showToast(message: string, variant: "success" | "error" | "info" = "success") {
+    setToastVariant(variant);
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
   }
@@ -83,7 +91,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
 
   return (
     <div className="grid gap-6">
-      {toast ? <div className="fixed right-4 top-20 z-50 rounded-xl border border-kc-cyan/30 bg-kc-bg-soft px-4 py-3 text-sm font-bold text-kc-text shadow-2xl shadow-black/30">{toast}</div> : null}
+      <Toast message={toast} variant={toastVariant} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -136,7 +144,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
                   {notification.read ? <Undo2 size={16} /> : <Check size={16} />}
                   {notification.read ? "No leida" : "Leida"}
                 </button>
-                <button type="button" onClick={() => remove(notification.id)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 text-sm font-black text-rose-100">
+                <button type="button" onClick={() => setConfirmDelete(notification)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 text-sm font-black text-rose-100">
                   <Trash2 size={16} /> Eliminar
                 </button>
               </div>
@@ -150,6 +158,17 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
           </div>
         ) : null}
       </section>
+      <ConfirmDialog
+        open={Boolean(confirmDelete)}
+        title="Eliminar notificacion"
+        description="Estas seguro de que deseas eliminar esto? Esta accion no se puede deshacer."
+        confirmText="Si, eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={isDeleting}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => confirmDelete ? remove(confirmDelete.id) : undefined}
+      />
     </div>
   );
 }

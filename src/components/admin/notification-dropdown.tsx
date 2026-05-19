@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import type { AdminNotification } from "@/lib/admin/types";
 import { notificationSeverityLabels, notificationTypeLabels, timeAgo } from "./admin-labels";
+import { Tooltip } from "./ui";
 
 const severityClass: Record<AdminNotification["severity"], string> = {
   info: "bg-kc-cyan/10 text-kc-cyan border-kc-cyan/25",
@@ -80,10 +81,12 @@ export function NotificationDropdown({ initialUnreadCount = 0 }: { initialUnread
 
   return (
     <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen((value) => !value)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-kc-text transition hover:border-kc-cyan/35 hover:text-kc-cyan" aria-label="Notificaciones" aria-expanded={open}>
-        <Bell size={18} aria-hidden="true" />
-        {unreadCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-400 px-1 text-[0.64rem] font-black text-white">{unreadCount}</span> : null}
-      </button>
+      <Tooltip label="Notificaciones">
+        <button type="button" onClick={() => setOpen((value) => !value)} title="Notificaciones" className="relative grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-kc-text transition hover:border-kc-cyan/35 hover:text-kc-cyan" aria-label="Notificaciones" aria-expanded={open}>
+          <Bell size={18} aria-hidden="true" />
+          {unreadCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-400 px-1 text-[0.64rem] font-black text-white">{unreadCount}</span> : null}
+        </button>
+      </Tooltip>
 
       {open ? (
         <div className="absolute right-0 top-14 z-50 w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-white/10 bg-kc-bg-soft shadow-2xl shadow-black/40">

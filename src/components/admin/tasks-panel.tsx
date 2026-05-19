@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import type { AdminLead, AdminTask, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 import { shortDate, taskPriorityLabels, taskStatusLabels, taskTypeLabels, timeAgo } from "./admin-labels";
 import { TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
+import { ConfirmDialog, Toast, Tooltip } from "./ui";
 
 type ViewMode = "list" | "calendar";
 type DateFilter = "all" | "today" | "overdue" | "upcoming";
@@ -50,7 +51,9 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
   const [draft, setDraft] = useState<Partial<AdminTask>>(emptyTask);
   const [editing, setEditing] = useState<AdminTask | null>(null);
   const [toast, setToast] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
   const [confirmDelete, setConfirmDelete] = useState<AdminTask | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const stats = useMemo(() => {
     const pending = tasks.filter((task) => task.status !== "completed").length;
@@ -94,10 +97,10 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
     if (result.ok) {
       setTasks(result.tasks);
       setDraft(emptyTask);
-      showToast("Tarea creada");
+      showToast("Tarea creada correctamente.");
       return;
     }
-    showToast(result.message || "No se pudo crear");
+    showToast(result.message || "No se pudo guardar. Intentalo nuevamente.", "error");
   }
 
   async function update(id: string, updates: Partial<AdminTask>) {
@@ -112,25 +115,28 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
     if (result.ok) {
       setTasks(result.tasks);
       setEditing(null);
-      showToast("Tarea actualizada");
+      showToast(updates.status === "completed" ? "Tarea completada correctamente." : "Guardado correctamente.");
       return;
     }
-    showToast(result.message || "No se pudo actualizar");
+    showToast(result.message || "Error al guardar.", "error");
   }
 
   async function remove(id: string) {
+    setIsDeleting(true);
     const response = await fetch(`/api/admin/tasks/${id}`, { method: "DELETE" });
     const result = await response.json();
+    setIsDeleting(false);
     if (result.ok) {
       setTasks(result.tasks);
       setConfirmDelete(null);
-      showToast("Tarea eliminada");
+      showToast("Eliminado correctamente.");
       return;
     }
-    showToast(result.message || "No se pudo eliminar");
+    showToast(result.message || "No se pudo eliminar. Intentalo nuevamente.", "error");
   }
 
-  function showToast(message: string) {
+  function showToast(message: string, variant: "success" | "error" | "info" = "success") {
+    setToastVariant(variant);
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
   }
@@ -171,7 +177,7 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
 
   return (
     <div className="grid gap-6">
-      {toast ? <div className="fixed right-4 top-20 z-50 rounded-xl border border-kc-cyan/30 bg-kc-bg-soft px-4 py-3 text-sm font-bold text-kc-text shadow-2xl shadow-black/30">{toast}</div> : null}
+      <Toast message={toast} variant={toastVariant} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -274,7 +280,9 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
           <form onSubmit={(event) => { event.preventDefault(); update(editing.id, editing); }} className="kc-admin-card grid w-full max-w-2xl gap-3 p-5">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-display text-2xl font-black text-kc-text">Editar tarea</h2>
-              <button type="button" onClick={() => setEditing(null)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10"><X size={17} /></button>
+              <Tooltip label="Cerrar">
+                <button type="button" onClick={() => setEditing(null)} title="Cerrar" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10" aria-label="Cerrar"><X size={17} /></button>
+              </Tooltip>
             </div>
             <input value={editing.title} onChange={(event) => setEditing({ ...editing, title: event.target.value })} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-kc-text" required />
             <textarea value={editing.description} onChange={(event) => setEditing({ ...editing, description: event.target.value })} className="min-h-24 rounded-xl border border-white/10 bg-kc-bg px-4 py-3 text-kc-text" />
@@ -300,18 +308,17 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
         </div>
       ) : null}
 
-      {confirmDelete ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-sm">
-          <div className="kc-admin-card w-full max-w-md p-5">
-            <h2 className="font-display text-2xl font-black text-kc-text">Eliminar tarea</h2>
-            <p className="mt-2 text-sm leading-6 text-kc-muted">Esta accion eliminara "{confirmDelete.title}".</p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setConfirmDelete(null)} className="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-black text-kc-text">Cancelar</button>
-              <button type="button" onClick={() => remove(confirmDelete.id)} className="min-h-11 rounded-xl bg-rose-300 px-4 text-sm font-black text-kc-bg">Eliminar</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        open={Boolean(confirmDelete)}
+        title="Eliminar tarea"
+        description={`Estas seguro de que deseas eliminar "${confirmDelete?.title ?? "esta tarea"}"? Esta accion no se puede deshacer.`}
+        confirmText="Si, eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={isDeleting}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => confirmDelete ? remove(confirmDelete.id) : undefined}
+      />
     </div>
   );
 }

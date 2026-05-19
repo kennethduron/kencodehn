@@ -6,6 +6,7 @@ import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Settings, Sparkle
 import { useState } from "react";
 import type { AdminUser } from "@/lib/admin/types";
 import { NotificationDropdown } from "./notification-dropdown";
+import { Tooltip } from "./ui";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: BarChart3 },
@@ -75,9 +76,11 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
             <aside className="relative h-full w-[min(86vw,320px)] border-r border-white/10 bg-kc-bg-soft p-5 shadow-2xl">
               <div className="flex items-center justify-between gap-3">
                 <Link href="/admin" onClick={() => setMenuOpen(false)} className="font-display text-2xl font-black text-kc-text">Ken Code</Link>
-                <button type="button" onClick={() => setMenuOpen(false)} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04]" aria-label="Cerrar menu">
-                  <X size={19} aria-hidden="true" />
-                </button>
+                <Tooltip label="Cerrar menu">
+                  <button type="button" onClick={() => setMenuOpen(false)} title="Cerrar menu" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04]" aria-label="Cerrar menu">
+                    <X size={19} aria-hidden="true" />
+                  </button>
+                </Tooltip>
               </div>
               {nav}
             </aside>
@@ -88,9 +91,11 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
           <header className="sticky top-0 z-40 border-b border-white/10 bg-kc-bg/86 backdrop-blur-xl">
             <div className="flex min-h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
               <div className="flex min-w-0 items-center gap-3">
-                <button type="button" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-kc-text lg:hidden" aria-label="Abrir menu">
-                  <Menu size={20} aria-hidden="true" />
-                </button>
+                <Tooltip label="Abrir menu">
+                  <button type="button" onClick={() => setMenuOpen(true)} title="Abrir menu" className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-kc-text lg:hidden" aria-label="Abrir menu">
+                    <Menu size={20} aria-hidden="true" />
+                  </button>
+                </Tooltip>
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-[0.22em] text-kc-cyan">Panel administrativo</p>
                   <p className="truncate text-sm text-kc-muted">{admin.email}</p>
@@ -102,14 +107,12 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
                   <span>CRM listo</span>
                 </div>
                 <NotificationDropdown initialUnreadCount={unreadCount} />
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-bold text-kc-text transition hover:border-rose-300/45 hover:text-rose-200 sm:px-4"
-                >
-                  <LogOut size={17} aria-hidden="true" />
-                  <span className="hidden sm:inline">Salir</span>
-                </button>
+                <Tooltip label="Cerrar sesion">
+                  <button type="button" onClick={logout} title="Cerrar sesion" aria-label="Cerrar sesion" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-bold text-kc-text transition hover:border-rose-300/45 hover:text-rose-200 sm:px-4">
+                    <LogOut size={17} aria-hidden="true" />
+                    <span className="hidden sm:inline">Salir</span>
+                  </button>
+                </Tooltip>
               </div>
             </div>
           </header>
