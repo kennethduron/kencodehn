@@ -103,9 +103,9 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
         }),
       });
 
-      const result = (await response.json()) as { ok?: boolean };
+      const result = (await response.json().catch(() => null)) as { ok?: boolean; persisted?: boolean; message?: string } | null;
 
-      if (!response.ok || !result.ok) {
+      if (!response.ok || !result?.ok || result.persisted !== true) {
         throw new Error("Lead request failed");
       }
 

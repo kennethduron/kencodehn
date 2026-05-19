@@ -7,17 +7,35 @@ import { sendPushToAdmins } from "@/lib/push/service";
 
 export const runtime = "nodejs";
 
+function optionalText(fallback = "") {
+  return z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((value) => value || fallback);
+}
+
 const leadSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  business: z.string().trim().min(2).max(160),
+  name: z.string().trim().min(1).max(120),
+  business: optionalText("Sin negocio especificado").pipe(z.string().max(160)),
   email: z.string().trim().email().max(180),
-  phone: z.string().trim().min(6).max(40),
-  project: z.string().trim().min(2).max(120),
-  budget: z.string().trim().max(80).default(""),
-  message: z.string().trim().min(10).max(2000),
+  phone: z.string().trim().min(3).max(40),
+  project: optionalText("Solicitud web").pipe(z.string().max(120)),
+  budget: optionalText("").pipe(z.string().max(80)),
+  message: optionalText("Sin mensaje adicional.").pipe(z.string().max(2000)),
   locale: z.enum(["es", "en"]).default("es"),
   sourcePath: z.string().trim().max(240).default("/cotizar"),
 });
+
+async function safeSecondary<T>(label: string, action: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await action();
+  } catch (error) {
+    console.warn(`[Ken Code lead secondary failed] ${label}`, error);
+    return fallback;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,69 +62,83 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    try {
-      const doc = await db.collection("leads").add(lead);
-      const now = new Date().toISOString();
-      await db.collection("notifications").add({
-        title: "Nueva solicitud recibida",
-        message: `Nueva solicitud recibida de ${lead.name} para ${lead.project}.`,
-        type: "lead_new",
-        severity: "success",
-        leadId: doc.id,
-        taskId: null,
-        actionUrl: `/admin/leads/${doc.id}`,
-        read: false,
-        readAt: null,
-        deletedAt: null,
-        createdAt: now,
-      });
-      await db.collection("activityLogs").add({
-        entityType: "lead",
-        entityId: doc.id,
-        leadId: doc.id,
-        action: "lead_created",
-        before: null,
-        after: { source: "public_website", notification: true },
-        userEmail: "system",
-        createdAt: now,
-      });
-      const email = await sendLeadNotificationEmail(lead, doc.id);
-      const push = await sendPushToAdmins({
-        type: "lead_new",
-        title: "Nuevo lead recibido",
-        message: `${lead.name} solicito ${lead.project}.`,
-        actionUrl: `/admin/leads/${doc.id}`,
-        relatedLeadId: doc.id,
-      });
+    const doc = await db.collection("leads").add(lead);
+    const now = new Date().toISOString();
 
-      return NextResponse.json({
-        ok: true,
-        persisted: true,
-        leadId: doc.id,
-        notificationCreated: true,
-        email,
-        push,
-        message: "Lead saved.",
-      });
-    } catch (error) {
-      console.warn("[Ken Code lead pending Firestore write]", error);
-      console.info("[Ken Code lead pending CRM persistence]", lead);
-      return NextResponse.json(
-        {
-          ok: true,
-          persisted: false,
-          leadId: `pending_${Date.now()}`,
-          reason: "firebase_write_unavailable",
-          message: "Lead accepted. Firebase persistence is pending configuration.",
-        },
-        { status: 202 },
-      );
-    }
+    const notificationId = await safeSecondary(
+      "notification",
+      async () => {
+        const notificationDoc = await db.collection("notifications").add({
+          title: "Nueva solicitud recibida",
+          message: `Nueva solicitud recibida de ${lead.name} para ${lead.project}.`,
+          type: "lead_new",
+          severity: "success",
+          leadId: doc.id,
+          taskId: null,
+          actionUrl: `/admin/leads/${doc.id}`,
+          read: false,
+          readAt: null,
+          deletedAt: null,
+          createdAt: now,
+        });
+        return notificationDoc.id;
+      },
+      null,
+    );
+
+    await safeSecondary(
+      "activityLog",
+      () =>
+        db.collection("activityLogs").add({
+          entityType: "lead",
+          entityId: doc.id,
+          leadId: doc.id,
+          action: "lead_created",
+          before: null,
+          after: { source: "public_website", notificationId },
+          userEmail: "system",
+          createdAt: now,
+        }),
+      null,
+    );
+
+    const email = await safeSecondary(
+      "email",
+      () => sendLeadNotificationEmail(lead, doc.id),
+      { sent: false as const, reason: "resend_send_failed" as const, logged: false },
+    );
+    const push = await safeSecondary(
+      "push",
+      () =>
+        sendPushToAdmins({
+          type: "lead_new",
+          title: "Nuevo lead recibido",
+          message: `${lead.name} solicito ${lead.project}.`,
+          actionUrl: `/admin/leads/${doc.id}`,
+          relatedLeadId: doc.id,
+        }),
+      { sent: 0, failed: 0, reason: "push_failed" },
+    );
+
+    return NextResponse.json({
+      ok: true,
+      persisted: true,
+      leadId: doc.id,
+      notificationCreated: Boolean(notificationId),
+      email,
+      push,
+      message: "Lead saved.",
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.warn(
+        "[Ken Code lead validation failed]",
+        error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+      );
       return NextResponse.json(
         {
           ok: false,
+          persisted: false,
           message: "Invalid lead payload.",
           issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
         },
@@ -118,6 +150,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
+        persisted: false,
         message: "Unable to process lead right now.",
       },
       { status: 500 },
