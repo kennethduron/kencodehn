@@ -7,7 +7,6 @@ import { JsonLd } from "@/components/site/json-ld";
 import { PageHero } from "@/components/site/page-hero";
 import { Reveal } from "@/components/site/reveal";
 import { SectionIntro } from "@/components/site/section-intro";
-import { SocialLinks } from "@/components/site/social-links";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import { getContent, type Project } from "@/content/site-content";
 import { absoluteAssetUrl, absoluteUrl, site, whatsappLink, type Locale } from "@/lib/site";
@@ -436,14 +435,6 @@ export function ContactView({ locale }: { locale: Locale }) {
               ? "Usa el canal que prefieras. El formulario queda para solicitudes formales y seguimiento del futuro panel."
               : "Use the channel you prefer. The form is for formal requests and future panel follow-up."}
           </p>
-          <SocialLinks
-            className="mt-5"
-            whatsappMessage={
-              locale === "es"
-                ? "Hola Ken Code. Quiero informacion para una solucion web profesional. Podemos trabajar de forma remota."
-                : "Hello Ken Code. I want information about a professional web solution. We can work remotely."
-            }
-          />
           <div className="mt-6 grid gap-3">
           {contactItems.map((item) => {
             const Icon = item.icon;
