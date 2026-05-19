@@ -18,16 +18,27 @@ function optionalText(fallback = "") {
 }
 
 const leadSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  business: optionalText("Sin negocio especificado").pipe(z.string().max(160)),
+  name: z.string().trim().min(2).max(120),
+  business: optionalText("No especificado").pipe(z.string().max(160)),
   email: z.union([z.string().trim().email().max(180), z.literal(""), z.null(), z.undefined()]).transform((value) => value || ""),
-  phone: z.string().trim().min(3).max(40),
+  phone: z.string().trim().min(8).max(40),
   project: optionalText("Solicitud web").pipe(z.string().max(120)),
   budget: optionalText("Por definir").pipe(z.string().max(80)),
-  message: z.string().trim().min(5).max(2000),
+  message: z.string().trim().min(3).max(2000),
   locale: z.enum(["es", "en"]).default("es"),
   sourcePath: z.string().trim().max(240).default("/cotizar"),
 });
+
+function normalizeLeadPayload(payload: unknown) {
+  const input = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
+  return {
+    ...input,
+    project: input.project ?? input.projectType ?? input.project_type,
+    locale: input.locale ?? input.language ?? "es",
+    sourcePath: input.sourcePath ?? (input.source ? `/${String(input.source).replace(/^\/+/, "")}` : undefined),
+    budget: input.budget ?? "Por definir",
+  };
+}
 
 async function safeSecondary<T>(label: string, action: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -40,7 +51,7 @@ async function safeSecondary<T>(label: string, action: () => Promise<T>, fallbac
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await request.json();
+    const payload = normalizeLeadPayload(await request.json());
     const input = leadSchema.parse(payload);
     const lead = createLeadRecord(input, {
       userAgent: request.headers.get("user-agent") ?? "unknown",
