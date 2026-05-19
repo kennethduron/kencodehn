@@ -3,6 +3,7 @@ import { addActivityLog, listTasks } from "@/lib/admin/data";
 import type { AdminTask, AdminUser } from "@/lib/admin/types";
 import { sendTaskOverdueEmail, sendTaskReminderEmail } from "@/lib/email/service";
 import { sendPushToAdmins } from "@/lib/push/service";
+import { getAdminSettings } from "@/lib/admin/settings";
 
 type ReminderKind = "1day" | "1hour" | "due" | "overdue";
 
@@ -25,13 +26,13 @@ async function safeStep(label: string, taskId: string, action: () => Promise<unk
   }
 }
 
-async function dispatchTaskReminder(task: AdminTask, kind: ReminderKind, admin: AdminUser) {
+async function dispatchTaskReminder(task: AdminTask, kind: ReminderKind, admin: AdminUser, internalNotificationsEnabled: boolean) {
   const db = getAdminDb();
   if (!db) return false;
   const meta = reminderText(kind);
   const now = new Date().toISOString();
   const ref = db.collection("tasks").doc(task.id);
-  const notificationRef = db.collection("notifications").doc();
+  const notificationRef = internalNotificationsEnabled ? db.collection("notifications").doc() : null;
   const actionUrl = task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas";
   const message = `${task.title}${task.leadName ? ` para ${task.leadName}` : ""}.`;
   const notificationType = kind === "due" ? "task_due" : kind === "overdue" ? "task_overdue" : "task_reminder";
@@ -43,19 +44,21 @@ async function dispatchTaskReminder(task: AdminTask, kind: ReminderKind, admin: 
 
   const batch = db.batch();
   batch.set(ref, taskUpdate, { merge: true });
-  batch.set(notificationRef, {
-    title: meta.title,
-    message,
-    type: notificationType,
-    severity,
-    leadId: task.leadId ?? null,
-    taskId: task.id,
-    actionUrl,
-    read: false,
-    readAt: null,
-    deletedAt: null,
-    createdAt: now,
-  });
+  if (notificationRef) {
+    batch.set(notificationRef, {
+      title: meta.title,
+      message,
+      type: notificationType,
+      severity,
+      leadId: task.leadId ?? null,
+      taskId: task.id,
+      actionUrl,
+      read: false,
+      readAt: null,
+      deletedAt: null,
+      createdAt: now,
+    });
+  }
   await batch.commit();
 
   await safeStep("email", task.id, () =>
@@ -81,7 +84,7 @@ async function dispatchTaskReminder(task: AdminTask, kind: ReminderKind, admin: 
       taskId: task.id,
       action: kind === "overdue" ? "task_overdue" : "task_reminder_sent",
       before: { status: task.status },
-      after: { reminder: kind, sentAt: now, notificationId: notificationRef.id },
+      after: { reminder: kind, sentAt: now, notificationId: notificationRef?.id ?? null },
       userEmail: admin.email,
     }),
   );
@@ -90,6 +93,7 @@ async function dispatchTaskReminder(task: AdminTask, kind: ReminderKind, admin: 
 
 export async function processTaskReminders(admin: AdminUser = { uid: "system", email: "cron@kencodehn.com", role: "admin" }) {
   const tasks = await listTasks();
+  const settings = await getAdminSettings();
   const now = Date.now();
   const results = { checked: tasks.length, reminder1Day: 0, reminder1Hour: 0, due: 0, overdue: 0, failed: 0 };
 
@@ -100,20 +104,20 @@ export async function processTaskReminders(admin: AdminUser = { uid: "system", e
     const diff = due - now;
 
     try {
-      if (diff > hour && diff <= day && !task.reminder1DaySentAt) {
-        if (await dispatchTaskReminder(task, "1day", admin)) results.reminder1Day += 1;
+      if (diff > hour && diff <= day && !task.reminder1DaySentAt && settings.taskReminder1DayEnabled) {
+        if (await dispatchTaskReminder(task, "1day", admin, settings.internalNotificationsEnabled)) results.reminder1Day += 1;
         continue;
       }
-      if (diff > 0 && diff <= hour && !task.reminder1HourSentAt) {
-        if (await dispatchTaskReminder(task, "1hour", admin)) results.reminder1Hour += 1;
+      if (diff > 0 && diff <= hour && !task.reminder1HourSentAt && settings.taskReminder1HourEnabled) {
+        if (await dispatchTaskReminder(task, "1hour", admin, settings.internalNotificationsEnabled)) results.reminder1Hour += 1;
         continue;
       }
-      if (diff <= 0 && diff >= -10 * minute && !task.dueNotificationSentAt) {
-        if (await dispatchTaskReminder(task, "due", admin)) results.due += 1;
+      if (diff <= 0 && diff >= -10 * minute && !task.dueNotificationSentAt && settings.taskDueEnabled) {
+        if (await dispatchTaskReminder(task, "due", admin, settings.internalNotificationsEnabled)) results.due += 1;
         continue;
       }
-      if (diff < 0 && !task.overdueNotifiedAt) {
-        if (await dispatchTaskReminder(task, "overdue", admin)) results.overdue += 1;
+      if (diff < 0 && !task.overdueNotifiedAt && settings.taskOverdueEnabled) {
+        if (await dispatchTaskReminder(task, "overdue", admin, settings.internalNotificationsEnabled)) results.overdue += 1;
       }
     } catch (error) {
       results.failed += 1;

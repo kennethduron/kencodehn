@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { z } from "zod";
 import type { AdminLead, AdminTask, LeadStatus } from "@/lib/admin/types";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { getAdminSettings } from "@/lib/admin/settings";
 import type { LeadRecord } from "@/lib/leads";
 import { site } from "@/lib/site";
 import {
@@ -23,7 +24,8 @@ export type EmailSendResult = {
     | "email_to_missing"
     | "resend_send_failed"
     | "invalid_email_input"
-    | "sender_domain_not_allowed";
+    | "sender_domain_not_allowed"
+    | "email_notifications_disabled";
   id?: string | null;
   logged?: boolean;
 };
@@ -109,6 +111,11 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
   }
   const from = process.env.RESEND_FROM_EMAIL;
   const client = getResendClient();
+  const settings = await getAdminSettings();
+
+  if (!settings.emailNotificationsEnabled) {
+    return withLog(parsed.data, { sent: false, reason: "email_notifications_disabled" });
+  }
 
   if (!client) {
     return withLog(parsed.data, { sent: false, reason: "resend_not_configured" });

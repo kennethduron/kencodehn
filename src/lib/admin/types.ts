@@ -7,7 +7,23 @@ export type TaskType = "call" | "whatsapp" | "email" | "meeting" | "proposal" | 
 export type AdminUser = {
   uid: string;
   email: string;
-  role: "owner" | "admin";
+  role: "owner" | "admin" | "manager" | "viewer";
+  permissions?: string[];
+};
+
+export type AdminSettings = {
+  emailNotificationsEnabled: boolean;
+  pushNotificationsEnabled: boolean;
+  internalNotificationsEnabled: boolean;
+  taskReminder1DayEnabled: boolean;
+  taskReminder1HourEnabled: boolean;
+  taskDueEnabled: boolean;
+  taskOverdueEnabled: boolean;
+  dailySummaryEnabled: boolean;
+  notificationSoundEnabled: boolean;
+  compactModeEnabled: boolean;
+  updatedAt: string | null;
+  updatedBy: string | null;
 };
 
 export type AdminLead = {

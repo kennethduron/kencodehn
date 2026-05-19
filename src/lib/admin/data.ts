@@ -3,6 +3,7 @@ import { getAdminDb } from "@/lib/firebase/admin";
 import { formatActivityMessage, formatActivityTitle } from "@/lib/admin/activity";
 import { sendLeadStatusEmail, sendTaskOverdueEmail } from "@/lib/email/service";
 import { sendPushToAdmins } from "@/lib/push/service";
+import { getAdminSettings } from "@/lib/admin/settings";
 import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 
 function toIso(value: unknown): string | null {
@@ -272,6 +273,7 @@ export async function checkOverdueTasks(admin?: AdminUser) {
   if (!db) {
     return [];
   }
+  const settings = await getAdminSettings();
   const now = new Date();
   const snapshot = await db.collection("tasks").where("status", "in", ["pending", "in_progress"]).limit(200).get();
   const changed: string[] = [];
@@ -283,15 +285,17 @@ export async function checkOverdueTasks(admin?: AdminUser) {
     }
     const notifiedAt = now.toISOString();
     await doc.ref.set({ status: "overdue", overdueNotifiedAt: notifiedAt, updatedAt: notifiedAt }, { merge: true });
-    await createNotification({
-      title: "Tarea vencida",
-      message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
-      type: "task_overdue",
-      severity: "danger",
-      leadId: task.leadId,
-      taskId: task.id,
-      actionUrl: task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas",
-    });
+    if (settings.taskOverdueEnabled) {
+      await createNotification({
+        title: "Tarea vencida",
+        message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
+        type: "task_overdue",
+        severity: "danger",
+        leadId: task.leadId,
+        taskId: task.id,
+        actionUrl: task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas",
+      });
+    }
     await addActivityLog({
       entityType: "task",
       entityId: task.id,
@@ -302,15 +306,17 @@ export async function checkOverdueTasks(admin?: AdminUser) {
       after: { status: "overdue", overdueNotifiedAt: notifiedAt },
       userEmail: admin?.email ?? "system",
     });
-    await sendTaskOverdueEmail({ ...task, status: "overdue", overdueNotifiedAt: notifiedAt });
-    await sendPushToAdmins({
-      type: "task_overdue",
-      title: "Tarea vencida",
-      message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
-      actionUrl: task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas",
-      relatedLeadId: task.leadId,
-      relatedTaskId: task.id,
-    });
+    if (settings.taskOverdueEnabled) {
+      await sendTaskOverdueEmail({ ...task, status: "overdue", overdueNotifiedAt: notifiedAt });
+      await sendPushToAdmins({
+        type: "task_overdue",
+        title: "Tarea vencida",
+        message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
+        actionUrl: task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas",
+        relatedLeadId: task.leadId,
+        relatedTaskId: task.id,
+      });
+    }
     changed.push(task.id);
   }
   return changed;
@@ -336,6 +342,10 @@ export async function createNotification(input: {
 }) {
   const db = getAdminDb();
   if (!db) {
+    return null;
+  }
+  const settings = await getAdminSettings();
+  if (!settings.internalNotificationsEnabled) {
     return null;
   }
   const now = new Date().toISOString();

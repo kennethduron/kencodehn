@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import type { AdminUser } from "@/lib/admin/types";
+import { defaultPermissionsForRole } from "@/lib/admin/settings";
 
 export const CRM_SESSION_COOKIE = "kc_crm_session";
 const SESSION_DAYS = 5;
@@ -66,6 +67,7 @@ export async function createCrmSession(idToken: string) {
         uid: decodedToken.uid,
         email: decodedToken.email,
         role: "owner",
+        permissions: defaultPermissionsForRole("owner"),
         active: true,
         lastLoginAt: now,
         updatedAt: now,
@@ -82,6 +84,7 @@ export async function createCrmSession(idToken: string) {
       uid: decodedToken.uid,
       email: decodedToken.email ?? "",
       role: "owner" as const,
+      permissions: defaultPermissionsForRole("owner"),
     },
   };
 }
@@ -106,6 +109,7 @@ export async function verifyCrmSession(sessionCookie: string | undefined | null)
       uid: decoded.uid,
       email: decoded.email ?? "",
       role: "owner",
+      permissions: defaultPermissionsForRole("owner"),
     };
   } catch {
     return null;

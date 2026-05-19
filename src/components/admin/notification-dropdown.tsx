@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, X } from "lucide-react";
 import type { AdminNotification } from "@/lib/admin/types";
 import { notificationSeverityLabels, notificationTypeLabels, timeAgo } from "./admin-labels";
 import { Tooltip } from "./ui";
@@ -78,6 +78,47 @@ export function NotificationDropdown({ initialUnreadCount = 0 }: { initialUnread
   }
 
   const latest = notifications.slice(0, 5);
+  const panel = (
+    <>
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4">
+        <div>
+          <p className="font-display text-lg font-black text-kc-text">Notificaciones</p>
+          <p className="text-xs font-bold text-kc-muted">{unreadCount} sin leer</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={markAllRead} className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-white/10 px-3 text-xs font-black text-kc-cyan">
+            <CheckCheck size={15} /> Leer todas
+          </button>
+          <button type="button" onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-kc-text sm:hidden" aria-label="Cerrar notificaciones">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div className="max-h-[min(68vh,420px)] overflow-y-auto p-2">
+        {latest.map((notification) => {
+          const href = notification.actionUrl || "/admin/notificaciones";
+          return (
+            <Link key={notification.id} href={href} onClick={() => markRead(notification)} className={`block rounded-xl border p-3 transition hover:bg-white/[0.04] ${notification.read ? "border-transparent" : "border-kc-cyan/20 bg-kc-cyan/5"}`}>
+              <div className="flex items-start justify-between gap-3">
+                <p className="line-clamp-1 font-black text-kc-text">{notification.title}</p>
+                {!notification.read ? <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-rose-400" /> : null}
+              </div>
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-kc-muted">{notification.message}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-2 py-0.5 text-[0.68rem] font-black ${severityClass[notification.severity]}`}>{notificationSeverityLabels[notification.severity]}</span>
+                <span className="text-xs font-bold text-kc-muted">{notificationTypeLabels[notification.type] || notification.type}</span>
+                <span className="ml-auto text-xs font-bold text-kc-muted">{timeAgo(notification.createdAt)}</span>
+              </div>
+            </Link>
+          );
+        })}
+        {latest.length === 0 ? <p className="p-6 text-center text-sm text-kc-muted">No hay notificaciones.</p> : null}
+      </div>
+      <Link href="/admin/notificaciones" onClick={() => setOpen(false)} className="block border-t border-white/10 p-4 text-center text-sm font-black text-kc-cyan">
+        Ver centro completo
+      </Link>
+    </>
+  );
 
   return (
     <div className="relative" ref={ref}>
@@ -89,40 +130,12 @@ export function NotificationDropdown({ initialUnreadCount = 0 }: { initialUnread
       </Tooltip>
 
       {open ? (
-        <div className="absolute right-0 top-14 z-50 w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-white/10 bg-kc-bg-soft shadow-2xl shadow-black/40">
-          <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4">
-            <div>
-              <p className="font-display text-lg font-black text-kc-text">Notificaciones</p>
-              <p className="text-xs font-bold text-kc-muted">{unreadCount} sin leer</p>
-            </div>
-            <button type="button" onClick={markAllRead} className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-white/10 px-3 text-xs font-black text-kc-cyan">
-              <CheckCheck size={15} /> Leer todas
-            </button>
+        <>
+          <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm sm:hidden" aria-hidden="true" />
+          <div className="fixed inset-x-3 top-20 z-[80] max-h-[calc(100dvh-7rem)] overflow-hidden rounded-2xl border border-white/10 bg-kc-bg-soft shadow-2xl shadow-black/50 sm:absolute sm:inset-auto sm:right-0 sm:top-14 sm:z-50 sm:w-[min(92vw,380px)]">
+            {panel}
           </div>
-          <div className="max-h-[420px] overflow-y-auto p-2">
-            {latest.map((notification) => {
-              const href = notification.actionUrl || "/admin/notificaciones";
-              return (
-                <Link key={notification.id} href={href} onClick={() => markRead(notification)} className={`block rounded-xl border p-3 transition hover:bg-white/[0.04] ${notification.read ? "border-transparent" : "border-kc-cyan/20 bg-kc-cyan/5"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="line-clamp-1 font-black text-kc-text">{notification.title}</p>
-                    {!notification.read ? <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-rose-400" /> : null}
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-kc-muted">{notification.message}</p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full border px-2 py-0.5 text-[0.68rem] font-black ${severityClass[notification.severity]}`}>{notificationSeverityLabels[notification.severity]}</span>
-                    <span className="text-xs font-bold text-kc-muted">{notificationTypeLabels[notification.type] || notification.type}</span>
-                    <span className="ml-auto text-xs font-bold text-kc-muted">{timeAgo(notification.createdAt)}</span>
-                  </div>
-                </Link>
-              );
-            })}
-            {latest.length === 0 ? <p className="p-6 text-center text-sm text-kc-muted">No hay notificaciones.</p> : null}
-          </div>
-          <Link href="/admin/notificaciones" onClick={() => setOpen(false)} className="block border-t border-white/10 p-4 text-center text-sm font-black text-kc-cyan">
-            Ver centro completo
-          </Link>
-        </div>
+        </>
       ) : null}
     </div>
   );

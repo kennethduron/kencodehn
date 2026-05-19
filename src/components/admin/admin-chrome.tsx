@@ -13,7 +13,7 @@ const navItems = [
   { href: "/admin/leads", label: "Leads", icon: Users },
   { href: "/admin/tareas", label: "Tareas", icon: ClipboardList },
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
-  { href: "/admin/configuracion/notificaciones", label: "Config.", icon: Settings },
+  { href: "/admin/configuracion", label: "Config.", icon: Settings },
 ];
 
 export function AdminChrome({ children, admin, unreadCount = 0 }: { children: React.ReactNode; admin: AdminUser; unreadCount?: number }) {

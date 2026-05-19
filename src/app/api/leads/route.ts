@@ -4,6 +4,7 @@ import { getAdminDb } from "@/lib/firebase/admin";
 import { createLeadRecord } from "@/lib/leads";
 import { sendLeadNotificationEmail } from "@/lib/email/lead-notification";
 import { sendPushToAdmins } from "@/lib/push/service";
+import { getAdminSettings } from "@/lib/admin/settings";
 
 export const runtime = "nodejs";
 
@@ -64,10 +65,12 @@ export async function POST(request: NextRequest) {
 
     const doc = await db.collection("leads").add(lead);
     const now = new Date().toISOString();
+    const settings = await getAdminSettings();
 
     const notificationId = await safeSecondary(
       "notification",
       async () => {
+        if (!settings.internalNotificationsEnabled) return null;
         const notificationDoc = await db.collection("notifications").add({
           title: "Nueva solicitud recibida",
           message: `Nueva solicitud recibida de ${lead.name} para ${lead.project}.`,

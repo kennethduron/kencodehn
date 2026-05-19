@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { z } from "zod";
 import { getAdminDb, getAdminMessaging } from "@/lib/firebase/admin";
+import { getAdminSettings } from "@/lib/admin/settings";
 
 export type PushType = "lead_new" | "task_reminder" | "task_due" | "task_overdue" | "system";
 
@@ -106,6 +107,11 @@ export async function sendPushToAdmins(input: PushPayload) {
   const parsed = pushPayloadSchema.safeParse(input);
   if (!parsed.success) {
     return { sent: 0, failed: 0, reason: "invalid_push_payload" };
+  }
+  const settings = await getAdminSettings();
+  if (!settings.pushNotificationsEnabled) {
+    await logPush(parsed.data, null, false, "push_notifications_disabled");
+    return { sent: 0, failed: 0, reason: "push_notifications_disabled" };
   }
   const messaging = getAdminMessaging();
   if (!messaging) {

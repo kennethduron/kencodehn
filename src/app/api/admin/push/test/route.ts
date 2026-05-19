@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     type: "system",
     title: "Prueba Ken Code CRM",
     message: "Las notificaciones push estan activas en este dispositivo.",
-    actionUrl: "/admin/configuracion/notificaciones",
+    actionUrl: "/admin/configuracion",
   });
   return NextResponse.json({ ok: true, result });
 }
