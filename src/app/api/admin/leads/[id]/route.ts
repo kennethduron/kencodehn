@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { canRunMaintenance, deleteLeadCascade, getLeadDeletionSummary } from "@/lib/admin/cleanup";
 import { getLead, updateLead } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
@@ -35,6 +36,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
   }
   return NextResponse.json({ ok: true, lead });
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await requireAdminFromRequest(request);
+  if (!admin) {
+    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
+  }
+  if (!canRunMaintenance(admin)) {
+    return NextResponse.json({ ok: false, message: "No tienes permiso para eliminar leads." }, { status: 403 });
+  }
+  const { id } = await params;
+  const summary = await getLeadDeletionSummary(id);
+  if (summary.leads === 0) {
+    return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
+  }
+  const deleted = await deleteLeadCascade(id);
+  return NextResponse.json({ ok: true, deleted });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

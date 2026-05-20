@@ -1,12 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, LockKeyhole, Mail, MonitorSmartphone, Palette, ShieldCheck, Smartphone } from "lucide-react";
+import { AlertTriangle, Bell, LockKeyhole, Mail, MonitorSmartphone, Palette, ShieldCheck, Smartphone, Trash2, X } from "lucide-react";
 import type { AdminSettings } from "@/lib/admin/types";
 import { PushSettings } from "./push-settings";
 import { ConfirmDialog, Toast } from "./ui";
 
 type SettingKey = keyof Omit<AdminSettings, "updatedAt" | "updatedBy">;
+
+type CleanupSummary = {
+  leads: number;
+  notes: number;
+  tasks: number;
+  notifications: number;
+  activityLogs: number;
+  emailLogs: number;
+  pushLogs: number;
+};
+
+const cleanupLabels: Record<keyof CleanupSummary, string> = {
+  leads: "Leads",
+  notes: "Notas",
+  tasks: "Tareas",
+  notifications: "Notificaciones",
+  activityLogs: "Activity logs",
+  emailLogs: "Email logs",
+  pushLogs: "Push logs",
+};
 
 const groups: Array<{
   title: string;
@@ -119,6 +139,11 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
   const [pendingToggle, setPendingToggle] = useState<SettingKey | null>(null);
   const [toast, setToast] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
+  const [cleanupOpen, setCleanupOpen] = useState(false);
+  const [cleanupSummary, setCleanupSummary] = useState<CleanupSummary | null>(null);
+  const [cleanupConfirmation, setCleanupConfirmation] = useState("");
+  const [isLoadingCleanupSummary, setIsLoadingCleanupSummary] = useState(false);
+  const [isCleaningCrm, setIsCleaningCrm] = useState(false);
 
   function showToast(message: string, variant: "success" | "error" | "info" = "success") {
     setToastVariant(variant);
@@ -164,6 +189,53 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
       showToast("No se pudo guardar la configuracion.", "error");
     } finally {
       setSavingKey(null);
+    }
+  }
+
+  async function openCleanupDialog() {
+    setCleanupOpen(true);
+    setCleanupSummary(null);
+    setCleanupConfirmation("");
+    setIsLoadingCleanupSummary(true);
+    try {
+      const response = await fetch("/api/admin/cleanup-test-data");
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) {
+        throw new Error(data?.message || "No se pudo cargar el resumen.");
+      }
+      setCleanupSummary(data.summary);
+    } catch {
+      setCleanupOpen(false);
+      showToast("No se pudo cargar el resumen de limpieza.", "error");
+    } finally {
+      setIsLoadingCleanupSummary(false);
+    }
+  }
+
+  async function runCleanup() {
+    if (cleanupConfirmation !== "LIMPIAR") {
+      showToast("Escribe LIMPIAR para confirmar.", "error");
+      return;
+    }
+    setIsCleaningCrm(true);
+    try {
+      const response = await fetch("/api/admin/cleanup-test-data", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirmation: cleanupConfirmation }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) {
+        throw new Error(data?.message || "No se pudo limpiar.");
+      }
+      setCleanupOpen(false);
+      setCleanupConfirmation("");
+      setCleanupSummary(data.deleted);
+      showToast("CRM limpiado correctamente. Ya puedes comenzar con clientes reales.");
+    } catch {
+      showToast("No se pudo limpiar el CRM. Intentalo nuevamente.", "error");
+    } finally {
+      setIsCleaningCrm(false);
     }
   }
 
@@ -245,9 +317,113 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
             ))}
           </div>
         </section>
+        <section className="rounded-2xl border border-rose-300/20 bg-rose-950/10 p-5">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-rose-300/25 bg-rose-300/10 text-rose-200">
+              <AlertTriangle size={19} aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="font-display text-xl font-black text-rose-100">Zona de mantenimiento</h2>
+              <p className="mt-1 text-sm leading-6 text-rose-100/75">
+                Limpia datos operativos de prueba sin tocar usuarios admin, configuracion, tokens reales, reglas ni variables de entorno.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={openCleanupDialog}
+            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-300 px-4 text-sm font-black text-kc-bg transition hover:bg-rose-200"
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            Limpiar datos de prueba
+          </button>
+        </section>
       </div>
 
       <PushSettings />
+
+      {cleanupOpen ? (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="cleanup-title">
+          <button type="button" aria-label="Cancelar" className="absolute inset-0 cursor-pointer" onClick={isCleaningCrm ? undefined : () => setCleanupOpen(false)} />
+          <div className="kc-admin-card relative max-h-[92vh] w-full max-w-2xl overflow-y-auto p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-200">Mantenimiento</p>
+                <h2 id="cleanup-title" className="mt-2 font-display text-2xl font-black text-kc-text">Limpiar datos de prueba del CRM?</h2>
+                <p className="mt-2 text-sm leading-6 text-kc-muted">
+                  Esta accion eliminara leads, tareas, notas, notificaciones y logs operativos. No se eliminaran usuarios admin ni configuracion del CRM.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCleanupOpen(false)}
+                disabled={isCleaningCrm}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-kc-muted transition hover:text-kc-text disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Cancelar"
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-white/10 bg-kc-bg/55 p-4">
+              <p className="text-sm font-black text-kc-text">Resumen antes de borrar</p>
+              {isLoadingCleanupSummary ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="h-14 animate-pulse rounded-xl bg-white/10" />
+                  ))}
+                </div>
+              ) : cleanupSummary ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {Object.entries(cleanupSummary).map(([key, value]) => (
+                    <div key={key} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">{cleanupLabels[key as keyof CleanupSummary]}</p>
+                      <p className="mt-1 font-display text-2xl font-black text-kc-text">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-kc-muted">No se pudo cargar el resumen.</p>
+              )}
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-rose-300/20 bg-rose-950/20 p-4">
+              <label className="grid gap-2 text-sm font-bold text-rose-100">
+                Escribe LIMPIAR para confirmar
+                <input
+                  value={cleanupConfirmation}
+                  onChange={(event) => setCleanupConfirmation(event.target.value)}
+                  className="min-h-11 rounded-xl border border-rose-300/20 bg-kc-bg px-3 text-kc-text outline-none focus:border-rose-200"
+                  placeholder="LIMPIAR"
+                  disabled={isCleaningCrm}
+                />
+              </label>
+              <p className="mt-3 text-xs leading-5 text-rose-100/70">
+                Protegido: adminUsers, adminSettings, deviceTokens, variables de entorno, reglas de Firestore, Resend y cron.
+              </p>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setCleanupOpen(false)}
+                disabled={isCleaningCrm}
+                className="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-black text-kc-text transition hover:border-kc-cyan/35 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={runCleanup}
+                disabled={isCleaningCrm || cleanupConfirmation !== "LIMPIAR" || isLoadingCleanupSummary}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-300 px-4 text-sm font-black text-kc-bg transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCleaningCrm ? "Limpiando..." : "Si, limpiar CRM"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

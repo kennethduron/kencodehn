@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
-import { ArrowLeft, CalendarPlus, CheckCircle2, Copy, Mail, Plus, Tag, X } from "lucide-react";
+import { ArrowLeft, CalendarPlus, CheckCircle2, Copy, Mail, Plus, Tag, Trash2, X } from "lucide-react";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import type { ActivityLog, AdminLead, AdminNote, AdminTask, LeadPriority, LeadStatus, PaymentStatus } from "@/lib/admin/types";
 import { mapActivityTone } from "@/lib/admin/activity";
@@ -10,7 +11,7 @@ import { whatsappLink } from "@/lib/site";
 import { HONDURAS_TIME_ZONE, hondurasDateTimeToIso } from "@/lib/time";
 import { dateTime, leadPriorityLabels, leadStatusLabels, money, paymentStatusLabels, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge, TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
-import { Toast, Tooltip } from "./ui";
+import { ConfirmDialog, Toast, Tooltip } from "./ui";
 
 const suggestedTags = ["urgente", "restaurante", "e-commerce", "seguimiento", "cotizacion", "interesado", "frio", "caliente"];
 
@@ -25,6 +26,7 @@ export function LeadDetail({
   initialTasks: AdminTask[];
   initialActivity: ActivityLog[];
 }) {
+  const router = useRouter();
   const [lead, setLead] = useState(initialLead);
   const [notes, setNotes] = useState(initialNotes);
   const [tasks, setTasks] = useState(initialTasks);
@@ -39,6 +41,8 @@ export function LeadDetail({
   const [toast, setToast] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [deleteLeadOpen, setDeleteLeadOpen] = useState(false);
+  const [isDeletingLead, setIsDeletingLead] = useState(false);
 
   const timeline = useMemo(() => {
     const createdItem: ActivityLog = {
@@ -182,9 +186,39 @@ export function LeadDetail({
     window.setTimeout(() => setToast(""), 2200);
   }
 
+  async function deleteLead() {
+    setIsDeletingLead(true);
+    try {
+      const response = await fetch(`/api/admin/leads/${lead.id}`, { method: "DELETE" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.message || "No se pudo eliminar el lead.");
+      }
+      showToast("Lead eliminado correctamente.");
+      setDeleteLeadOpen(false);
+      router.push("/admin/leads");
+      router.refresh();
+    } catch {
+      showToast("No se pudo eliminar el lead. Intentalo nuevamente.", "error");
+    } finally {
+      setIsDeletingLead(false);
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <Toast message={toast} variant={toastVariant} />
+      <ConfirmDialog
+        open={deleteLeadOpen}
+        title="Eliminar este lead?"
+        description="Esta accion eliminara la solicitud, notas, tareas relacionadas, notificaciones relacionadas y actividad asociada. Esta accion no se puede deshacer."
+        confirmText="Si, eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={isDeletingLead}
+        onCancel={() => setDeleteLeadOpen(false)}
+        onConfirm={deleteLead}
+      />
 
       <Link href="/admin/leads" className="inline-flex w-fit items-center gap-2 text-sm font-black text-kc-cyan hover:text-kc-turquoise">
         <ArrowLeft size={16} aria-hidden="true" />
@@ -377,6 +411,21 @@ export function LeadDetail({
                 <button key={tag} type="button" onClick={() => addTag(tag)} className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-kc-muted transition hover:border-kc-cyan/35 hover:text-kc-cyan">{tag}</button>
               ))}
             </div>
+          </div>
+
+          <div className="kc-admin-card border-rose-300/20 bg-rose-950/10 p-5">
+            <h2 className="font-display text-xl font-black text-rose-100">Zona peligrosa</h2>
+            <p className="mt-2 text-sm leading-6 text-rose-100/75">
+              Elimina este lead y todos sus datos relacionados solo cuando sea informacion de prueba o duplicada.
+            </p>
+            <button
+              type="button"
+              onClick={() => setDeleteLeadOpen(true)}
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-300 px-4 text-sm font-black text-kc-bg transition hover:bg-rose-200"
+            >
+              <Trash2 size={16} aria-hidden="true" />
+              Eliminar lead
+            </button>
           </div>
         </aside>
       </section>
