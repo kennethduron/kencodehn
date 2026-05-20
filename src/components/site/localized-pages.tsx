@@ -146,9 +146,9 @@ export function HomeView({ locale }: { locale: Locale }) {
   return (
     <main className="min-h-screen overflow-x-hidden">
       <JsonLd data={homeSchema} />
-      <section className="relative overflow-hidden pt-28 sm:pt-32">
+      <section className="relative overflow-hidden pt-24 sm:pt-28 lg:pt-24 xl:pt-28">
         <div className="absolute inset-x-0 top-0 -z-10 h-full bg-[radial-gradient(circle_at_50%_0%,rgba(0,217,255,0.22),transparent_34rem)]" />
-        <div className="kc-shell grid min-h-[calc(100vh-5rem)] items-center gap-10 py-10 lg:grid-cols-[1.02fr_0.98fr] lg:py-14">
+        <div className="kc-shell grid items-center gap-8 py-8 sm:py-10 lg:min-h-[620px] lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:py-10 xl:min-h-[680px] 2xl:min-h-[720px]">
           <Reveal>
             <div className="max-w-4xl">
               <p className="inline-flex rounded-full border border-kc-cyan/30 bg-kc-cyan/10 px-4 py-2 text-sm font-bold text-kc-cyan shadow-[0_0_30px_rgba(0,217,255,0.14)]">
