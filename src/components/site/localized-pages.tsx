@@ -178,15 +178,15 @@ export function HomeView({ locale }: { locale: Locale }) {
           </Reveal>
 
           <Reveal className="kc-home-hero-media relative">
-            <div className="relative mx-auto max-w-md overflow-hidden rounded-2xl border border-kc-cyan/25 bg-kc-card p-3 shadow-[0_0_90px_rgba(0,217,255,0.16)]">
-              <div className="kc-home-hero-image relative aspect-[4/5] overflow-hidden rounded-xl">
+            <div className="kc-home-hero-card relative mx-auto overflow-hidden rounded-2xl border border-kc-cyan/25 bg-kc-card p-3 shadow-[0_0_90px_rgba(0,217,255,0.16)]">
+              <div className="kc-home-hero-image relative aspect-[2/3] overflow-hidden rounded-xl">
                 <Image
                   src={site.portrait}
                   alt={locale === "es" ? "Kenneth Duron, desarrollador web de Ken Code" : "Kenneth Duron, web developer at Ken Code"}
                   fill
                   priority
-                  sizes="(max-width: 768px) 90vw, 420px"
-                  className="object-cover object-[50%_24%]"
+                  sizes="(max-width: 768px) 88vw, (max-width: 1280px) 320px, 390px"
+                  className="object-cover object-top"
                 />
               </div>
             </div>

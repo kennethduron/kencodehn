@@ -137,6 +137,15 @@ select:focus-visible {
   min-height: auto;
 }
 
+.kc-home-hero-media {
+  width: min(100%, 28rem);
+  justify-self: center;
+}
+
+.kc-home-hero-card {
+  width: 100%;
+}
+
 .kc-glass {
   border: 1px solid var(--kc-border);
   background: linear-gradient(145deg, rgba(15, 23, 42, 0.86), rgba(11, 17, 32, 0.72));
@@ -226,13 +235,7 @@ select:focus-visible {
   }
 
   .kc-home-hero-media {
-    width: min(100%, 29.5rem);
-    justify-self: center;
-  }
-
-  .kc-home-hero-image {
-    height: min(56svh, 540px);
-    min-height: 360px;
+    width: min(100%, clamp(18rem, 31vw, 25rem));
   }
 }
 
@@ -262,9 +265,8 @@ select:focus-visible {
     margin-top: 1.25rem;
   }
 
-  .kc-home-hero-image {
-    height: min(64svh, 430px);
-    min-height: 330px;
+  .kc-home-hero-media {
+    width: min(100%, clamp(17.5rem, 38svh, 22rem));
   }
 }
 
@@ -273,8 +275,8 @@ select:focus-visible {
     min-height: min(680px, calc(100svh - 6.5rem));
   }
 
-  .kc-home-hero-image {
-    height: min(58svh, 560px);
+  .kc-home-hero-media {
+    width: min(100%, clamp(21rem, 28vw, 26rem));
   }
 }
 
