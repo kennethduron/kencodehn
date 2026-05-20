@@ -28,7 +28,7 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
 
   const text = {
     es: {
-      aria: "Formulario de cotizacion",
+      aria: "Formulario de cotización",
       name: "Nombre",
       namePlaceholder: "Tu nombre",
       business: "Negocio",

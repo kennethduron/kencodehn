@@ -16,31 +16,31 @@ import { QuoteForm } from "./quote-form";
 const labels = {
   es: {
     heroEyebrow: "Estudio web y software internacional",
-    heroTitle: "Paginas web premium para negocios modernos que quieren crecer",
+    heroTitle: "Páginas web premium para negocios modernos que quieren crecer",
     heroCopy:
       "Ken Code crea experiencias web modernas para empresas, marcas y emprendedores que trabajan localmente o de forma remota con clientes de cualquier parte del mundo.",
-    quote: "Solicitar cotizacion",
+    quote: "Solicitar cotización",
     projects: "Ver proyectos",
     photoCaption: "Experiencias digitales listas para vender, contactar y crecer en diferentes mercados.",
-    servicesTitle: "Soluciones digitales para negocios que necesitan una presencia mas fuerte.",
-    servicesCopy: "Paginas rapidas, responsive y enfocadas en conversion para clientes locales e internacionales.",
+    servicesTitle: "Soluciones digitales para negocios que necesitan una presencia más fuerte.",
+    servicesCopy: "Páginas rápidas, responsive y enfocadas en conversión para clientes locales e internacionales.",
     allServices: "Ver todos los servicios",
     selectedWork: "Proyectos reales creados con objetivos de negocio.",
-    selectedWorkCopy: "Cada proyecto mejora claridad, confianza y el camino del visitante hacia una conversacion calificada.",
+    selectedWorkCopy: "Cada proyecto mejora claridad, confianza y el camino del visitante hacia una conversación calificada.",
     benefitsTitle: "Una presencia web pensada para crecer, no solo para estar en internet.",
-    testimonialsTitle: "Clientes construyendo una presencia digital mas fuerte.",
-    whatsappMessage: "Hola Ken Code. Quiero cotizar una solucion web profesional para mi negocio. Podemos trabajar de forma remota.",
+    testimonialsTitle: "Clientes construyendo una presencia digital más fuerte.",
+    whatsappMessage: "Hola Ken Code. Quiero cotizar una solución web profesional para mi negocio. Podemos trabajar de forma remota.",
     whatsappLabel: "Cotizar proyecto",
     live: "Ver proyecto",
     case: "Ver caso de estudio",
-    pending: "Link pendiente",
     backProjects: "Volver a proyectos",
     problem: "Problema",
-    solution: "Solucion",
+    solution: "Solución",
     result: "Resultado",
     benefits: "Beneficios",
+    appliedServices: "Servicios aplicados",
     screenshot: "Vista del proyecto",
-    projectCtaTitle: "Quieres una web con este nivel de claridad?",
+    projectCtaTitle: "¿Quieres una web con este nivel de claridad?",
     projectCtaCopy: "Ken Code puede trabajar de forma remota con tu negocio para crear una experiencia web premium lista para clientes internacionales.",
     quotePackage: "Cotizar paquete",
   },
@@ -63,12 +63,12 @@ const labels = {
     whatsappLabel: "Quote project",
     live: "View project",
     case: "View case study",
-    pending: "Link pending",
     backProjects: "Back to projects",
     problem: "Problem",
     solution: "Solution",
     result: "Result",
     benefits: "Benefits",
+    appliedServices: "Applied services",
     screenshot: "Project view",
     projectCtaTitle: "Want a website with this level of clarity?",
     projectCtaCopy: "Ken Code can work remotely with your business to build a premium web experience ready for international clients.",
@@ -220,7 +220,6 @@ export function HomeView({ locale }: { locale: Locale }) {
                 caseHref={projectPath(locale, project.slug)}
                 liveLabel={copy.live}
                 caseLabel={copy.case}
-                unavailableLabel={copy.pending}
               />
             ))}
           </div>
@@ -298,8 +297,8 @@ export function ServicesView({ locale }: { locale: Locale }) {
       <PageHero
         eyebrow={locale === "es" ? "Servicios" : "Services"}
         title={locale === "es" ? "Desarrollo web completo para negocios modernos y marcas globales." : "Complete web development for modern businesses and global brands."}
-        copy={locale === "es" ? "Desde landing pages hasta e-commerce y bases listas para panel administrativo, cada servicio se disena para claridad, rapidez, conversion y colaboracion remota." : "From landing pages to e-commerce and future-ready admin foundations, every service is designed for clarity, speed, conversion and remote collaboration."}
-        primaryLabel={locale === "es" ? "Solicitar cotizacion" : "Request a quote"}
+        copy={locale === "es" ? "Desde landing pages hasta e-commerce y bases listas para panel administrativo, cada servicio se diseña para claridad, rapidez, conversión y colaboración remota." : "From landing pages to e-commerce and future-ready admin foundations, every service is designed for clarity, speed, conversion and remote collaboration."}
+        primaryLabel={locale === "es" ? "Solicitar cotización" : "Request a quote"}
         primaryHref={path(locale, "/cotizar", "/en/quote")}
       />
 
@@ -308,8 +307,8 @@ export function ServicesView({ locale }: { locale: Locale }) {
           <div className="mb-12">
             <SectionIntro
               eyebrow="Servicios SEO"
-              title="Soluciones especificas para busquedas comerciales reales."
-              copy="Estas paginas ayudan a negocios, restaurantes, tiendas, empresas de servicios y clientes internacionales a encontrar la solucion exacta que necesitan."
+              title="Soluciones específicas para búsquedas comerciales reales."
+              copy="Estas páginas ayudan a negocios, restaurantes, tiendas, empresas de servicios y clientes internacionales a encontrar la solución exacta que necesitan."
             />
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {seoServices.map((service, index) => {
@@ -392,8 +391,8 @@ export function ProjectsView({ locale }: { locale: Locale }) {
       <JsonLd data={projectsSchema} />
       <PageHero
         eyebrow={locale === "es" ? "Proyectos" : "Projects"}
-        title={locale === "es" ? "Casos reales para marcas que necesitaban una presencia digital mas clara." : "Real case studies for brands that needed a clearer digital presence."}
-        copy={locale === "es" ? "Cada proyecto combina diseno, estructura, rapidez e informacion accionable para resolver una meta concreta del negocio." : "Each project combines design, structure, speed and actionable information to solve a concrete business goal."}
+        title={locale === "es" ? "Casos reales para marcas que necesitaban una presencia digital más clara." : "Real case studies for brands that needed a clearer digital presence."}
+        copy={locale === "es" ? "Cada proyecto combina diseño, estructura, rapidez e información accionable para resolver una meta concreta del negocio." : "Each project combines design, structure, speed and actionable information to solve a concrete business goal."}
         primaryLabel={locale === "es" ? "Cotizar un proyecto" : "Quote a project"}
         primaryHref={path(locale, "/cotizar", "/en/quote")}
       />
@@ -405,7 +404,6 @@ export function ProjectsView({ locale }: { locale: Locale }) {
             caseHref={projectPath(locale, project.slug)}
             liveLabel={copy.live}
             caseLabel={copy.case}
-            unavailableLabel={copy.pending}
           />
         ))}
       </section>
@@ -432,7 +430,7 @@ export function PackagesView({ locale }: { locale: Locale }) {
         eyebrow={locale === "es" ? "Paquetes" : "Packages"}
         title={locale === "es" ? "Paquetes claros para negocios en diferentes etapas de crecimiento." : "Clear packages for businesses at different stages of growth."}
         copy={locale === "es" ? "Empieza con una landing enfocada o escala hacia una web completa, e-commerce o base lista para panel administrativo." : "Start with a focused landing page or scale into a complete business website, e-commerce experience or admin-ready foundation."}
-        primaryLabel={locale === "es" ? "Solicitar cotizacion" : "Request a quote"}
+        primaryLabel={locale === "es" ? "Solicitar cotización" : "Request a quote"}
         primaryHref={path(locale, "/cotizar", "/en/quote")}
       />
       <section className="kc-shell grid gap-5 py-12 lg:grid-cols-4">
@@ -540,7 +538,7 @@ export function QuoteView({ locale }: { locale: Locale }) {
               : "Include your business type, target market, main goal, available content and ideal launch date. That makes it easier to recommend the right path."}
           </p>
           <div className="mt-6 grid gap-3 text-sm font-semibold text-kc-muted">
-            {(locale === "es" ? ["Paginas de aterrizaje", "Webs para negocios", "Tiendas en linea", "Base para panel futuro"] : ["Landing pages", "Business websites", "E-commerce", "Future panel foundation"]).map((item) => (
+            {(locale === "es" ? ["Páginas de aterrizaje", "Webs para negocios", "Tiendas en línea", "Base para panel futuro"] : ["Landing pages", "Business websites", "E-commerce", "Future panel foundation"]).map((item) => (
               <span key={item} className="rounded-lg border border-kc-border bg-kc-bg/70 px-4 py-3">{item}</span>
             ))}
           </div>
@@ -559,9 +557,9 @@ export function AboutView({ locale }: { locale: Locale }) {
     <main className="min-h-screen overflow-x-hidden">
       <JsonLd data={{ "@context": "https://schema.org", "@type": "Person", "@id": `${site.url}#kenneth-duron`, name: "Kenneth Duron", alternateName: ["Kenneth Durón", "Kenneth Asael Duron Paz"], brand: site.name, url: absoluteUrl(path(locale, "/sobre-mi", "/en/about")), image: `${site.url}${site.portrait}`, sameAs: [site.facebook, site.instagram], jobTitle: locale === "es" ? "Desarrollador web" : "Web developer", worksFor: { "@type": "Organization", "@id": `${site.url}#organization`, name: site.name, url: site.url }, inLanguage: locale }} />
       <PageHero
-        eyebrow={locale === "es" ? "Sobre mi" : "About"}
-        title={locale === "es" ? "Construyo paginas web premium con estrategia de negocio y bases solidas." : "I build premium websites with business strategy and solid foundations."}
-        copy={locale === "es" ? "Ken Code ayuda a negocios, fundadores y marcas a trabajar con un estudio web moderno de forma remota, con comunicacion clara y entrega lista para mercados internacionales." : "Ken Code helps businesses, founders and brands work with a modern web studio remotely, with clear communication and international-ready delivery."}
+        eyebrow={locale === "es" ? "Sobre mí" : "About"}
+        title={locale === "es" ? "Construyo páginas web premium con estrategia de negocio y bases sólidas." : "I build premium websites with business strategy and solid foundations."}
+        copy={locale === "es" ? "Ken Code ayuda a negocios, fundadores y marcas a trabajar con un estudio web moderno de forma remota, con comunicación clara y entrega lista para mercados internacionales." : "Ken Code helps businesses, founders and brands work with a modern web studio remotely, with clear communication and international-ready delivery."}
         primaryLabel={locale === "es" ? "Cotizar proyecto" : "Quote project"}
         primaryHref={path(locale, "/cotizar", "/en/quote")}
       />
@@ -579,7 +577,7 @@ export function AboutView({ locale }: { locale: Locale }) {
           <h2 className="font-display text-3xl font-black text-kc-text sm:text-4xl">{locale === "es" ? "Mi enfoque" : "My approach"}</h2>
           <p className="mt-5 text-base leading-8 text-kc-muted">
             {locale === "es"
-              ? "Trato cada pagina como una herramienta de negocio: primero claridad, luego diseno, rapidez y preparacion para buscadores. El objetivo es ayudar a que las personas entiendan, confien y contacten desde cualquier lugar."
+              ? "Trato cada página como una herramienta de negocio: primero claridad, luego diseño, rapidez y preparación para buscadores. El objetivo es ayudar a que las personas entiendan, confíen y contacten desde cualquier lugar."
               : "I treat each website as a business tool: clarity first, then design, speed and search preparation. The goal is to help people understand, trust and contact from anywhere."}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
@@ -601,17 +599,17 @@ export function BlogView({ locale }: { locale: Locale }) {
       <PageHero
         eyebrow="Blog"
         title={locale === "es" ? "Recursos para negocios que quieren crecer con mejor estrategia digital." : "Resources for businesses that want to grow with better digital strategy."}
-        copy={locale === "es" ? "Esta seccion queda preparada para contenido util sobre desarrollo web internacional, SEO local, landing pages, e-commerce y sitios para negocios." : "This section is prepared for useful content about international web development, local SEO, landing pages, e-commerce and business websites."}
+        copy={locale === "es" ? "Contenido útil sobre desarrollo web internacional, SEO local, landing pages, e-commerce y sitios para negocios." : "Useful content about international web development, local SEO, landing pages, e-commerce and business websites."}
         primaryLabel={locale === "es" ? "Cotizar proyecto" : "Quote project"}
         primaryHref={path(locale, "/cotizar", "/en/quote")}
       />
       <section className="kc-shell grid gap-4 py-12 md:grid-cols-3">
         {data.blogTopics.map((topic) => (
           <article key={topic} className="kc-card rounded-2xl p-6">
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-kc-cyan">{locale === "es" ? "Proximamente" : "Coming soon"}</p>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-kc-cyan">{locale === "es" ? "Tema SEO" : "SEO topic"}</p>
             <h2 className="mt-4 font-display text-2xl font-black leading-tight text-kc-text">{topic}</h2>
             <p className="mt-4 text-sm leading-7 text-kc-muted">
-              {locale === "es" ? "Articulo preparado para una fase futura de contenido SEO." : "Article prepared for a future SEO content phase."}
+              {locale === "es" ? "Idea editorial para negocios que quieren tomar mejores decisiones digitales." : "Editorial idea for businesses that want to make better digital decisions."}
             </p>
           </article>
         ))}
@@ -623,6 +621,8 @@ export function BlogView({ locale }: { locale: Locale }) {
 
 export function ProjectDetailView({ locale, project }: { locale: Locale; project: Project }) {
   const copy = labels[locale];
+  const gallery = project.gallery?.filter((item) => item.image && item.imageAlt) ?? [];
+  const relatedServices = project.relatedServices?.filter((item) => item.href && item.label) ?? [];
   const schema = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",
@@ -663,6 +663,14 @@ export function ProjectDetailView({ locale, project }: { locale: Locale; project
         <ScreenshotPanel image={project.image} imageAlt={project.imageAlt} />
       </section>
 
+      {gallery.length > 0 ? (
+        <section className="kc-shell grid gap-5 py-8 md:grid-cols-2">
+          {gallery.map((item) => (
+            <ScreenshotPanel key={item.image} image={item.image} imageAlt={item.imageAlt} />
+          ))}
+        </section>
+      ) : null}
+
       <section className="kc-shell grid gap-5 py-8 lg:grid-cols-3">
         {[
           [copy.problem, project.problem],
@@ -677,9 +685,24 @@ export function ProjectDetailView({ locale, project }: { locale: Locale; project
       </section>
 
       <section className="kc-shell py-8">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
-          <h2 className="font-display text-2xl font-black text-kc-text">{copy.benefits}</h2>
-          <BenefitList items={project.benefits} />
+        <div className="grid gap-5 lg:grid-cols-[1fr_0.8fr]">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+            <h2 className="font-display text-2xl font-black text-kc-text">{copy.benefits}</h2>
+            <BenefitList items={project.benefits} />
+          </div>
+          {relatedServices.length > 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+              <h2 className="font-display text-2xl font-black text-kc-text">{copy.appliedServices}</h2>
+              <div className="mt-5 grid gap-3">
+                {relatedServices.map((service) => (
+                  <Link key={service.href} href={service.href} className="flex items-center justify-between gap-4 rounded-xl border border-kc-border bg-kc-bg/60 px-4 py-3 text-sm font-black text-kc-text transition hover:border-kc-cyan hover:text-kc-cyan">
+                    {service.label}
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 

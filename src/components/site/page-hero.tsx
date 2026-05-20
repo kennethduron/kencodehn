@@ -16,7 +16,7 @@ export function PageHero({
   eyebrow,
   title,
   copy,
-  primaryLabel = "Solicitar cotizacion",
+  primaryLabel = "Solicitar cotización",
   primaryHref = whatsappLink("Hola Ken Code. Quiero cotizar una pagina web profesional."),
   secondaryLabel,
   secondaryHref,

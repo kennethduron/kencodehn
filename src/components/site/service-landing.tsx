@@ -182,7 +182,7 @@ export function ServiceLanding({ service }: ServiceLandingProps) {
 
       <CTASection
         title="Listo para convertir esta idea en una solucion real?"
-        copy="Solicita una cotizacion y revisamos el camino mas conveniente para tu negocio, tu mercado y tu etapa actual."
+        copy="Solicita una cotización y revisamos el camino más conveniente para tu negocio, tu mercado y tu etapa actual."
         href="/cotizar"
         label={service.cta}
       />

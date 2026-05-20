@@ -2,7 +2,7 @@ import { BlogView } from "@/components/site/localized-pages";
 import { createMetadata } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Blog de diseno y desarrollo web",
+  title: "Blog de diseño y desarrollo web",
   description:
     "Blog SEO futuro de Ken Code sobre desarrollo web internacional, sitios para negocios, landing pages, e-commerce, SEO local y estrategia digital moderna.",
   path: "/blog",

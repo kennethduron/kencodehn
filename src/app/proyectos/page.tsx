@@ -4,7 +4,7 @@ import { createMetadata } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Proyectos web de Ken Code",
   description:
-    "Proyectos reales de Ken Code con imagenes, resultados y enlaces externos: menus digitales, sitios de servicios, catalogos y experiencias web profesionales.",
+    "Proyectos reales de Ken Code con imágenes, resultados y enlaces externos: menús digitales, sitios de servicios, catálogos y experiencias web profesionales.",
   path: "/proyectos",
   keywords: ["portafolio web Honduras", "proyectos web Honduras", "casos de estudio web", "paginas web para negocios"],
 });
