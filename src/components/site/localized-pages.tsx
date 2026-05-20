@@ -481,7 +481,7 @@ export function ContactView({ locale }: { locale: Locale }) {
         primaryLabel={locale === "es" ? "Ver opciones de contacto" : "View contact options"}
         primaryHref="#contacto"
       />
-      <section id="contacto" className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+      <section id="contacto" className="kc-shell grid scroll-mt-28 gap-8 py-12 sm:scroll-mt-32 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
           <h2 className="font-display text-2xl font-black text-kc-text">
             {locale === "es" ? "Contacto directo" : "Direct contact"}
@@ -531,7 +531,7 @@ export function QuoteView({ locale }: { locale: Locale }) {
         primaryLabel={locale === "es" ? "Enviar mensaje" : "Send message"}
         primaryHref="#formulario"
       />
-      <section id="formulario" className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+      <section id="formulario" className="kc-shell grid scroll-mt-28 gap-8 py-12 sm:scroll-mt-32 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
           <h2 className="font-display text-2xl font-black text-kc-text">{locale === "es" ? "Antes de enviar" : "Before sending"}</h2>
           <p className="mt-4 text-sm leading-7 text-kc-muted">
