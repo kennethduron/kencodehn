@@ -17,6 +17,9 @@ const leadUpdateSchema = z.object({
   wonValue: z.coerce.number().min(0).optional(),
   lastContactAt: z.string().trim().max(40).nullable().optional(),
   nextAction: z.string().trim().max(240).optional(),
+  followUpDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).optional(),
+  followUpTime: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal("")).optional(),
+  followUpTimezone: z.literal("America/Tegucigalpa").optional(),
   followUpAt: z.string().trim().max(40).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(32)).max(12).optional(),
 }).strict();

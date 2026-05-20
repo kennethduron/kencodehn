@@ -56,3 +56,23 @@ export function formatHondurasDateTime(value?: string | null) {
     minute: "2-digit",
   }).format(new Date(value));
 }
+
+export function getHondurasDatePart(value?: string | null) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: HONDURAS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
+export function getHondurasTimePart(value?: string | null) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: HONDURAS_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+}

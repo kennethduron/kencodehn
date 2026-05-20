@@ -50,6 +50,9 @@ export type AdminLead = {
   wonValue: number;
   lastContactAt: string | null;
   nextAction: string;
+  followUpDate: string;
+  followUpTime: string;
+  followUpTimezone: string;
   followUpAt: string | null;
   tags: string[];
   createdAt: string;

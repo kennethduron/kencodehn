@@ -4,7 +4,7 @@ import { formatActivityMessage, formatActivityTitle } from "@/lib/admin/activity
 import { sendLeadStatusEmail, sendTaskOverdueEmail } from "@/lib/email/service";
 import { sendPushToAdmins } from "@/lib/push/service";
 import { getAdminSettings } from "@/lib/admin/settings";
-import { HONDURAS_TIME_ZONE, hondurasDateTimeToIso } from "@/lib/time";
+import { HONDURAS_TIME_ZONE, getHondurasDatePart, getHondurasTimePart, hondurasDateTimeToIso } from "@/lib/time";
 import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, PaymentStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 
 function toIso(value: unknown): string | null {
@@ -97,6 +97,9 @@ function toStringArray(value: unknown): string[] {
 
 export function mapLead(doc: QueryDocumentSnapshot<DocumentData>): AdminLead {
   const data = doc.data();
+  const followUpAt = toIso(data.followUpAt);
+  const followUpDate = String(data.followUpDate ?? "") || getHondurasDatePart(followUpAt);
+  const followUpTime = String(data.followUpTime ?? "") || getHondurasTimePart(followUpAt);
   return {
     id: doc.id,
     name: String(data.name ?? "Sin nombre"),
@@ -120,7 +123,10 @@ export function mapLead(doc: QueryDocumentSnapshot<DocumentData>): AdminLead {
     wonValue: toNumber(data.wonValue),
     lastContactAt: toIso(data.lastContactAt),
     nextAction: String(data.nextAction ?? ""),
-    followUpAt: toIso(data.followUpAt),
+    followUpDate,
+    followUpTime,
+    followUpTimezone: String(data.followUpTimezone ?? HONDURAS_TIME_ZONE),
+    followUpAt,
     tags: toStringArray(data.tags).length ? toStringArray(data.tags) : toStringArray(data.crm?.tags),
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(data.updatedAt) ?? toIso(data.createdAt) ?? new Date(0).toISOString(),
@@ -397,7 +403,7 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
     ? "lead_status_changed"
     : changedFields.includes("priority")
       ? "lead_priority_changed"
-      : changedFields.some((field) => ["nextAction", "followUpAt", "lastContactAt"].includes(field))
+      : changedFields.some((field) => ["nextAction", "followUpAt", "followUpDate", "followUpTime", "followUpTimezone", "lastContactAt"].includes(field))
         ? "lead_followup_updated"
         : changedFields.includes("tags")
           ? "lead_tags_updated"

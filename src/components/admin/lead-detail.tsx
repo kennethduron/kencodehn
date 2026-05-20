@@ -7,6 +7,7 @@ import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import type { ActivityLog, AdminLead, AdminNote, AdminTask, LeadPriority, LeadStatus, PaymentStatus } from "@/lib/admin/types";
 import { mapActivityTone } from "@/lib/admin/activity";
 import { whatsappLink } from "@/lib/site";
+import { HONDURAS_TIME_ZONE, hondurasDateTimeToIso } from "@/lib/time";
 import { dateTime, leadPriorityLabels, leadStatusLabels, money, paymentStatusLabels, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge, TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 import { Toast, Tooltip } from "./ui";
@@ -32,6 +33,8 @@ export function LeadDetail({
   const [taskTitle, setTaskTitle] = useState("Seguimiento");
   const [taskDate, setTaskDate] = useState("");
   const [taskTime, setTaskTime] = useState("09:00");
+  const [followUpDate, setFollowUpDate] = useState(initialLead.followUpDate);
+  const [followUpTime, setFollowUpTime] = useState(initialLead.followUpTime);
   const [tagInput, setTagInput] = useState("");
   const [toast, setToast] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
@@ -76,6 +79,32 @@ export function LeadDetail({
       return;
     }
     showToast(result.message || "Error al guardar.", "error");
+  }
+
+  async function saveFollowUp(nextDate = followUpDate, nextTime = followUpTime) {
+    const date = nextDate.trim();
+    const time = nextTime.trim();
+    if (!date && !time) {
+      await updateLead({ followUpDate: "", followUpTime: "", followUpTimezone: HONDURAS_TIME_ZONE, followUpAt: null });
+      return;
+    }
+    if (!date && time) {
+      showToast("Selecciona una fecha para guardar la hora de seguimiento.", "error");
+      return;
+    }
+    const resolvedTime = time || "09:00";
+    const followUpAt = hondurasDateTimeToIso(date, resolvedTime);
+    if (!followUpAt) {
+      showToast("Fecha u hora de seguimiento invalida.", "error");
+      return;
+    }
+    setFollowUpTime(resolvedTime);
+    await updateLead({
+      followUpDate: date,
+      followUpTime: resolvedTime,
+      followUpTimezone: HONDURAS_TIME_ZONE,
+      followUpAt,
+    });
   }
 
   async function addNote(event: FormEvent<HTMLFormElement>) {
@@ -290,10 +319,36 @@ export function LeadDetail({
                 Proxima accion
                 <input value={lead.nextAction} onChange={(event) => setLead((current) => ({ ...current, nextAction: event.target.value }))} onBlur={(event) => updateLead({ nextAction: event.target.value })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-kc-muted">
-                Fecha de seguimiento
-                <input type="datetime-local" value={lead.followUpAt ? lead.followUpAt.slice(0, 16) : ""} onChange={(event) => updateLead({ followUpAt: event.target.value ? new Date(event.target.value).toISOString() : null })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
-              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                  Fecha de seguimiento
+                  <input
+                    type="date"
+                    value={followUpDate}
+                    onChange={(event) => setFollowUpDate(event.target.value)}
+                    onBlur={() => saveFollowUp()}
+                    className="min-h-11 cursor-pointer rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text outline-none focus:border-kc-cyan"
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                  Hora de seguimiento
+                  <input
+                    type="time"
+                    value={followUpTime}
+                    onChange={(event) => setFollowUpTime(event.target.value)}
+                    onBlur={() => saveFollowUp()}
+                    className="min-h-11 cursor-pointer rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text outline-none focus:border-kc-cyan"
+                  />
+                </label>
+                <div className="sm:col-span-2">
+                  <p className="text-xs leading-5 text-kc-muted">
+                    Se calcula con hora de Honduras. {lead.followUpAt ? `Actual: ${dateTime(lead.followUpAt)} hora de Honduras.` : "Sin seguimiento programado."}
+                  </p>
+                  <button type="button" onClick={() => { setFollowUpDate(""); setFollowUpTime(""); saveFollowUp("", ""); }} className="mt-2 text-xs font-black text-kc-cyan hover:text-kc-turquoise">
+                    Limpiar seguimiento
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => updateLead({ status: "won", wonValue: lead.initialProjectAmount || lead.estimatedValue || lead.wonValue, paymentStatus: lead.monthlyFee > 0 ? "active" : lead.paymentStatus })} className="min-h-11 rounded-xl bg-emerald-300 px-3 text-sm font-black text-kc-bg">Ganado</button>
                 <button type="button" onClick={() => updateLead({ status: "lost" })} className="min-h-11 rounded-xl bg-rose-300 px-3 text-sm font-black text-kc-bg">Perdido</button>

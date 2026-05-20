@@ -1,3 +1,4 @@
+import { formatHondurasDateTime, HONDURAS_TIME_ZONE_LABEL } from "@/lib/time";
 import type { ActivityLog } from "@/lib/admin/types";
 
 export type ActivityTone = "info" | "success" | "warning" | "danger";
@@ -9,7 +10,7 @@ const actionTitles: Record<string, string> = {
   lead_priority_changed: "Prioridad de lead actualizada",
   lead_value_updated: "Informacion comercial actualizada",
   lead_tags_updated: "Tags actualizados",
-  lead_followup_updated: "Seguimiento actualizado",
+  lead_followup_updated: "Fecha de seguimiento actualizada",
   note_added: "Nota interna agregada",
   task_created: "Tarea creada",
   task_updated: "Tarea actualizada",
@@ -54,7 +55,10 @@ export function formatActivityMessage(activity: ActivityLog) {
     return "Informacion comercial del lead actualizada.";
   }
   if (activity.action === "lead_followup_updated") {
-    return "Seguimiento comercial actualizado.";
+    if (after.followUpAt) {
+      return `Seguimiento programado para: ${formatHondurasDateTime(String(after.followUpAt))} ${HONDURAS_TIME_ZONE_LABEL}.`;
+    }
+    return "Se actualizo la fecha de seguimiento.";
   }
   if (activity.action === "lead_tags_updated") {
     return "Tags del lead actualizados.";
