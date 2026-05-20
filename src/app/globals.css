@@ -82,6 +82,30 @@ select:disabled,
   cursor: not-allowed;
 }
 
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 8px;
+  opacity: 0.92;
+  filter: invert(1) brightness(1.7) saturate(1.15);
+  transition: opacity 160ms ease, filter 160ms ease, background-color 160ms ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  background-color: rgba(0, 217, 255, 0.14);
+  opacity: 1;
+  filter: invert(1) brightness(2) saturate(1.25);
+}
+
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,

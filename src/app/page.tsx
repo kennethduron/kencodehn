@@ -2,9 +2,9 @@ import { HomeView } from "@/components/site/localized-pages";
 import { createMetadata } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Ken Code | Kenneth Duron - Desarrollo web en Honduras",
+  title: "Ken Code | Estudio internacional de desarrollo web",
   description:
-    "Ken Code es el estudio de desarrollo web de Kenneth Duron para paginas web profesionales, landing pages, e-commerce, CRM y soluciones digitales en Honduras e internacionalmente.",
+    "Ken Code es un estudio internacional de desarrollo web que crea sitios profesionales, landing pages, ecommerce y sistemas CRM para negocios que quieren verse mas confiables, atraer clientes y crecer digitalmente.",
   path: "/",
   keywords: ["Kenneth Duron", "Kenneth Asael Duron Paz", "Kencodehn", "Ken Code Honduras", "paginas web Kenneth Duron", "desarrollo web internacional"],
 });
