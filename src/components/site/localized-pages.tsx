@@ -146,19 +146,19 @@ export function HomeView({ locale }: { locale: Locale }) {
   return (
     <main className="min-h-screen overflow-x-hidden">
       <JsonLd data={homeSchema} />
-      <section className="relative overflow-hidden pt-24 sm:pt-28 lg:pt-20 xl:pt-24">
+      <section className="kc-home-hero relative overflow-hidden pt-24 sm:pt-28 lg:pt-20 xl:pt-24">
         <div className="absolute inset-x-0 top-0 -z-10 h-full bg-[radial-gradient(circle_at_50%_0%,rgba(0,217,255,0.22),transparent_34rem)]" />
-        <div className="kc-shell grid items-center gap-8 py-8 sm:py-10 lg:min-h-[560px] lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:py-10 xl:min-h-[620px] 2xl:min-h-[660px]">
+        <div className="kc-shell kc-home-hero-shell grid items-center gap-8 py-8 sm:py-10 lg:grid-cols-[minmax(0,1.16fr)_minmax(320px,0.84fr)] lg:gap-10 lg:py-10">
           <Reveal>
             <div className="max-w-4xl">
               <p className="inline-flex rounded-full border border-kc-cyan/30 bg-kc-cyan/10 px-4 py-2 text-sm font-bold text-kc-cyan shadow-[0_0_30px_rgba(0,217,255,0.14)]">
                 {copy.heroEyebrow}
               </p>
-              <h1 className="mt-6 max-w-5xl font-display text-4xl font-black leading-[1.04] text-kc-text sm:text-5xl lg:text-6xl xl:text-7xl">
+              <h1 className="kc-home-hero-title mt-6 max-w-5xl font-display text-[clamp(2.55rem,10.5vw,3.9rem)] font-black leading-[1.04] text-kc-text sm:text-[clamp(3rem,8vw,4.35rem)] lg:text-[clamp(3.25rem,4.25vw,4.05rem)] xl:text-[clamp(3.85rem,4.45vw,4.85rem)] 2xl:text-[5rem]">
                 {copy.heroTitle}
               </h1>
-              <p className="mt-6 max-w-3xl text-base leading-8 text-kc-muted sm:text-lg">{copy.heroCopy}</p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <p className="kc-home-hero-copy mt-6 max-w-3xl text-base leading-8 text-kc-muted sm:text-lg">{copy.heroCopy}</p>
+              <div className="kc-home-hero-actions mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href={path(locale, "/cotizar", "/en/quote")}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-kc-electric px-6 py-3 text-sm font-black text-white shadow-[0_0_38px_rgba(0,109,255,0.38)] transition hover:bg-kc-cyan hover:text-kc-bg"
@@ -177,16 +177,16 @@ export function HomeView({ locale }: { locale: Locale }) {
             </div>
           </Reveal>
 
-          <Reveal className="relative">
+          <Reveal className="kc-home-hero-media relative">
             <div className="relative mx-auto max-w-md overflow-hidden rounded-2xl border border-kc-cyan/25 bg-kc-card p-3 shadow-[0_0_90px_rgba(0,217,255,0.16)]">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-xl">
+              <div className="kc-home-hero-image relative aspect-[4/5] overflow-hidden rounded-xl">
                 <Image
                   src={site.portrait}
                   alt={locale === "es" ? "Kenneth Duron, desarrollador web de Ken Code" : "Kenneth Duron, web developer at Ken Code"}
                   fill
                   priority
                   sizes="(max-width: 768px) 90vw, 420px"
-                  className="object-cover"
+                  className="object-cover object-[50%_24%]"
                 />
               </div>
             </div>

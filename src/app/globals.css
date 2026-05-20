@@ -133,6 +133,10 @@ select:focus-visible {
   mask-image: linear-gradient(to bottom, black, transparent 78%);
 }
 
+.kc-home-hero-shell {
+  min-height: auto;
+}
+
 .kc-glass {
   border: 1px solid var(--kc-border);
   background: linear-gradient(145deg, rgba(15, 23, 42, 0.86), rgba(11, 17, 32, 0.72));
@@ -208,6 +212,69 @@ select:focus-visible {
   }
   100% {
     background-position: -120% 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .kc-home-hero {
+    padding-top: clamp(5rem, 8.5svh, 6.5rem);
+  }
+
+  .kc-home-hero-shell {
+    min-height: min(620px, calc(100svh - 6rem));
+    padding-block: clamp(1.25rem, 3.5svh, 2.5rem);
+  }
+
+  .kc-home-hero-media {
+    width: min(100%, 29.5rem);
+    justify-self: center;
+  }
+
+  .kc-home-hero-image {
+    height: min(56svh, 540px);
+    min-height: 360px;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  .kc-home-hero {
+    padding-top: 5rem;
+  }
+
+  .kc-home-hero-shell {
+    min-height: calc(100svh - 5rem);
+    gap: 2rem;
+    padding-block: 1rem;
+  }
+
+  .kc-home-hero-title {
+    margin-top: 1rem;
+    font-size: clamp(3rem, 4.25vw, 4rem);
+    line-height: 1;
+  }
+
+  .kc-home-hero-copy {
+    margin-top: 1rem;
+    line-height: 1.55;
+  }
+
+  .kc-home-hero-actions {
+    margin-top: 1.25rem;
+  }
+
+  .kc-home-hero-image {
+    height: min(64svh, 430px);
+    min-height: 330px;
+  }
+}
+
+@media (min-width: 1280px) and (min-height: 860px) {
+  .kc-home-hero-shell {
+    min-height: min(680px, calc(100svh - 6.5rem));
+  }
+
+  .kc-home-hero-image {
+    height: min(58svh, 560px);
   }
 }
 
