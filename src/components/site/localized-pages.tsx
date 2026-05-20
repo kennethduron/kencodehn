@@ -531,7 +531,7 @@ export function QuoteView({ locale }: { locale: Locale }) {
         primaryLabel={locale === "es" ? "Enviar mensaje" : "Send message"}
         primaryHref="#formulario"
       />
-      <section id="formulario" className="kc-shell grid scroll-mt-28 gap-8 py-12 sm:scroll-mt-32 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+      <section className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
           <h2 className="font-display text-2xl font-black text-kc-text">{locale === "es" ? "Antes de enviar" : "Before sending"}</h2>
           <p className="mt-4 text-sm leading-7 text-kc-muted">
@@ -545,7 +545,9 @@ export function QuoteView({ locale }: { locale: Locale }) {
             ))}
           </div>
         </div>
-        <QuoteForm locale={locale} />
+        <div id="formulario" className="scroll-mt-28 sm:scroll-mt-32">
+          <QuoteForm locale={locale} />
+        </div>
       </section>
     </main>
   );
