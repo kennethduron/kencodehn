@@ -185,7 +185,7 @@ export function HomeView({ locale }: { locale: Locale }) {
                   alt={locale === "es" ? "Kenneth Duron, desarrollador web de Ken Code" : "Kenneth Duron, web developer at Ken Code"}
                   fill
                   priority
-                  sizes="(max-width: 768px) 88vw, (max-width: 1280px) 320px, 390px"
+                  sizes="(max-width: 768px) 88vw, (max-width: 1280px) 340px, 420px"
                   className="object-cover object-top"
                 />
               </div>

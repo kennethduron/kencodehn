@@ -235,7 +235,7 @@ select:focus-visible {
   }
 
   .kc-home-hero-media {
-    width: min(100%, clamp(18rem, 31vw, 25rem));
+    width: min(100%, clamp(18.75rem, 32vw, 26.5rem));
   }
 }
 
@@ -266,7 +266,7 @@ select:focus-visible {
   }
 
   .kc-home-hero-media {
-    width: min(100%, clamp(17.5rem, 38svh, 22rem));
+    width: min(100%, clamp(18.25rem, 42svh, 23.5rem));
   }
 }
 
@@ -276,7 +276,7 @@ select:focus-visible {
   }
 
   .kc-home-hero-media {
-    width: min(100%, clamp(21rem, 28vw, 26rem));
+    width: min(100%, clamp(22rem, 29vw, 28rem));
   }
 }
 
