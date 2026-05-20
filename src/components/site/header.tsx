@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/site/logo";
 import { getAlternatePath, type Locale } from "@/lib/site";
 
@@ -40,6 +40,14 @@ export function Header() {
     setIsOpen(false);
   }
 
+  function handleLogoClick(event: MouseEvent<HTMLAnchorElement>) {
+    closeMenu();
+    if (pathname === "/" || pathname === "/en") {
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -65,7 +73,7 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-kc-bg/82 backdrop-blur-xl">
       <nav className="kc-shell flex h-20 items-center justify-between gap-4" aria-label="Navegacion principal">
-        <Link href={homeHref} onClick={closeMenu} aria-label={locale === "es" ? "Ir al inicio de Ken Code" : "Go to Ken Code home"} className="shrink-0 transition opacity-95 hover:opacity-100">
+        <Link href={homeHref} onClick={handleLogoClick} aria-label={locale === "es" ? "Ir al inicio de Ken Code" : "Go to Ken Code home"} className="shrink-0 transition opacity-95 hover:opacity-100">
           <Logo subtitle={logoSubtitle} />
         </Link>
 
