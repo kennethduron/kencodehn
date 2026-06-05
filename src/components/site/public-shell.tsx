@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Footer } from "@/components/site/footer";
 import { FloatingContact } from "@/components/site/floating-contact";
 import { Header } from "@/components/site/header";
+import { KenCodeAiChat } from "@/components/site/kencode-ai-chat";
 
 export function PublicShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -18,6 +19,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       <Header />
       {children}
       <Footer />
+      <KenCodeAiChat />
       <FloatingContact />
     </>
   );
