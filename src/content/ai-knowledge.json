@@ -1,0 +1,1383 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-05T22:46:15.119Z",
+  "visibility": "public",
+  "purpose": "Base de conocimiento publica para KenCode AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
+  "sourcePolicy": {
+    "allowedSources": [
+      {
+        "path": "src/content/site-content.ts",
+        "sha256": "e30f28dd936c7dfd0c99b0fe546a493a12172e6f31220b17f1952c440fbb8843",
+        "visibility": "public"
+      },
+      {
+        "path": "src/content/seo-services.ts",
+        "sha256": "4b41fa19c98bbf1e60731ce2b36232e2e22e19c98cc0e658d1d8be22bb238fce",
+        "visibility": "public"
+      },
+      {
+        "path": "src/lib/site.ts",
+        "sha256": "2a069e5e6d3ddb87bd7cafba7d8f8b7667e9b72cb5228503e49eee2641f392cf",
+        "visibility": "public"
+      }
+    ],
+    "excludedSources": [
+      "src/app/admin/**",
+      "src/app/api/admin/**",
+      "src/lib/admin/**",
+      "src/lib/firebase/**",
+      "src/lib/email/**",
+      "src/lib/push/**",
+      "admin.html",
+      "api/**",
+      "propuestas/**",
+      ".env*",
+      "firebase-debug.log"
+    ]
+  },
+  "company": {
+    "name": "Ken Code",
+    "domain": "kencodehn.com",
+    "url": "https://kencodehn.com",
+    "email": "kencodehn@gmail.com",
+    "phone": "+504 9911-2211",
+    "facebook": "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr",
+    "instagram": "https://www.instagram.com/kencodehn",
+    "founder": {
+      "name": "Kenneth Duron",
+      "alternateNames": [
+        "Kenneth Duron",
+        "Kenneth Duron Paz",
+        "Kenneth Asael Duron Paz"
+      ],
+      "publicRole": "Desarrollador web y creador de Ken Code"
+    },
+    "publicPositioning": "Ken Code es un estudio web premium e internacional que crea paginas web modernas, landing pages, e-commerce y soluciones digitales para negocios que quieren verse mas confiables, atraer clientes y crecer digitalmente.",
+    "publicMission": "Ayudar a negocios, fundadores y marcas a construir una presencia digital clara, profesional, rapida y preparada para clientes locales e internacionales."
+  },
+  "contact": {
+    "quotePath": "/cotizar",
+    "contactPath": "/contacto",
+    "whatsappPhone": "+504 9911-2211",
+    "whatsappRaw": "50499112211",
+    "email": "kencodehn@gmail.com",
+    "social": {
+      "facebook": "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr",
+      "instagram": "https://www.instagram.com/kencodehn"
+    }
+  },
+  "routes": [
+    {
+      "es": "/",
+      "en": "/en"
+    },
+    {
+      "es": "/servicios",
+      "en": "/en/services"
+    },
+    {
+      "es": "/proyectos",
+      "en": "/en/projects"
+    },
+    {
+      "es": "/paquetes",
+      "en": "/en/packages"
+    },
+    {
+      "es": "/contacto",
+      "en": "/en/contact"
+    },
+    {
+      "es": "/cotizar",
+      "en": "/en/quote"
+    },
+    {
+      "es": "/sobre-mi",
+      "en": "/en/about"
+    },
+    {
+      "es": "/blog",
+      "en": "/en/blog"
+    }
+  ],
+  "seoKeywords": {
+    "es": [
+      "Ken Code",
+      "Kencodehn",
+      "Kenneth Duron",
+      "Kenneth Durón",
+      "Kenneth Asael Duron Paz",
+      "desarrollador web Kenneth Duron",
+      "Ken Code Honduras",
+      "desarrollo web internacional",
+      "landing pages",
+      "sitios web profesionales",
+      "diseno web profesional",
+      "estudio web premium",
+      "software studio internacional",
+      "trabajo remoto",
+      "clientes internacionales",
+      "desarrollo web Honduras",
+      "diseno web Honduras",
+      "paginas web Honduras",
+      "landing pages Honduras",
+      "sitios web para negocios",
+      "paginas web para restaurantes",
+      "e-commerce Honduras",
+      "CRM para negocios Honduras",
+      "desarrollo web San Pedro Sula"
+    ],
+    "en": [
+      "Ken Code",
+      "international web development",
+      "modern web development",
+      "business websites",
+      "professional web design",
+      "remote web developer",
+      "premium web studio",
+      "software studio",
+      "landing pages",
+      "e-commerce development",
+      "CRM systems",
+      "web development Honduras",
+      "Latin America web studio"
+    ]
+  },
+  "content": {
+    "es": {
+      "services": [
+        {
+          "slug": "landing-pages",
+          "title": "Páginas de aterrizaje",
+          "summary": "Páginas enfocadas en campañas, servicios y solicitudes calificadas.",
+          "detail": "Estructura clara, mensaje comercial, llamadas a la acción visibles y una experiencia pensada para convertir visitas en conversaciones reales."
+        },
+        {
+          "slug": "sitios-web-para-negocios",
+          "title": "Sitios web para negocios",
+          "summary": "Presencia profesional para marcas que necesitan claridad, confianza y alcance internacional.",
+          "detail": "Secciones ordenadas, diseño responsive, contenido enfocado en negocio y una base preparada para crecer por etapas."
+        },
+        {
+          "slug": "ecommerce",
+          "title": "Tienda en línea",
+          "summary": "Catálogos y flujos de pedido para marcas que venden en diferentes mercados.",
+          "detail": "Productos, categorías, mensajes de compra y rutas de contacto listas para recibir consultas o pedidos con mayor orden."
+        },
+        {
+          "slug": "panel-administrativo",
+          "title": "Panel administrativo",
+          "summary": "Base privada para organizar contactos, solicitudes y seguimiento comercial.",
+          "detail": "La web pública queda preparada para una fase privada posterior, sin mezclar información interna con la experiencia del cliente."
+        },
+        {
+          "slug": "whatsapp-integrado",
+          "title": "WhatsApp integrado",
+          "summary": "Rutas de contacto directo para clientes que prefieren conversaciones rápidas.",
+          "detail": "Botones visibles, mensajes profesionales y enlaces de cotización desde las páginas importantes."
+        },
+        {
+          "slug": "seo-basico",
+          "title": "SEO básico",
+          "summary": "Títulos, descripciones, sitemap, robots y estructura semántica para buscadores.",
+          "detail": "Preparación para Google Search Console, previews sociales, URLs limpias y contenido organizado para búsqueda local e internacional."
+        },
+        {
+          "slug": "automatizacion-de-correos",
+          "title": "Automatización de correos",
+          "summary": "Notificaciones y respuestas iniciales para que los contactos importantes no se pierdan.",
+          "detail": "Flujos de comunicación preparados para responder mejor y mantener orden en solicitudes comerciales."
+        }
+      ],
+      "projects": [
+        {
+          "slug": "casa-brava-menu",
+          "name": "Casa Brava Menú",
+          "category": "Menú digital",
+          "description": "Menú visual para restaurante con navegación rápida desde celular.",
+          "result": "El restaurante presenta productos con más claridad y una imagen digital moderna.",
+          "problem": "El restaurante necesitaba mostrar su menú de forma rápida, visual y fácil de navegar desde celular.",
+          "solution": "Se construyó una experiencia ligera con categorías claras, lectura cómoda y acceso directo para clientes que buscan decidir rápido.",
+          "image": "/images/projects/casabrava.jpg",
+          "imageAlt": "Página web para restaurante Casa Brava creada por Ken Code",
+          "externalUrl": "https://casabrava.web.app",
+          "benefits": [
+            "Menú claro",
+            "Experiencia móvil",
+            "Contacto directo"
+          ],
+          "relatedServices": [
+            {
+              "label": "Páginas web para restaurantes",
+              "href": "/servicios/paginas-web-para-restaurantes"
+            }
+          ],
+          "gallery": []
+        },
+        {
+          "slug": "bekys-cake",
+          "name": "Beky's Cake",
+          "category": "Sitio para pedidos",
+          "description": "Web dulce y profesional para mostrar pasteles personalizados y recibir solicitudes.",
+          "result": "La marca tiene una ruta más clara para convertir visitantes en pedidos personalizados.",
+          "problem": "La marca necesitaba presentar pasteles con confianza y recibir pedidos de forma más ordenada.",
+          "solution": "Se diseñó una experiencia cálida, visual y enfocada en cotizaciones con secciones pensadas para productos personalizados.",
+          "image": "/images/projects/bekys_cake.jpg",
+          "imageAlt": "Sitio web para pastelería Beky's Cake desarrollado por Ken Code",
+          "externalUrl": "https://bekyscake.com",
+          "benefits": [
+            "Diseño emocional",
+            "Cotización rápida",
+            "Confianza visual"
+          ],
+          "relatedServices": [
+            {
+              "label": "Páginas web para negocios locales",
+              "href": "/servicios/paginas-web-para-negocios-locales"
+            },
+            {
+              "label": "Ecommerce",
+              "href": "/servicios/ecommerce"
+            }
+          ],
+          "gallery": []
+        },
+        {
+          "slug": "asesoria-educativa-diaca",
+          "name": "Asesoría Educativa DIACA",
+          "category": "Servicios educativos",
+          "description": "Sitio profesional para explicar servicios educativos y generar confianza familiar.",
+          "result": "Los visitantes entienden mejor la oferta y pueden contactar con mayor seguridad.",
+          "problem": "El servicio necesitaba comunicar orientación educativa de forma confiable, humana y ordenada.",
+          "solution": "Se organizó una web clara con beneficios, servicios y llamados a la acción para familias y estudiantes.",
+          "image": "/images/projects/cristian.jpg",
+          "imageAlt": "Página web educativa DIACA desarrollada por Ken Code",
+          "externalUrl": "https://asesoriaeducativadiaca.com",
+          "benefits": [
+            "Mensaje claro",
+            "Confianza familiar",
+            "Contacto sencillo"
+          ],
+          "relatedServices": [
+            {
+              "label": "Páginas web para negocios locales",
+              "href": "/servicios/paginas-web-para-negocios-locales"
+            }
+          ],
+          "gallery": []
+        },
+        {
+          "slug": "sariah-rivera-servicios-legales",
+          "name": "Sariah Rivera - Servicios Legales",
+          "category": "Servicios profesionales",
+          "description": "Web legal orientada a confianza, confidencialidad y contacto directo.",
+          "result": "La presencia digital comunica seriedad y facilita nuevas consultas profesionales.",
+          "problem": "El despacho necesitaba una imagen digital profesional para generar confianza desde la primera visita.",
+          "solution": "Se estructuró una web sobria, clara y orientada a explicar servicios legales con una ruta de contacto simple.",
+          "image": "/images/projects/sariahrivera.jpg",
+          "imageAlt": "Sitio web para servicios legales Sariah Rivera creado por Ken Code",
+          "externalUrl": "https://sariahrivera.web.app",
+          "benefits": [
+            "Imagen profesional",
+            "Confianza inicial",
+            "Consulta directa"
+          ],
+          "relatedServices": [
+            {
+              "label": "Páginas web para negocios locales",
+              "href": "/servicios/paginas-web-para-negocios-locales"
+            }
+          ],
+          "gallery": []
+        },
+        {
+          "slug": "kadsa",
+          "name": "KADSA",
+          "category": "Catálogo web",
+          "description": "Catálogo visual para presentar productos con una experiencia elegante.",
+          "result": "Los productos son más fáciles de explorar y la marca se percibe más completa en línea.",
+          "problem": "El catálogo necesitaba orden, claridad y una experiencia simple para compradores.",
+          "solution": "Se organizó una interfaz responsive para mostrar productos y orientar al visitante hacia contacto comercial.",
+          "image": "/images/projects/kadsa.jpg",
+          "imageAlt": "Catálogo ecommerce KADSA creado por Ken Code",
+          "externalUrl": "https://kadsa.web.app",
+          "benefits": [
+            "Catálogo ordenado",
+            "Marca más sólida",
+            "Exploración fácil"
+          ],
+          "relatedServices": [
+            {
+              "label": "Ecommerce",
+              "href": "/servicios/ecommerce"
+            }
+          ],
+          "gallery": []
+        },
+        {
+          "slug": "kenneth-logistics-group",
+          "name": "Kenneth Logistics Group",
+          "category": "Web corporativa",
+          "description": "Presencia corporativa para comunicar servicios logísticos y contacto B2B.",
+          "result": "La empresa comunica servicios con mayor credibilidad y facilita el contacto comercial.",
+          "problem": "La empresa requería una presencia digital más confiable para explicar servicios logísticos y rutas.",
+          "solution": "Se creó una web corporativa con servicios, rutas, seguimiento y llamadas a la acción para clientes empresariales.",
+          "image": "/images/projects/logistic.jpg",
+          "imageAlt": "Página web de logística Kenneth Logistics Group desarrollada por Ken Code",
+          "externalUrl": "https://kennethlogisticsgroup.web.app/",
+          "benefits": [
+            "Credibilidad B2B",
+            "Servicios claros",
+            "Contacto comercial"
+          ],
+          "relatedServices": [
+            {
+              "label": "CRM para empresas",
+              "href": "/servicios/crm-para-empresas"
+            },
+            {
+              "label": "Desarrollo web internacional",
+              "href": "/servicios/desarrollo-web-internacional"
+            }
+          ],
+          "gallery": []
+        }
+      ],
+      "packages": [
+        {
+          "name": "Página de aterrizaje",
+          "price": "Cotización personalizada",
+          "audience": "Para campañas, servicios puntuales y negocios que quieren validar una oferta digital clara.",
+          "includes": [
+            "1 página profesional",
+            "Mensaje orientado a ventas",
+            "WhatsApp integrado",
+            "SEO básico",
+            "Lanzamiento asistido"
+          ]
+        },
+        {
+          "name": "Web para negocios",
+          "price": "Cotización personalizada",
+          "audience": "Para negocios establecidos que necesitan una presencia en línea más fuerte y completa.",
+          "includes": [
+            "Hasta 5 secciones",
+            "Formulario de contacto",
+            "Servicios o galería",
+            "Previews para redes",
+            "Soporte post-lanzamiento"
+          ]
+        },
+        {
+          "name": "Web Pro + Panel",
+          "price": "Cotización personalizada",
+          "audience": "Para equipos que quieren preparar seguimiento comercial sin mezclar operaciones privadas con la web pública.",
+          "includes": [
+            "Web premium",
+            "Base lista para panel futuro",
+            "Área privada separada",
+            "Automatizaciones base",
+            "SEO inicial avanzado"
+          ],
+          "featured": true
+        },
+        {
+          "name": "Tienda en línea",
+          "price": "Cotización personalizada",
+          "audience": "Para marcas que venden productos y necesitan catálogo, consultas y flujo de pedido más claro.",
+          "includes": [
+            "Catálogo de productos",
+            "Flujo de pedido",
+            "Contacto integrado",
+            "Base para pagos",
+            "Estructura escalable"
+          ]
+        }
+      ],
+      "benefits": [
+        {
+          "title": "Alcance internacional",
+          "copy": "Trabajo remoto, comunicación clara y experiencias web listas para clientes de diferentes países."
+        },
+        {
+          "title": "Contacto sin fricción",
+          "copy": "WhatsApp, correo y formularios visibles para que el cliente dé el siguiente paso desde cualquier zona horaria."
+        },
+        {
+          "title": "SEO internacional + local",
+          "copy": "Metadata, sitemap, robots, URLs limpias y palabras clave globales combinadas con búsqueda local."
+        },
+        {
+          "title": "Crecimiento por fases",
+          "copy": "Primero una web pública premium; después sistemas privados cuando el negocio lo necesite."
+        }
+      ],
+      "process": [
+        "Diagnóstico",
+        "Estructura",
+        "Diseño",
+        "Construcción",
+        "Revisión",
+        "Lanzamiento",
+        "Soporte"
+      ],
+      "testimonials": [
+        {
+          "quote": "La web se siente más profesional y los clientes entienden la oferta desde la primera visita.",
+          "name": "Cliente de servicios",
+          "role": "Negocio de servicios"
+        },
+        {
+          "quote": "El diseño ayudó a presentar productos con mejor estructura y guiar consultas hacia WhatsApp.",
+          "name": "Cliente e-commerce",
+          "role": "Marca de productos"
+        },
+        {
+          "quote": "Ken Code cuidó los detalles, la rapidez y la experiencia móvil. El sitio quedó listo para vender.",
+          "name": "Cliente corporativo",
+          "role": "Servicios empresariales"
+        }
+      ],
+      "strengths": [
+        "Diseño moderno",
+        "Página rápida",
+        "Adaptada a celulares",
+        "Contacto por WhatsApp",
+        "Formularios profesionales",
+        "SEO básico",
+        "Panel administrativo",
+        "Soporte post-lanzamiento",
+        "Experiencia profesional"
+      ],
+      "blogTopics": [
+        "Cómo una landing page ayuda a vender servicios en internet",
+        "Qué necesita una web moderna para generar confianza",
+        "SEO local e internacional para negocios que quieren crecer"
+      ]
+    },
+    "en": {
+      "services": [
+        {
+          "slug": "landing-pages",
+          "title": "Landing pages",
+          "summary": "Pages focused on campaigns, service offers and qualified inquiries.",
+          "detail": "Clear structure, sales messaging, visible calls to action and an experience designed to turn visits into real conversations."
+        },
+        {
+          "slug": "business-websites",
+          "title": "Business websites",
+          "summary": "Professional presence for brands that need clarity, trust and international reach.",
+          "detail": "Organized sections, responsive design, business-focused content and a foundation prepared to grow in phases."
+        },
+        {
+          "slug": "ecommerce",
+          "title": "E-commerce",
+          "summary": "Catalogs and order flows for brands selling across markets.",
+          "detail": "Products, categories, purchase messages and contact paths ready to receive inquiries or orders with better structure."
+        },
+        {
+          "slug": "admin-panel",
+          "title": "Admin panel",
+          "summary": "Private foundation to organize contacts, requests and commercial follow-up.",
+          "detail": "The public website stays ready for a future private phase without mixing internal information into the customer experience."
+        },
+        {
+          "slug": "whatsapp-contact",
+          "title": "WhatsApp contact",
+          "summary": "Direct contact paths for clients who prefer fast conversations.",
+          "detail": "Visible buttons, professional messages and quote links from important pages."
+        },
+        {
+          "slug": "basic-seo",
+          "title": "Basic SEO",
+          "summary": "Titles, descriptions, sitemap, robots and semantic structure for search engines.",
+          "detail": "Preparation for Google Search Console, social previews, clean URLs and content organized for local and international search."
+        },
+        {
+          "slug": "email-automation",
+          "title": "Email automation",
+          "summary": "Notifications and initial responses so important contacts do not get lost.",
+          "detail": "Communication flows prepared to respond better and keep commercial requests organized."
+        }
+      ],
+      "projects": [
+        {
+          "slug": "casa-brava-menu",
+          "name": "Casa Brava Menu",
+          "category": "Digital menu",
+          "description": "Visual restaurant menu with fast mobile navigation.",
+          "result": "The restaurant presents products more clearly with a modern digital image.",
+          "problem": "The restaurant needed to show its menu quickly, visually and easily from mobile.",
+          "solution": "A lightweight experience was built with clear categories, comfortable reading and direct access for clients who want to decide quickly.",
+          "image": "/images/projects/casabrava.jpg",
+          "imageAlt": "Casa Brava digital menu view created by Ken Code",
+          "externalUrl": "https://casabrava.web.app",
+          "benefits": [
+            "Clear menu",
+            "Mobile experience",
+            "Direct contact"
+          ]
+        },
+        {
+          "slug": "bekys-cake",
+          "name": "Beky's Cake",
+          "category": "Order website",
+          "description": "Warm, professional website for custom cakes and quote requests.",
+          "result": "The brand has a clearer path to turn visitors into custom orders.",
+          "problem": "The brand needed to present cakes with confidence and receive orders with better structure.",
+          "solution": "A warm, visual experience was designed around quote requests and personalized product presentation.",
+          "image": "/images/projects/bekys_cake.jpg",
+          "imageAlt": "Beky's Cake website with custom cake presentation",
+          "externalUrl": "https://bekyscake.com",
+          "benefits": [
+            "Emotional design",
+            "Fast quotes",
+            "Visual trust"
+          ]
+        },
+        {
+          "slug": "asesoria-educativa-diaca",
+          "name": "Asesoria Educativa DIACA",
+          "category": "Educational services",
+          "description": "Professional website to explain educational services and build family trust.",
+          "result": "Visitors understand the offer better and can contact with greater confidence.",
+          "problem": "The service needed to communicate educational guidance in a trustworthy, human and organized way.",
+          "solution": "A clear website was organized with benefits, services and calls to action for families and students.",
+          "image": "/images/projects/cristian.jpg",
+          "imageAlt": "Asesoria Educativa DIACA professional website presentation",
+          "externalUrl": "https://asesoriaeducativadiaca.com",
+          "benefits": [
+            "Clear message",
+            "Family trust",
+            "Easy contact"
+          ]
+        },
+        {
+          "slug": "sariah-rivera-servicios-legales",
+          "name": "Sariah Rivera - Legal Services",
+          "category": "Professional services",
+          "description": "Legal website focused on trust, confidentiality and direct contact.",
+          "result": "The digital presence communicates seriousness and makes consultations easier.",
+          "problem": "The practice needed a professional digital image to build trust from the first visit.",
+          "solution": "A sober, clear website was structured to explain legal services with a simple contact path.",
+          "image": "/images/projects/sariahrivera.jpg",
+          "imageAlt": "Sariah Rivera legal website developed by Ken Code",
+          "externalUrl": "https://sariahrivera.web.app",
+          "benefits": [
+            "Professional image",
+            "Initial trust",
+            "Direct consultation"
+          ]
+        },
+        {
+          "slug": "kadsa",
+          "name": "KADSA",
+          "category": "Web catalog",
+          "description": "Visual catalog to present products with an elegant experience.",
+          "result": "Products are easier to explore and the brand feels more complete online.",
+          "problem": "The catalog needed order, clarity and a simple experience for buyers.",
+          "solution": "A responsive interface was organized to show products and guide visitors toward commercial contact.",
+          "image": "/images/projects/kadsa.jpg",
+          "imageAlt": "KADSA web catalog with featured products",
+          "externalUrl": "https://kadsa.web.app",
+          "benefits": [
+            "Organized catalog",
+            "Stronger brand",
+            "Easy browsing"
+          ]
+        },
+        {
+          "slug": "kenneth-logistics-group",
+          "name": "Kenneth Logistics Group",
+          "category": "Corporate website",
+          "description": "Corporate presence to communicate logistics services and B2B contact.",
+          "result": "The company communicates services with stronger credibility and easier commercial contact.",
+          "problem": "The company needed a more reliable digital presence to explain logistics services and routes.",
+          "solution": "A corporate website was created with services, routes, tracking and calls to action for business clients.",
+          "image": "/images/projects/logistic.jpg",
+          "imageAlt": "Kenneth Logistics Group corporate logistics website",
+          "externalUrl": "https://kennethlogisticsgroup.web.app/",
+          "benefits": [
+            "B2B credibility",
+            "Clear services",
+            "Commercial contact"
+          ]
+        }
+      ],
+      "packages": [
+        {
+          "name": "Landing Page",
+          "price": "Custom quote",
+          "audience": "For campaigns, specific services and businesses that want to validate a clear digital offer.",
+          "includes": [
+            "1 professional page",
+            "Sales-focused messaging",
+            "WhatsApp contact",
+            "Basic SEO",
+            "Launch support"
+          ]
+        },
+        {
+          "name": "Web Business",
+          "price": "Custom quote",
+          "audience": "For established businesses that need a stronger and more complete online presence.",
+          "includes": [
+            "Up to 5 sections",
+            "Contact form",
+            "Services or gallery",
+            "Social previews",
+            "Post-launch support"
+          ]
+        },
+        {
+          "name": "Web Pro + Panel",
+          "price": "Custom quote",
+          "audience": "For teams preparing commercial follow-up without mixing private operations into the public website.",
+          "includes": [
+            "Premium website",
+            "Future panel foundation",
+            "Separate private area",
+            "Base automations",
+            "Advanced initial SEO"
+          ],
+          "featured": true
+        },
+        {
+          "name": "E-commerce",
+          "price": "Custom quote",
+          "audience": "For brands selling products and needing a clearer catalog, inquiries and order flow.",
+          "includes": [
+            "Product catalog",
+            "Order flow",
+            "Integrated contact",
+            "Payment-ready base",
+            "Scalable structure"
+          ]
+        }
+      ],
+      "benefits": [
+        {
+          "title": "International reach",
+          "copy": "Remote work, clear communication and web experiences ready for clients in different countries."
+        },
+        {
+          "title": "Frictionless contact",
+          "copy": "WhatsApp, email and forms visible so clients can take the next step from any time zone."
+        },
+        {
+          "title": "International + local SEO",
+          "copy": "Metadata, sitemap, robots, clean URLs and global keywords combined with local search."
+        },
+        {
+          "title": "Phased growth",
+          "copy": "First a premium public website; later private systems when the business needs them."
+        }
+      ],
+      "process": [
+        "Diagnosis",
+        "Structure",
+        "Design",
+        "Build",
+        "Review",
+        "Launch",
+        "Support"
+      ],
+      "testimonials": [
+        {
+          "quote": "The website feels more professional and clients understand the offer from the first visit.",
+          "name": "Service client",
+          "role": "Service business"
+        },
+        {
+          "quote": "The design helped present products with better structure and guide inquiries toward WhatsApp.",
+          "name": "E-commerce client",
+          "role": "Product brand"
+        },
+        {
+          "quote": "Ken Code handled the details, speed and mobile experience. The site felt ready to sell.",
+          "name": "Corporate client",
+          "role": "Business services"
+        }
+      ],
+      "strengths": [
+        "Modern design",
+        "Fast pages",
+        "Mobile-ready",
+        "WhatsApp contact",
+        "Professional forms",
+        "Basic SEO",
+        "Admin panel",
+        "Post-launch support",
+        "Professional experience"
+      ],
+      "blogTopics": [
+        "How a landing page helps service businesses sell online",
+        "What a modern website needs to build trust",
+        "Local and international SEO for growing businesses"
+      ]
+    }
+  },
+  "seoServices": [
+    {
+      "slug": "paginas-web-honduras",
+      "title": "Paginas web en Honduras",
+      "metaTitle": "Paginas web en Honduras para negocios | Ken Code",
+      "metaDescription": "Diseno y desarrollo de paginas web profesionales en Honduras para negocios que necesitan confianza, contactos, WhatsApp, SEO base y presencia digital moderna.",
+      "h1": "Paginas web en Honduras para negocios que quieren crecer con confianza",
+      "intro": "Ken Code crea paginas web profesionales para empresas, marcas y emprendedores en Honduras que necesitan una presencia digital seria, rapida y preparada para convertir visitas en conversaciones reales.",
+      "problem": "Muchos negocios en Honduras dependen solo de redes sociales. Eso limita la confianza, dificulta explicar servicios y hace que los clientes no encuentren informacion clara cuando buscan en Google.",
+      "solution": "Construimos una web ordenada, responsive y enfocada en negocio: servicios claros, formularios, WhatsApp, llamadas a la accion, SEO base y una estructura lista para crecer por fases.",
+      "benefits": [
+        "Mayor confianza desde Google",
+        "Contacto directo por WhatsApp",
+        "Web rapida en celulares",
+        "Contenido claro para vender",
+        "SEO base local",
+        "Formulario conectado al CRM"
+      ],
+      "includes": [
+        "Estructura comercial",
+        "Diseno responsive",
+        "Secciones de servicios",
+        "Formulario de contacto",
+        "WhatsApp integrado",
+        "Metadata SEO",
+        "Sitemap y robots",
+        "Soporte de lanzamiento"
+      ],
+      "process": [
+        "Diagnostico del negocio",
+        "Estructura de la pagina",
+        "Diseno visual",
+        "Desarrollo",
+        "Revision en celular",
+        "Lanzamiento",
+        "Soporte inicial"
+      ],
+      "relatedProjects": [
+        "bekys-cake",
+        "asesoria-educativa-diaca",
+        "sariah-rivera-servicios-legales"
+      ],
+      "relatedServices": [
+        "paginas-web-para-negocios-locales",
+        "landing-pages",
+        "desarrollo-web-internacional"
+      ],
+      "faq": [
+        {
+          "question": "Cuanto cuesta una pagina web en Honduras?",
+          "answer": "Depende del alcance, cantidad de secciones, contenido y funciones. Ken Code trabaja con cotizacion personalizada para recomendar una solucion realista."
+        },
+        {
+          "question": "La pagina funciona en celular?",
+          "answer": "Si. Cada pagina se construye responsive para que se vea profesional en telefono, tablet y escritorio."
+        },
+        {
+          "question": "Puedo recibir mensajes por WhatsApp?",
+          "answer": "Si. Integramos WhatsApp con mensajes preparados para que el cliente contacte rapido desde las secciones importantes."
+        }
+      ],
+      "keywords": [
+        "paginas web Honduras",
+        "diseno web Honduras",
+        "desarrollo web Honduras",
+        "pagina web profesional Honduras"
+      ],
+      "cta": "Cotizar pagina web"
+    },
+    {
+      "slug": "landing-pages",
+      "title": "Landing pages",
+      "metaTitle": "Landing pages para vender servicios | Ken Code",
+      "metaDescription": "Landing pages profesionales para campanas, servicios y negocios que necesitan convertir visitas en clientes con mensajes claros, WhatsApp y formularios.",
+      "h1": "Landing pages enfocadas en convertir visitantes en clientes",
+      "intro": "Una landing page bien construida ayuda a presentar una oferta concreta, eliminar distracciones y guiar al visitante hacia una accion: escribir por WhatsApp, solicitar informacion o enviar una cotizacion.",
+      "problem": "Cuando una campana envia trafico a una pagina generica, el visitante se pierde entre demasiadas opciones y no entiende rapido por que debe contactar.",
+      "solution": "Creamos paginas de aterrizaje con una promesa clara, beneficios visibles, prueba de confianza, CTA fuerte y formulario conectado al flujo interno de leads.",
+      "benefits": [
+        "Mensaje comercial directo",
+        "Mas conversion para campanas",
+        "Carga rapida",
+        "Formulario profesional",
+        "WhatsApp visible",
+        "Medicion y estructura SEO base"
+      ],
+      "includes": [
+        "Hero persuasivo",
+        "Beneficios",
+        "Seccion de confianza",
+        "Preguntas frecuentes",
+        "Formulario",
+        "CTA final",
+        "Open Graph",
+        "SEO tecnico base"
+      ],
+      "process": [
+        "Analisis de la oferta",
+        "Definicion del mensaje",
+        "Wireframe",
+        "Diseno",
+        "Desarrollo",
+        "Pruebas",
+        "Lanzamiento"
+      ],
+      "relatedProjects": [
+        "bekys-cake",
+        "casa-brava-menu",
+        "kadsa"
+      ],
+      "relatedServices": [
+        "paginas-web-honduras",
+        "paginas-web-para-negocios-locales",
+        "desarrollo-web-internacional"
+      ],
+      "faq": [
+        {
+          "question": "Para que sirve una landing page?",
+          "answer": "Sirve para enfocar una oferta especifica y aumentar la probabilidad de que el visitante contacte o solicite informacion."
+        },
+        {
+          "question": "Es mejor que una pagina completa?",
+          "answer": "Depende del objetivo. Para campanas o servicios puntuales, una landing suele convertir mejor. Para una marca completa, conviene un sitio web."
+        },
+        {
+          "question": "Puede conectarse con mi CRM?",
+          "answer": "Si. El formulario puede enviar leads al CRM privado de Ken Code o dejar la base lista para integraciones futuras."
+        }
+      ],
+      "keywords": [
+        "landing pages",
+        "landing page Honduras",
+        "pagina de aterrizaje",
+        "landing page para servicios"
+      ],
+      "cta": "Cotizar landing page"
+    },
+    {
+      "slug": "ecommerce",
+      "title": "Ecommerce",
+      "metaTitle": "Ecommerce y tiendas en linea | Ken Code",
+      "metaDescription": "Desarrollo de ecommerce, catalogos web y tiendas en linea para marcas que necesitan vender productos con claridad, confianza y contacto directo.",
+      "h1": "Ecommerce y tiendas en linea para marcas que quieren vender con orden",
+      "intro": "Ken Code ayuda a negocios que venden productos a presentar catalogos, categorias, informacion clave y rutas de pedido con una experiencia moderna y facil de usar.",
+      "problem": "Muchas marcas venden solo por mensajes sueltos, fotos dispersas o redes sociales. Eso hace dificil ordenar productos, explicar detalles y responder consultas repetidas.",
+      "solution": "Creamos una experiencia de ecommerce o catalogo web segun la etapa del negocio, con productos claros, llamados a la accion, WhatsApp y base preparada para crecer hacia pagos o panel.",
+      "benefits": [
+        "Catalogo ordenado",
+        "Mayor confianza visual",
+        "Productos faciles de explorar",
+        "Contacto directo",
+        "Base escalable",
+        "SEO para productos y categorias"
+      ],
+      "includes": [
+        "Catalogo de productos",
+        "Categorias",
+        "Detalle de producto",
+        "Ruta de pedido",
+        "WhatsApp integrado",
+        "SEO base",
+        "Responsive",
+        "Preparacion para pagos futuros"
+      ],
+      "process": [
+        "Revision del catalogo",
+        "Estructura de categorias",
+        "Diseno de experiencia",
+        "Carga inicial",
+        "Pruebas de pedido",
+        "Lanzamiento",
+        "Mejoras posteriores"
+      ],
+      "relatedProjects": [
+        "kadsa",
+        "bekys-cake"
+      ],
+      "relatedServices": [
+        "landing-pages",
+        "paginas-web-para-negocios-locales",
+        "crm-para-empresas"
+      ],
+      "faq": [
+        {
+          "question": "Necesito pagos en linea desde el inicio?",
+          "answer": "No siempre. Algunos negocios empiezan con catalogo y pedidos por WhatsApp, y luego agregan pagos cuando el flujo esta validado."
+        },
+        {
+          "question": "Puedo mostrar productos sin vender directamente?",
+          "answer": "Si. Un catalogo web profesional puede generar consultas y ordenar la oferta sin checkout completo."
+        },
+        {
+          "question": "El ecommerce puede crecer por fases?",
+          "answer": "Si. Se puede iniciar con catalogo, luego agregar panel, pagos, inventario o automatizaciones."
+        }
+      ],
+      "keywords": [
+        "ecommerce Honduras",
+        "tienda en linea Honduras",
+        "catalogo web",
+        "desarrollo ecommerce"
+      ],
+      "cta": "Cotizar ecommerce"
+    },
+    {
+      "slug": "crm-para-empresas",
+      "title": "CRM para empresas",
+      "metaTitle": "CRM para empresas y seguimiento de leads | Ken Code",
+      "metaDescription": "CRM privado para empresas que necesitan organizar leads, tareas, notas, recordatorios, notificaciones y seguimiento comercial desde un panel profesional.",
+      "h1": "CRM para empresas que necesitan ordenar clientes, tareas y seguimiento",
+      "intro": "Un CRM ayuda a que las solicitudes no se pierdan. Ken Code prepara sistemas privados para organizar leads, notas, tareas, recordatorios y oportunidades de negocio.",
+      "problem": "Cuando los contactos llegan por WhatsApp, correo y formularios sin un sistema, es facil olvidar seguimientos, perder clientes potenciales o no saber que paso con cada oportunidad.",
+      "solution": "Construimos una base CRM privada conectada a la web publica, con leads, tareas, notificaciones, emails, activity logs y estructura segura para crecer con el negocio.",
+      "benefits": [
+        "Leads centralizados",
+        "Tareas con recordatorios",
+        "Historial de actividad",
+        "Notificaciones internas",
+        "Emails automaticos",
+        "Panel privado seguro"
+      ],
+      "includes": [
+        "Dashboard",
+        "Lista de leads",
+        "Detalle de lead",
+        "Notas internas",
+        "Tareas",
+        "Notificaciones",
+        "Activity logs",
+        "Arquitectura server-side"
+      ],
+      "process": [
+        "Analisis del flujo comercial",
+        "Modelo de datos",
+        "Diseno del panel",
+        "Integracion con formularios",
+        "Pruebas de seguridad",
+        "Lanzamiento",
+        "Mejoras por uso real"
+      ],
+      "relatedProjects": [
+        "kenneth-logistics-group",
+        "sariah-rivera-servicios-legales"
+      ],
+      "relatedServices": [
+        "paginas-web-honduras",
+        "desarrollo-web-internacional",
+        "ecommerce"
+      ],
+      "faq": [
+        {
+          "question": "Un CRM reemplaza WhatsApp?",
+          "answer": "No. El CRM organiza el seguimiento; WhatsApp sigue siendo un canal de contacto rapido."
+        },
+        {
+          "question": "Puede conectarse al formulario de mi web?",
+          "answer": "Si. La idea es que cada solicitud llegue al sistema para dar seguimiento con mayor orden."
+        },
+        {
+          "question": "Es seguro?",
+          "answer": "El panel debe estar separado de la web publica, con rutas protegidas y operaciones sensibles server-side."
+        }
+      ],
+      "keywords": [
+        "CRM para empresas",
+        "CRM Honduras",
+        "seguimiento de leads",
+        "panel administrativo para negocios"
+      ],
+      "cta": "Cotizar CRM"
+    },
+    {
+      "slug": "paginas-web-para-restaurantes",
+      "title": "Paginas web para restaurantes",
+      "metaTitle": "Paginas web para restaurantes y menus digitales | Ken Code",
+      "metaDescription": "Paginas web para restaurantes con menu digital, contacto por WhatsApp, imagen profesional, navegacion movil y base SEO local.",
+      "h1": "Paginas web para restaurantes que quieren mostrar mejor su menu y recibir mas consultas",
+      "intro": "Los restaurantes necesitan una experiencia rapida, visual y facil desde celular. Ken Code crea menus digitales y paginas web que ayudan al cliente a decidir y contactar.",
+      "problem": "Si el menu esta perdido en redes sociales o en imagenes dificiles de leer, el cliente se frustra, pregunta de mas o se va con otra opcion.",
+      "solution": "Creamos paginas para restaurantes con categorias claras, fotos, informacion de contacto, horarios, ubicacion, WhatsApp y una experiencia movil pensada para decidir rapido.",
+      "benefits": [
+        "Menu facil de navegar",
+        "Mejor experiencia movil",
+        "WhatsApp directo",
+        "Imagen mas profesional",
+        "SEO local",
+        "Promociones y categorias ordenadas"
+      ],
+      "includes": [
+        "Menu digital",
+        "Categorias",
+        "Seccion de ubicacion",
+        "Horarios",
+        "WhatsApp",
+        "Galeria",
+        "SEO local",
+        "CTA para pedidos o reservas"
+      ],
+      "process": [
+        "Revision del menu",
+        "Organizacion por categorias",
+        "Diseno visual",
+        "Carga de productos",
+        "Pruebas en celular",
+        "Publicacion",
+        "Ajustes de carta"
+      ],
+      "relatedProjects": [
+        "casa-brava-menu",
+        "bekys-cake"
+      ],
+      "relatedServices": [
+        "paginas-web-honduras",
+        "landing-pages",
+        "paginas-web-para-negocios-locales"
+      ],
+      "faq": [
+        {
+          "question": "Puedo tener solo un menu digital?",
+          "answer": "Si. Un menu digital puede ser una primera fase rapida para mejorar la experiencia de clientes desde celular."
+        },
+        {
+          "question": "Se puede conectar con WhatsApp?",
+          "answer": "Si. Los botones pueden llevar a pedidos, reservas o consultas por WhatsApp."
+        },
+        {
+          "question": "Sirve para Google?",
+          "answer": "Si. Una web bien estructurada ayuda a que el restaurante tenga una presencia mas clara para busquedas locales."
+        }
+      ],
+      "keywords": [
+        "paginas web para restaurantes",
+        "menu digital Honduras",
+        "web para restaurante",
+        "menu online"
+      ],
+      "cta": "Cotizar web para restaurante"
+    },
+    {
+      "slug": "paginas-web-para-negocios-locales",
+      "title": "Paginas web para negocios locales",
+      "metaTitle": "Paginas web para negocios locales | Ken Code",
+      "metaDescription": "Paginas web para negocios locales que necesitan verse profesionales, explicar servicios, recibir contactos y aparecer mejor ante clientes que buscan en internet.",
+      "h1": "Paginas web para negocios locales que quieren verse mas confiables",
+      "intro": "Una web profesional ayuda a que un negocio local no dependa solo de recomendaciones o redes sociales. Sirve para explicar, mostrar, responder dudas y convertir visitas en contactos.",
+      "problem": "Los clientes buscan informacion antes de escribir: servicios, horarios, ubicacion, fotos, confianza y formas de contacto. Si no encuentran eso, el negocio pierde oportunidades.",
+      "solution": "Creamos sitios claros para negocios locales con secciones esenciales, contacto rapido, SEO base, formularios y una imagen visual que transmite seriedad.",
+      "benefits": [
+        "Presencia profesional",
+        "Mas confianza",
+        "Contacto rapido",
+        "Informacion ordenada",
+        "SEO local",
+        "Base para crecer"
+      ],
+      "includes": [
+        "Inicio",
+        "Servicios",
+        "Galeria o productos",
+        "Contacto",
+        "Formulario",
+        "WhatsApp",
+        "Preguntas frecuentes",
+        "Sitemap"
+      ],
+      "process": [
+        "Diagnostico",
+        "Mapa de contenido",
+        "Diseno",
+        "Desarrollo",
+        "Revision con el negocio",
+        "Publicacion",
+        "Soporte"
+      ],
+      "relatedProjects": [
+        "bekys-cake",
+        "asesoria-educativa-diaca",
+        "kadsa"
+      ],
+      "relatedServices": [
+        "paginas-web-honduras",
+        "landing-pages",
+        "desarrollo-web-internacional"
+      ],
+      "faq": [
+        {
+          "question": "Una web ayuda aunque ya tenga redes sociales?",
+          "answer": "Si. Las redes ayudan a comunicar, pero una web propia da mas confianza, orden y control sobre la informacion."
+        },
+        {
+          "question": "Puedo empezar con pocas secciones?",
+          "answer": "Si. Se puede iniciar con lo esencial y crecer cuando el negocio tenga mas contenido o necesidades."
+        },
+        {
+          "question": "Incluye SEO?",
+          "answer": "Incluye una base tecnica SEO: metadata, sitemap, robots, URLs limpias y contenido organizado."
+        }
+      ],
+      "keywords": [
+        "paginas web para negocios locales",
+        "web para negocios pequenos",
+        "diseno web negocios",
+        "sitios web para empresas"
+      ],
+      "cta": "Cotizar web para negocio"
+    },
+    {
+      "slug": "desarrollo-web-internacional",
+      "title": "Desarrollo web internacional",
+      "metaTitle": "Desarrollo web internacional y remoto | Ken Code",
+      "metaDescription": "Desarrollo web internacional para negocios que trabajan remoto con clientes de Honduras, Latinoamerica, Estados Unidos y otros mercados.",
+      "h1": "Desarrollo web internacional para negocios que atienden clientes en distintos mercados",
+      "intro": "Ken Code trabaja de forma remota con empresas, marcas y fundadores que necesitan una web profesional preparada para clientes locales e internacionales.",
+      "problem": "Cuando un negocio quiere vender fuera de su ciudad o pais, necesita una presencia digital clara, confiable y facil de entender para diferentes audiencias.",
+      "solution": "Construimos sitios bilingues o preparados para mercados internacionales, con estructura clara, SEO local e internacional, formularios y rutas de contacto sin friccion.",
+      "benefits": [
+        "Trabajo remoto ordenado",
+        "Base bilingue",
+        "SEO internacional",
+        "Contacto desde cualquier pais",
+        "Imagen premium",
+        "Proceso claro por etapas"
+      ],
+      "includes": [
+        "Arquitectura bilingue",
+        "Metadata por idioma",
+        "Hreflang",
+        "Open Graph",
+        "Formulario",
+        "WhatsApp",
+        "Contenido comercial",
+        "Preparacion para crecimiento"
+      ],
+      "process": [
+        "Definicion de mercado",
+        "Estructura de idiomas",
+        "Mensaje comercial",
+        "Diseno",
+        "Desarrollo",
+        "Pruebas internacionales",
+        "Lanzamiento"
+      ],
+      "relatedProjects": [
+        "kenneth-logistics-group",
+        "sariah-rivera-servicios-legales",
+        "kadsa"
+      ],
+      "relatedServices": [
+        "paginas-web-honduras",
+        "crm-para-empresas",
+        "ecommerce"
+      ],
+      "faq": [
+        {
+          "question": "Puedo trabajar con Ken Code desde otro pais?",
+          "answer": "Si. El proceso esta pensado para trabajo remoto con comunicacion clara y entregas por etapas."
+        },
+        {
+          "question": "Mi web puede estar en espanol e ingles?",
+          "answer": "Si. La arquitectura puede prepararse con rutas por idioma, metadata y alternates para buscadores."
+        },
+        {
+          "question": "Sirve para clientes en Estados Unidos?",
+          "answer": "Si. Se puede orientar el contenido y la experiencia a clientes internacionales manteniendo una base tecnica solida."
+        }
+      ],
+      "keywords": [
+        "desarrollo web internacional",
+        "web development Honduras",
+        "remote web developer",
+        "desarrollo web remoto"
+      ],
+      "cta": "Cotizar proyecto internacional"
+    }
+  ],
+  "faqs": [
+    {
+      "serviceSlug": "paginas-web-honduras",
+      "serviceTitle": "Paginas web en Honduras",
+      "question": "Cuanto cuesta una pagina web en Honduras?",
+      "answer": "Depende del alcance, cantidad de secciones, contenido y funciones. Ken Code trabaja con cotizacion personalizada para recomendar una solucion realista."
+    },
+    {
+      "serviceSlug": "paginas-web-honduras",
+      "serviceTitle": "Paginas web en Honduras",
+      "question": "La pagina funciona en celular?",
+      "answer": "Si. Cada pagina se construye responsive para que se vea profesional en telefono, tablet y escritorio."
+    },
+    {
+      "serviceSlug": "paginas-web-honduras",
+      "serviceTitle": "Paginas web en Honduras",
+      "question": "Puedo recibir mensajes por WhatsApp?",
+      "answer": "Si. Integramos WhatsApp con mensajes preparados para que el cliente contacte rapido desde las secciones importantes."
+    },
+    {
+      "serviceSlug": "landing-pages",
+      "serviceTitle": "Landing pages",
+      "question": "Para que sirve una landing page?",
+      "answer": "Sirve para enfocar una oferta especifica y aumentar la probabilidad de que el visitante contacte o solicite informacion."
+    },
+    {
+      "serviceSlug": "landing-pages",
+      "serviceTitle": "Landing pages",
+      "question": "Es mejor que una pagina completa?",
+      "answer": "Depende del objetivo. Para campanas o servicios puntuales, una landing suele convertir mejor. Para una marca completa, conviene un sitio web."
+    },
+    {
+      "serviceSlug": "landing-pages",
+      "serviceTitle": "Landing pages",
+      "question": "Puede conectarse con mi CRM?",
+      "answer": "Si. El formulario puede enviar leads al CRM privado de Ken Code o dejar la base lista para integraciones futuras."
+    },
+    {
+      "serviceSlug": "ecommerce",
+      "serviceTitle": "Ecommerce",
+      "question": "Necesito pagos en linea desde el inicio?",
+      "answer": "No siempre. Algunos negocios empiezan con catalogo y pedidos por WhatsApp, y luego agregan pagos cuando el flujo esta validado."
+    },
+    {
+      "serviceSlug": "ecommerce",
+      "serviceTitle": "Ecommerce",
+      "question": "Puedo mostrar productos sin vender directamente?",
+      "answer": "Si. Un catalogo web profesional puede generar consultas y ordenar la oferta sin checkout completo."
+    },
+    {
+      "serviceSlug": "ecommerce",
+      "serviceTitle": "Ecommerce",
+      "question": "El ecommerce puede crecer por fases?",
+      "answer": "Si. Se puede iniciar con catalogo, luego agregar panel, pagos, inventario o automatizaciones."
+    },
+    {
+      "serviceSlug": "crm-para-empresas",
+      "serviceTitle": "CRM para empresas",
+      "question": "Un CRM reemplaza WhatsApp?",
+      "answer": "No. El CRM organiza el seguimiento; WhatsApp sigue siendo un canal de contacto rapido."
+    },
+    {
+      "serviceSlug": "crm-para-empresas",
+      "serviceTitle": "CRM para empresas",
+      "question": "Puede conectarse al formulario de mi web?",
+      "answer": "Si. La idea es que cada solicitud llegue al sistema para dar seguimiento con mayor orden."
+    },
+    {
+      "serviceSlug": "crm-para-empresas",
+      "serviceTitle": "CRM para empresas",
+      "question": "Es seguro?",
+      "answer": "El panel debe estar separado de la web publica, con rutas protegidas y operaciones sensibles server-side."
+    },
+    {
+      "serviceSlug": "paginas-web-para-restaurantes",
+      "serviceTitle": "Paginas web para restaurantes",
+      "question": "Puedo tener solo un menu digital?",
+      "answer": "Si. Un menu digital puede ser una primera fase rapida para mejorar la experiencia de clientes desde celular."
+    },
+    {
+      "serviceSlug": "paginas-web-para-restaurantes",
+      "serviceTitle": "Paginas web para restaurantes",
+      "question": "Se puede conectar con WhatsApp?",
+      "answer": "Si. Los botones pueden llevar a pedidos, reservas o consultas por WhatsApp."
+    },
+    {
+      "serviceSlug": "paginas-web-para-restaurantes",
+      "serviceTitle": "Paginas web para restaurantes",
+      "question": "Sirve para Google?",
+      "answer": "Si. Una web bien estructurada ayuda a que el restaurante tenga una presencia mas clara para busquedas locales."
+    },
+    {
+      "serviceSlug": "paginas-web-para-negocios-locales",
+      "serviceTitle": "Paginas web para negocios locales",
+      "question": "Una web ayuda aunque ya tenga redes sociales?",
+      "answer": "Si. Las redes ayudan a comunicar, pero una web propia da mas confianza, orden y control sobre la informacion."
+    },
+    {
+      "serviceSlug": "paginas-web-para-negocios-locales",
+      "serviceTitle": "Paginas web para negocios locales",
+      "question": "Puedo empezar con pocas secciones?",
+      "answer": "Si. Se puede iniciar con lo esencial y crecer cuando el negocio tenga mas contenido o necesidades."
+    },
+    {
+      "serviceSlug": "paginas-web-para-negocios-locales",
+      "serviceTitle": "Paginas web para negocios locales",
+      "question": "Incluye SEO?",
+      "answer": "Incluye una base tecnica SEO: metadata, sitemap, robots, URLs limpias y contenido organizado."
+    },
+    {
+      "serviceSlug": "desarrollo-web-internacional",
+      "serviceTitle": "Desarrollo web internacional",
+      "question": "Puedo trabajar con Ken Code desde otro pais?",
+      "answer": "Si. El proceso esta pensado para trabajo remoto con comunicacion clara y entregas por etapas."
+    },
+    {
+      "serviceSlug": "desarrollo-web-internacional",
+      "serviceTitle": "Desarrollo web internacional",
+      "question": "Mi web puede estar en espanol e ingles?",
+      "answer": "Si. La arquitectura puede prepararse con rutas por idioma, metadata y alternates para buscadores."
+    },
+    {
+      "serviceSlug": "desarrollo-web-internacional",
+      "serviceTitle": "Desarrollo web internacional",
+      "question": "Sirve para clientes en Estados Unidos?",
+      "answer": "Si. Se puede orientar el contenido y la experiencia a clientes internacionales manteniendo una base tecnica solida."
+    }
+  ],
+  "salesObjections": [
+    {
+      "question": "Por que elegir Ken Code?",
+      "answer": "Ken Code combina estrategia comercial, diseno moderno, experiencia movil, SEO base, contacto por WhatsApp y una base preparada para crecer por fases."
+    },
+    {
+      "question": "Por que no usar solo Facebook o Instagram?",
+      "answer": "Las redes sociales ayudan a comunicar, pero una web propia da mas confianza, orden, control de la informacion y una ruta clara para que clientes encuentren servicios, proyectos y contacto."
+    },
+    {
+      "question": "Por que tener una pagina web?",
+      "answer": "Una pagina web profesional ayuda a explicar servicios, mostrar proyectos, resolver dudas, aparecer mejor en busquedas y convertir visitas en conversaciones calificadas."
+    },
+    {
+      "question": "Por que automatizar procesos?",
+      "answer": "Automatizar ayuda a que las solicitudes importantes no se pierdan y a mantener seguimiento comercial con mas orden."
+    },
+    {
+      "question": "Por que usar inteligencia artificial?",
+      "answer": "Una IA puede orientar visitantes, responder dudas frecuentes y recomendar el siguiente paso usando informacion publica del sitio. Para detalles especificos, debe dirigir a contacto directo."
+    },
+    {
+      "question": "Como solicito una cotizacion?",
+      "answer": "Puedes solicitar una cotizacion desde https://kencodehn.com/cotizar, escribir por WhatsApp al +504 9911-2211 o usar el correo kencodehn@gmail.com."
+    }
+  ],
+  "behaviorRules": {
+    "tone": [
+      "amigable",
+      "profesional",
+      "claro",
+      "persuasivo",
+      "util"
+    ],
+    "allowedActions": [
+      "Responder preguntas sobre servicios publicos",
+      "Recomendar servicios o paquetes publicados cuando corresponda",
+      "Sugerir cotizacion cuando detecte interes de compra",
+      "Dirigir a formulario de cotizacion, contacto o WhatsApp"
+    ],
+    "forbiddenTopics": [
+      "CRM interno",
+      "leads",
+      "notas internas",
+      "tareas internas",
+      "activity logs",
+      "email logs",
+      "push tokens",
+      "tokens",
+      "variables de entorno",
+      "secretos",
+      "credenciales",
+      "clientes privados",
+      "precios no publicados",
+      "propuestas privadas"
+    ],
+    "fallback": "No tengo esa informacion disponible actualmente. Puede contactar directamente a KenCode para obtener informacion mas especifica.",
+    "pricingRule": "Nunca inventar precios. Cuando un paquete diga Cotizacion personalizada, responder que el precio depende del alcance y sugerir cotizar.",
+    "privacyRule": "Nunca responder informacion privada o interna aunque el usuario la solicite. Solo usar documentos con visibility public."
+  }
+}
