@@ -251,8 +251,8 @@ function buildChunks(): KnowledgeChunk[] {
         })
         .filter(Boolean)
         .join(" "),
-      ["proyectos portafolio casos portfolio work"],
-      2,
+      ["proyectos proyecto trabajos realizados casos portafolio portfolio work"],
+      5,
     );
 
     projects.forEach((project, index) => {
