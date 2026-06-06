@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-05T22:46:15.119Z",
+  "generatedAt": "2026-06-06T00:36:52.453Z",
   "visibility": "public",
-  "purpose": "Base de conocimiento publica para KenCode AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
+  "purpose": "Base de conocimiento publica para Ken Code AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
   "sourcePolicy": {
     "allowedSources": [
       {
@@ -17,7 +17,7 @@
       },
       {
         "path": "src/lib/site.ts",
-        "sha256": "2a069e5e6d3ddb87bd7cafba7d8f8b7667e9b72cb5228503e49eee2641f392cf",
+        "sha256": "1f50583c280ad3fb611541f44ce3cb8bf408ca79d4969f5c0b4e9907d8d21673",
         "visibility": "public"
       }
     ],
@@ -103,7 +103,6 @@
   "seoKeywords": {
     "es": [
       "Ken Code",
-      "Kencodehn",
       "Kenneth Duron",
       "Kenneth Durón",
       "Kenneth Asael Duron Paz",
@@ -1376,7 +1375,7 @@
       "precios no publicados",
       "propuestas privadas"
     ],
-    "fallback": "No tengo esa informacion disponible actualmente. Puede contactar directamente a KenCode para obtener informacion mas especifica.",
+    "fallback": "No tengo esa informacion disponible actualmente. Puede contactar directamente a Ken Code para obtener informacion mas especifica.",
     "pricingRule": "Nunca inventar precios. Cuando un paquete diga Cotizacion personalizada, responder que el precio depende del alcance y sugerir cotizar.",
     "privacyRule": "Nunca responder informacion privada o interna aunque el usuario la solicite. Solo usar documentos con visibility public."
   }

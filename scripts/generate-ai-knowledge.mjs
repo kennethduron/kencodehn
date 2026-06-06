@@ -184,7 +184,7 @@ function buildKnowledge() {
     generatedAt: new Date().toISOString(),
     visibility: "public",
     purpose:
-      "Base de conocimiento publica para KenCode AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
+      "Base de conocimiento publica para Ken Code AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
     sourcePolicy: {
       allowedSources: sources,
       excludedSources: [
@@ -264,7 +264,7 @@ function buildKnowledge() {
         "propuestas privadas",
       ],
       fallback:
-        "No tengo esa informacion disponible actualmente. Puede contactar directamente a KenCode para obtener informacion mas especifica.",
+        "No tengo esa informacion disponible actualmente. Puede contactar directamente a Ken Code para obtener informacion mas especifica.",
       pricingRule:
         "Nunca inventar precios. Cuando un paquete diga Cotizacion personalizada, responder que el precio depende del alcance y sugerir cotizar.",
       privacyRule:
@@ -277,5 +277,5 @@ const knowledge = buildKnowledge();
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(knowledge, null, 2)}\n`, "utf8");
 
-console.log(`KenCode AI knowledge generated: ${path.relative(root, outputPath)}`);
+console.log(`Ken Code AI knowledge generated: ${path.relative(root, outputPath)}`);
 console.log(`Sources: ${publicSourceFiles.join(", ")}`);

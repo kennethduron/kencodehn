@@ -1,5 +1,5 @@
 export const SAFE_AI_FALLBACK =
-  "No tengo esa información disponible actualmente. Puede contactar directamente a KenCode para obtener información más específica.";
+  "No tengo esa informacion disponible actualmente. Puede contactar directamente a Ken Code para obtener informacion mas especifica.";
 
 type GuardrailMatch = {
   label: string;
@@ -25,8 +25,14 @@ function normalizeForGuardrails(value: string) {
 
 const forbiddenTopics: GuardrailMatch[] = [
   {
-    label: "crm",
-    patterns: [/\bcrm\b/, /\bleads?\b/, /\bprospectos?\s+internos?\b/],
+    label: "internal-crm-data",
+    patterns: [
+      /\bleads?\b/,
+      /\bprospectos?\s+internos?\b/,
+      /\b(datos?|informacion|registros?)\s+(del|de)\s+crm\b/,
+      /\b(ver|leer|mostrar|listar|descargar|acceder)\s+(el\s+)?crm\b/,
+      /\bcrm\s+(interno|privado)\b.*\b(ver|leer|mostrar|listar|descargar|acceder|datos?|leads?)\b/,
+    ],
   },
   {
     label: "internal-notes",

@@ -16,10 +16,10 @@ type ChatResponse = {
 };
 
 const initialMessage =
-  "¡Hola! Soy KenCode AI. Puedo ayudarte a conocer nuestros servicios, proyectos y soluciones digitales. ¿En qué puedo ayudarte hoy?";
+  "Hola, soy Ken Code AI. Puedo ayudarte a conocer servicios, proyectos, cotizaciones y soluciones digitales de Ken Code. Puedes escribirme con tus propias palabras.";
 
 const fallbackMessage =
-  "No tengo esa información disponible actualmente. Puede contactar directamente a KenCode para obtener información más específica.";
+  "No tengo esa informacion disponible actualmente. Puede contactar directamente a Ken Code para obtener informacion mas especifica.";
 
 const quickPrompts = [
   { label: "Servicios", message: "Qué servicios ofrece Ken Code?" },
@@ -35,7 +35,7 @@ function createMessage(role: ChatMessage["role"], content: string): ChatMessage 
   };
 }
 
-export function KenCodeAiChat() {
+export function KenAiChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +74,7 @@ export function KenCodeAiChat() {
 
       setMessages((current) => [...current, createMessage("assistant", data.answer || fallbackMessage)]);
     } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : "No fue posible conectar con KenCode AI.";
+      const message = requestError instanceof Error ? requestError.message : "No fue posible conectar con Ken Code AI.";
       setError(message);
       setMessages((current) => [...current, createMessage("assistant", fallbackMessage)]);
     } finally {
@@ -91,7 +91,7 @@ export function KenCodeAiChat() {
     <div className={`fixed bottom-5 left-5 sm:bottom-6 sm:left-6 ${isOpen ? "z-50" : "z-40"}`}>
       {isOpen ? (
         <section
-          aria-label="KenCode AI chat"
+          aria-label="Ken Code AI chat"
           className="flex h-[min(620px,calc(100svh-2rem))] w-[calc(100vw-2.5rem)] max-w-[24rem] flex-col overflow-hidden rounded-2xl border border-kc-cyan/25 bg-kc-bg-soft/96 shadow-[0_22px_80px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:w-[24rem]"
         >
           <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-white/[0.04] px-4 py-3">
@@ -100,14 +100,14 @@ export function KenCodeAiChat() {
                 <Bot size={21} aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <h2 className="font-display text-base font-black text-kc-text">KenCode AI</h2>
+                <h2 className="font-display text-base font-black text-kc-text">Ken Code AI</h2>
                 <p className="truncate text-xs font-semibold text-kc-muted">Asistente público de Ken Code</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              aria-label="Cerrar KenCode AI"
+              aria-label="Cerrar Ken Code AI"
               title="Cerrar"
               className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-kc-muted transition hover:border-kc-cyan/45 hover:text-kc-cyan"
             >
@@ -207,12 +207,12 @@ export function KenCodeAiChat() {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          aria-label="Abrir KenCode AI"
-          title="KenCode AI"
+          aria-label="Abrir Ken Code AI"
+          title="Ken Code AI"
           className="group relative inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-kc-cyan/45 bg-kc-bg-soft text-kc-cyan shadow-[0_0_34px_rgba(0,217,255,0.24)] transition hover:-translate-y-0.5 hover:border-kc-turquoise hover:text-kc-turquoise hover:shadow-[0_0_44px_rgba(0,230,168,0.24)]"
         >
           <span className="absolute -top-11 left-0 hidden whitespace-nowrap rounded-lg border border-white/10 bg-kc-bg-soft px-3 py-2 text-xs font-black text-kc-text shadow-xl group-hover:block">
-            KenCode AI
+            Ken Code AI
           </span>
           <MessageCircle size={25} aria-hidden="true" />
           <Sparkles className="absolute right-2 top-2 text-kc-lime" size={13} aria-hidden="true" />

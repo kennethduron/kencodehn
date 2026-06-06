@@ -16,6 +16,10 @@ export type KnowledgeAnswer = {
   matched: boolean;
 };
 
+const QUOTE_PATH = "/cotizar";
+const CONTACT_PATH = "/contacto";
+const WHATSAPP_URL = "https://wa.me/50499112211";
+
 const STOP_WORDS = new Set([
   "a",
   "al",
@@ -66,6 +70,13 @@ function normalizeText(value: string) {
     .toLowerCase();
 }
 
+function normalizeIntentText(value: string) {
+  return normalizeText(value)
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function toText(value: unknown): string {
   if (typeof value === "string") return value.trim();
   if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -89,6 +100,215 @@ function tokensFrom(value: string) {
 
 function compact(parts: Array<string | false | 0 | null | undefined>) {
   return parts.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+}
+
+function hasAny(value: string, phrases: string[]) {
+  return phrases.some((phrase) => value.includes(phrase));
+}
+
+function detectLanguage(message: string): "es" | "en" {
+  const normalized = normalizeIntentText(message);
+  const englishPattern =
+    /(^|\s)(hello|hi|bye|thanks|services|quote|website|business|restaurant|clinic|store|prices|pricing)(\s|$)/;
+
+  return englishPattern.test(normalized) || hasAny(normalized, ["thank you", "who are", "what do", "online store", "how much"])
+    ? "en"
+    : "es";
+}
+
+function responseForGreeting(locale: "es" | "en") {
+  if (locale === "en") {
+    return `Hi! I am Ken Code AI. I can help you understand Ken Code services, projects, quote options and contact channels. You can ask normally or start a quote at ${QUOTE_PATH}.`;
+  }
+
+  return `Hola, soy Ken Code AI. Puedo ayudarte a conocer los servicios de Ken Code, resolver dudas sobre proyectos, orientarte para cotizar o enviarte a WhatsApp. Puedes preguntarme con tus propias palabras.`;
+}
+
+function responseForFarewell(locale: "es" | "en") {
+  if (locale === "en") {
+    return `Thank you for writing. When you are ready, you can request a quote at ${QUOTE_PATH}, use ${CONTACT_PATH}, or message Ken Code on WhatsApp: ${WHATSAPP_URL}.`;
+  }
+
+  return `Gracias por escribir. Cuando quieras avanzar, puedes solicitar una cotizacion en ${QUOTE_PATH}, ir a ${CONTACT_PATH} o escribir directo por WhatsApp: ${WHATSAPP_URL}.`;
+}
+
+function responseForCompany(locale: "es" | "en") {
+  if (locale === "en") {
+    return `Ken Code is a premium international web studio. It builds modern websites, landing pages, e-commerce experiences, CRM-ready systems and digital solutions for businesses that want to look more trustworthy, attract clients and grow online.`;
+  }
+
+  return `Ken Code es un estudio web premium e internacional. Crea paginas web modernas, landing pages, e-commerce, bases CRM y soluciones digitales para negocios que quieren verse mas confiables, atraer clientes y crecer digitalmente.`;
+}
+
+function responseForServices(locale: "es" | "en") {
+  if (locale === "en") {
+    return `Ken Code offers landing pages, business websites, e-commerce/catalog sites, admin or CRM foundations, WhatsApp contact flows, basic SEO and email automation. For a specific recommendation, tell me what kind of business you have.`;
+  }
+
+  return `Ken Code ofrece landing pages, sitios web para negocios, e-commerce o catalogos, bases para panel administrativo/CRM, WhatsApp integrado, SEO basico y automatizacion de correos. Si me cuentas tu tipo de negocio, puedo recomendarte el camino mas adecuado.`;
+}
+
+function responseForQuote(locale: "es" | "en") {
+  if (locale === "en") {
+    return `You can request a quote at ${QUOTE_PATH}, contact Ken Code through ${CONTACT_PATH}, or send a direct WhatsApp message: ${WHATSAPP_URL}. Prices are personalized and depend on scope, sections, content and features.`;
+  }
+
+  return `Puedes solicitar una cotizacion en ${QUOTE_PATH}, contactar desde ${CONTACT_PATH} o escribir directo por WhatsApp: ${WHATSAPP_URL}. Los precios son personalizados y dependen del alcance, secciones, contenido y funciones.`;
+}
+
+function responseForWhatsapp(locale: "es" | "en") {
+  if (locale === "en") {
+    return `Yes. You can talk with Ken Code by WhatsApp here: ${WHATSAPP_URL}. It is a good channel for quick questions, quote context and next steps.`;
+  }
+
+  return `Si. Puedes hablar con Ken Code por WhatsApp aqui: ${WHATSAPP_URL}. Es una buena ruta para dudas rapidas, contexto de cotizacion y siguientes pasos.`;
+}
+
+function responseForPricing(locale: "es" | "en") {
+  if (locale === "en") {
+    return `Ken Code does not publish fixed prices in this assistant. Each project is quoted according to scope, sections, content and required features. The safest next step is to request a quote at ${QUOTE_PATH} or write by WhatsApp: ${WHATSAPP_URL}.`;
+  }
+
+  return `No manejo precios fijos ni invento tarifas. Ken Code trabaja con cotizacion personalizada segun alcance, secciones, contenido y funciones. Para una respuesta realista, solicita una cotizacion en ${QUOTE_PATH} o escribe por WhatsApp: ${WHATSAPP_URL}.`;
+}
+
+function getVerticalDetails(locale: "es" | "en", vertical: "restaurant" | "clinic" | "store" | "crm" | "ai") {
+  if (locale === "en") {
+    return {
+      restaurant:
+        "Yes. Ken Code builds restaurant websites and digital menus with mobile navigation, WhatsApp contact, location, hours and clear categories.",
+      clinic:
+        "Yes. Ken Code can help clinics and professional service businesses with a clear website for services, trust, contact forms and WhatsApp paths.",
+      store:
+        "Yes. Ken Code builds e-commerce and catalog experiences for stores that need products, categories, order paths and contact flows.",
+      crm:
+        "Yes. Ken Code can prepare CRM or admin-panel foundations to organize requests, notes, tasks and follow-up without exposing private data on the public site.",
+      ai:
+        "Yes. Ken Code can build modern websites with AI-assisted public guidance like Ken Code AI, using approved public knowledge when the project requires it.",
+    }[vertical];
+  }
+
+  return {
+    restaurant:
+      "Si. Ken Code trabaja paginas web para restaurantes y menus digitales con navegacion movil, WhatsApp, ubicacion, horarios y categorias claras.",
+    clinic:
+      "Si. Ken Code puede ayudar a clinicas y negocios de servicios profesionales con una web clara para explicar servicios, generar confianza, recibir formularios y llevar consultas a WhatsApp.",
+    store:
+      "Si. Ken Code crea experiencias e-commerce y catalogos para tiendas que necesitan productos, categorias, rutas de pedido y contacto ordenado.",
+    crm:
+      "Si. Ken Code puede preparar bases CRM o paneles administrativos para organizar solicitudes, notas, tareas y seguimiento sin exponer datos privados en la web publica.",
+    ai:
+      "Si. Ken Code puede crear paginas web modernas con orientacion publica asistida por IA, como Ken Code AI, usando conocimiento publico aprobado cuando el proyecto lo necesita.",
+  }[vertical];
+}
+
+function responseForVertical(locale: "es" | "en", vertical: "restaurant" | "clinic" | "store" | "crm" | "ai") {
+  const details = getVerticalDetails(locale, vertical);
+
+  if (locale === "en") {
+    return `${details} To move forward, request a quote at ${QUOTE_PATH}, use ${CONTACT_PATH}, or write on WhatsApp: ${WHATSAPP_URL}.`;
+  }
+
+  return `${details} Para avanzar, solicita una cotizacion en ${QUOTE_PATH}, usa ${CONTACT_PATH} o escribe por WhatsApp: ${WHATSAPP_URL}.`;
+}
+
+function detectVertical(normalized: string): "restaurant" | "clinic" | "store" | "crm" | "ai" | null {
+  if (hasAny(normalized, ["restaurante", "restaurant", "menu digital", "menu online"])) return "restaurant";
+  if (hasAny(normalized, ["clinica", "clinic", "consultorio", "medical", "salud"])) return "clinic";
+  if (hasAny(normalized, ["tienda", "store", "ecommerce", "e commerce", "catalogo", "online store"])) return "store";
+  if (hasAny(normalized, ["crm", "panel administrativo", "admin panel", "seguimiento"])) return "crm";
+  if (hasAny(normalized, ["con ia", "inteligencia artificial", "ai website", "with ai", "pagina web con ia", "paginas web con ia"])) return "ai";
+  return null;
+}
+
+function responseForBuyingIntent(locale: "es" | "en", vertical: ReturnType<typeof detectVertical>) {
+  if (locale === "en") {
+    const intro = vertical
+      ? getVerticalDetails(locale, vertical)
+      : `Sounds like you are ready to improve your digital presence. Ken Code can recommend a landing page, business website, e-commerce/catalog, CRM foundation or automation path depending on your goal.`;
+
+    return `${intro}\n\nNext step: share your business type, goal and desired features at ${QUOTE_PATH}, through ${CONTACT_PATH}, or directly on WhatsApp: ${WHATSAPP_URL}.`;
+  }
+
+  const intro = vertical
+    ? getVerticalDetails(locale, vertical)
+    : `Suena como un buen momento para mejorar tu presencia digital. Ken Code puede recomendar una landing page, sitio web para negocio, e-commerce/catalogo, base CRM o automatizacion segun tu objetivo.`;
+
+  return `${intro}\n\nSiguiente paso: comparte tu tipo de negocio, meta y funciones deseadas en ${QUOTE_PATH}, desde ${CONTACT_PATH} o directo por WhatsApp: ${WHATSAPP_URL}.`;
+}
+
+function hasBuyingIntent(normalized: string) {
+  return (
+    hasAny(normalized, [
+      "necesito una pagina web",
+      "necesito pagina web",
+      "necesito una web",
+      "quiero una pagina web",
+      "quiero vender mas",
+      "quiero automatizar mi negocio",
+      "automatizar mi negocio",
+      "quiero un sistema",
+      "necesito un sistema",
+      "necesito sistema",
+      "necesito cotizacion",
+      "quiero una cotizacion",
+      "quiero cotizacion",
+      "request a quote",
+      "need a website",
+      "want a website",
+      "sell more",
+      "automate my business",
+      "need a system",
+    ]) ||
+    /\btengo\s+(un|una|mi)\s+(restaurante|clinica|tienda|negocio|empresa)\b/.test(normalized) ||
+    /\bi\s+(have|own|need|want)\s+(a\s+)?(restaurant|clinic|store|business|website|system)\b/.test(normalized)
+  );
+}
+
+function findConversationalAnswer(message: string): KnowledgeAnswer | null {
+  const normalized = normalizeIntentText(message);
+  const locale = detectLanguage(message);
+  const vertical = detectVertical(normalized);
+
+  if (!normalized) return null;
+
+  if (hasBuyingIntent(normalized)) {
+    return { answer: responseForBuyingIntent(locale, vertical), matched: true };
+  }
+
+  if (hasAny(normalized, ["precio", "precios", "cuanto cuesta", "tarifa", "costo", "prices", "pricing", "how much"])) {
+    return { answer: responseForPricing(locale), matched: true };
+  }
+
+  if (hasAny(normalized, ["gracias", "muchas gracias", "adios", "hasta luego", "bye", "thank you", "thanks"])) {
+    return { answer: responseForFarewell(locale), matched: true };
+  }
+
+  if (hasAny(normalized, ["hola", "buenos dias", "buenas tardes", "buenas noches", "hello", "hi"])) {
+    return { answer: responseForGreeting(locale), matched: true };
+  }
+
+  if (hasAny(normalized, ["quienes son", "quien son", "que hace ken code", "who are", "what does ken code do"])) {
+    return { answer: responseForCompany(locale), matched: true };
+  }
+
+  if (hasAny(normalized, ["que servicios ofrecen", "servicios ofrecen", "servicios tiene", "services do you offer", "what services"])) {
+    return { answer: responseForServices(locale), matched: true };
+  }
+
+  if (hasAny(normalized, ["como puedo cotizar", "cotizar", "cotizacion", "quote"])) {
+    return { answer: responseForQuote(locale), matched: true };
+  }
+
+  if (hasAny(normalized, ["whatsapp", "whats app"])) {
+    return { answer: responseForWhatsapp(locale), matched: true };
+  }
+
+  if (vertical) {
+    return { answer: responseForVertical(locale, vertical), matched: true };
+  }
+
+  return null;
 }
 
 function asRecord(value: unknown): KnowledgeRecord {
@@ -342,6 +562,11 @@ function scoreChunk(chunk: KnowledgeChunk, queryTokens: string[]) {
 }
 
 export function findKnowledgeAnswer(message: string): KnowledgeAnswer {
+  const conversationalAnswer = findConversationalAnswer(message);
+  if (conversationalAnswer) {
+    return conversationalAnswer;
+  }
+
   const queryTokens = tokensFrom(message);
 
   if (queryTokens.length === 0) {

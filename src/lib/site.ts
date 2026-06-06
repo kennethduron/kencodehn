@@ -30,7 +30,6 @@ export const routes = [
 
 export const seoKeywordsEs = [
   "Ken Code",
-  "Kencodehn",
   "Kenneth Duron",
   "Kenneth Durón",
   "Kenneth Asael Duron Paz",
