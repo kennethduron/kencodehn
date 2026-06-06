@@ -109,9 +109,10 @@ function hasAny(value: string, phrases: string[]) {
 function detectLanguage(message: string): "es" | "en" {
   const normalized = normalizeIntentText(message);
   const englishPattern =
-    /(^|\s)(hello|hi|bye|thanks|services|quote|website|business|restaurant|clinic|store|prices|pricing)(\s|$)/;
+    /(^|\s)(hello|hi|bye|thanks|services|quote|website|websites|business|businesses|restaurant|restaurants|clinic|clinics|store|stores|prices|pricing)(\s|$)/;
 
-  return englishPattern.test(normalized) || hasAny(normalized, ["thank you", "who are", "what do", "online store", "how much"])
+  return englishPattern.test(normalized) ||
+    hasAny(normalized, ["thank you", "who are", "what do", "do you", "online store", "how much"])
     ? "en"
     : "es";
 }
