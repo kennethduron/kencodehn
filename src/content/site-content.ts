@@ -140,6 +140,7 @@ export const content: Record<Locale, SiteCopy> = {
           "Ken Code desarrolló una experiencia web enfocada en catálogo, presentación de productos y comunicación directa con clientes.",
         image: images.carZone,
         imageAlt: "Vista del proyecto Car Zone Accesorios desarrollado por Ken Code",
+        externalUrl: "https://carzoneaccesorios.com",
         benefits: ["Catálogo digital", "Contacto más rápido", "Imagen profesional"],
       },
       {
@@ -374,6 +375,7 @@ export const content: Record<Locale, SiteCopy> = {
           "Ken Code developed a web experience focused on catalog presentation, product visibility, and direct customer communication.",
         image: images.carZone,
         imageAlt: "Preview of the Car Zone Accesorios project developed by Ken Code",
+        externalUrl: "https://carzoneaccesorios.com",
         benefits: ["Digital catalog", "Faster contact", "Professional image"],
       },
       {

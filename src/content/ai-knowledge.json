@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-13T00:32:18.857Z",
+  "generatedAt": "2026-07-13T00:59:45.952Z",
   "visibility": "public",
   "purpose": "Base de conocimiento publica para Ken Code AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
   "sourcePolicy": {
     "allowedSources": [
       {
         "path": "src/content/site-content.ts",
-        "sha256": "ae7acf2499894414bd07853aff269c2e8f5c7bf87ae614bbc7c349da6498cca1",
+        "sha256": "ae784a9cf73ab00f91fa3ea7432d8dfddf3260210e1885a01ead4e8046001ba9",
         "visibility": "public"
       },
       {
@@ -199,6 +199,7 @@
           "solution": "Ken Code desarrolló una experiencia web enfocada en catálogo, presentación de productos y comunicación directa con clientes.",
           "image": "/images/projects/carzoneaccesorios.jpg",
           "imageAlt": "Vista del proyecto Car Zone Accesorios desarrollado por Ken Code",
+          "externalUrl": "https://carzoneaccesorios.com",
           "benefits": [
             "Catálogo digital",
             "Contacto más rápido",
@@ -526,6 +527,7 @@
           "solution": "Ken Code developed a web experience focused on catalog presentation, product visibility, and direct customer communication.",
           "image": "/images/projects/carzoneaccesorios.jpg",
           "imageAlt": "Preview of the Car Zone Accesorios project developed by Ken Code",
+          "externalUrl": "https://carzoneaccesorios.com",
           "benefits": [
             "Digital catalog",
             "Faster contact",
