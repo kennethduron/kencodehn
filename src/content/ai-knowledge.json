@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-06T00:45:29.060Z",
+  "generatedAt": "2026-07-13T00:32:18.857Z",
   "visibility": "public",
   "purpose": "Base de conocimiento publica para Ken Code AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
   "sourcePolicy": {
     "allowedSources": [
       {
         "path": "src/content/site-content.ts",
-        "sha256": "e30f28dd936c7dfd0c99b0fe546a493a12172e6f31220b17f1952c440fbb8843",
+        "sha256": "ae7acf2499894414bd07853aff269c2e8f5c7bf87ae614bbc7c349da6498cca1",
         "visibility": "public"
       },
       {
@@ -190,25 +190,41 @@
       ],
       "projects": [
         {
-          "slug": "casa-brava-menu",
-          "name": "Casa Brava Menú",
-          "category": "Menú digital",
-          "description": "Menú visual para restaurante con navegación rápida desde celular.",
-          "result": "El restaurante presenta productos con más claridad y una imagen digital moderna.",
-          "problem": "El restaurante necesitaba mostrar su menú de forma rápida, visual y fácil de navegar desde celular.",
-          "solution": "Se construyó una experiencia ligera con categorías claras, lectura cómoda y acceso directo para clientes que buscan decidir rápido.",
-          "image": "/images/projects/casabrava.jpg",
-          "imageAlt": "Página web para restaurante Casa Brava creada por Ken Code",
-          "externalUrl": "https://casabrava.web.app",
+          "slug": "car-zone-accesorios",
+          "name": "Car Zone Accesorios",
+          "category": "Catálogo automotriz",
+          "description": "Plataforma digital para presentar accesorios automotrices, organizar productos y facilitar el contacto con clientes interesados.",
+          "result": "Presencia digital más profesional para mostrar productos y recibir consultas de clientes.",
+          "problem": "El negocio necesitaba una forma más clara y profesional de mostrar sus accesorios y facilitar el contacto con compradores.",
+          "solution": "Ken Code desarrolló una experiencia web enfocada en catálogo, presentación de productos y comunicación directa con clientes.",
+          "image": "/images/projects/carzoneaccesorios.jpg",
+          "imageAlt": "Vista del proyecto Car Zone Accesorios desarrollado por Ken Code",
           "benefits": [
-            "Menú claro",
-            "Experiencia móvil",
-            "Contacto directo"
+            "Catálogo digital",
+            "Contacto más rápido",
+            "Imagen profesional"
+          ]
+        },
+        {
+          "slug": "asesoria-educativa-diaca",
+          "name": "Asesoría Educativa DIACA",
+          "category": "Servicios educativos",
+          "description": "Sitio profesional para explicar servicios educativos y generar confianza familiar.",
+          "result": "Los visitantes entienden mejor la oferta y pueden contactar con mayor seguridad.",
+          "problem": "El servicio necesitaba comunicar orientación educativa de forma confiable, humana y ordenada.",
+          "solution": "Se organizó una web clara con beneficios, servicios y llamados a la acción para familias y estudiantes.",
+          "image": "/images/projects/cristian.jpg",
+          "imageAlt": "Página web educativa DIACA desarrollada por Ken Code",
+          "externalUrl": "https://asesoriaeducativadiaca.com",
+          "benefits": [
+            "Mensaje claro",
+            "Confianza familiar",
+            "Contacto sencillo"
           ],
           "relatedServices": [
             {
-              "label": "Páginas web para restaurantes",
-              "href": "/servicios/paginas-web-para-restaurantes"
+              "label": "Páginas web para negocios locales",
+              "href": "/servicios/paginas-web-para-negocios-locales"
             }
           ],
           "gallery": []
@@ -242,25 +258,25 @@
           "gallery": []
         },
         {
-          "slug": "asesoria-educativa-diaca",
-          "name": "Asesoría Educativa DIACA",
-          "category": "Servicios educativos",
-          "description": "Sitio profesional para explicar servicios educativos y generar confianza familiar.",
-          "result": "Los visitantes entienden mejor la oferta y pueden contactar con mayor seguridad.",
-          "problem": "El servicio necesitaba comunicar orientación educativa de forma confiable, humana y ordenada.",
-          "solution": "Se organizó una web clara con beneficios, servicios y llamados a la acción para familias y estudiantes.",
-          "image": "/images/projects/cristian.jpg",
-          "imageAlt": "Página web educativa DIACA desarrollada por Ken Code",
-          "externalUrl": "https://asesoriaeducativadiaca.com",
+          "slug": "casa-brava-menu",
+          "name": "Casa Brava Menú",
+          "category": "Menú digital",
+          "description": "Menú visual para restaurante con navegación rápida desde celular.",
+          "result": "El restaurante presenta productos con más claridad y una imagen digital moderna.",
+          "problem": "El restaurante necesitaba mostrar su menú de forma rápida, visual y fácil de navegar desde celular.",
+          "solution": "Se construyó una experiencia ligera con categorías claras, lectura cómoda y acceso directo para clientes que buscan decidir rápido.",
+          "image": "/images/projects/casabrava.jpg",
+          "imageAlt": "Página web para restaurante Casa Brava creada por Ken Code",
+          "externalUrl": "https://casabrava.web.app",
           "benefits": [
-            "Mensaje claro",
-            "Confianza familiar",
-            "Contacto sencillo"
+            "Menú claro",
+            "Experiencia móvil",
+            "Contacto directo"
           ],
           "relatedServices": [
             {
-              "label": "Páginas web para negocios locales",
-              "href": "/servicios/paginas-web-para-negocios-locales"
+              "label": "Páginas web para restaurantes",
+              "href": "/servicios/paginas-web-para-restaurantes"
             }
           ],
           "gallery": []
@@ -501,20 +517,36 @@
       ],
       "projects": [
         {
-          "slug": "casa-brava-menu",
-          "name": "Casa Brava Menu",
-          "category": "Digital menu",
-          "description": "Visual restaurant menu with fast mobile navigation.",
-          "result": "The restaurant presents products more clearly with a modern digital image.",
-          "problem": "The restaurant needed to show its menu quickly, visually and easily from mobile.",
-          "solution": "A lightweight experience was built with clear categories, comfortable reading and direct access for clients who want to decide quickly.",
-          "image": "/images/projects/casabrava.jpg",
-          "imageAlt": "Casa Brava digital menu view created by Ken Code",
-          "externalUrl": "https://casabrava.web.app",
+          "slug": "car-zone-accesorios",
+          "name": "Car Zone Accesorios",
+          "category": "Automotive catalog",
+          "description": "Digital platform to showcase automotive accessories, organize products, and make it easier for interested customers to get in touch.",
+          "result": "A more professional digital presence to display products and receive customer inquiries.",
+          "problem": "The business needed a clearer and more professional way to showcase its accessories and simplify communication with potential buyers.",
+          "solution": "Ken Code developed a web experience focused on catalog presentation, product visibility, and direct customer communication.",
+          "image": "/images/projects/carzoneaccesorios.jpg",
+          "imageAlt": "Preview of the Car Zone Accesorios project developed by Ken Code",
           "benefits": [
-            "Clear menu",
-            "Mobile experience",
-            "Direct contact"
+            "Digital catalog",
+            "Faster contact",
+            "Professional image"
+          ]
+        },
+        {
+          "slug": "asesoria-educativa-diaca",
+          "name": "Asesoria Educativa DIACA",
+          "category": "Educational services",
+          "description": "Professional website to explain educational services and build family trust.",
+          "result": "Visitors understand the offer better and can contact with greater confidence.",
+          "problem": "The service needed to communicate educational guidance in a trustworthy, human and organized way.",
+          "solution": "A clear website was organized with benefits, services and calls to action for families and students.",
+          "image": "/images/projects/cristian.jpg",
+          "imageAlt": "Asesoria Educativa DIACA professional website presentation",
+          "externalUrl": "https://asesoriaeducativadiaca.com",
+          "benefits": [
+            "Clear message",
+            "Family trust",
+            "Easy contact"
           ]
         },
         {
@@ -535,20 +567,20 @@
           ]
         },
         {
-          "slug": "asesoria-educativa-diaca",
-          "name": "Asesoria Educativa DIACA",
-          "category": "Educational services",
-          "description": "Professional website to explain educational services and build family trust.",
-          "result": "Visitors understand the offer better and can contact with greater confidence.",
-          "problem": "The service needed to communicate educational guidance in a trustworthy, human and organized way.",
-          "solution": "A clear website was organized with benefits, services and calls to action for families and students.",
-          "image": "/images/projects/cristian.jpg",
-          "imageAlt": "Asesoria Educativa DIACA professional website presentation",
-          "externalUrl": "https://asesoriaeducativadiaca.com",
+          "slug": "casa-brava-menu",
+          "name": "Casa Brava Menu",
+          "category": "Digital menu",
+          "description": "Visual restaurant menu with fast mobile navigation.",
+          "result": "The restaurant presents products more clearly with a modern digital image.",
+          "problem": "The restaurant needed to show its menu quickly, visually and easily from mobile.",
+          "solution": "A lightweight experience was built with clear categories, comfortable reading and direct access for clients who want to decide quickly.",
+          "image": "/images/projects/casabrava.jpg",
+          "imageAlt": "Casa Brava digital menu view created by Ken Code",
+          "externalUrl": "https://casabrava.web.app",
           "benefits": [
-            "Clear message",
-            "Family trust",
-            "Easy contact"
+            "Clear menu",
+            "Mobile experience",
+            "Direct contact"
           ]
         },
         {
