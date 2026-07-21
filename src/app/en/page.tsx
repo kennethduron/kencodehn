@@ -2,12 +2,12 @@ import { HomeView } from "@/components/site/localized-pages";
 import { createMetadata } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Ken Code | International Web Development Studio",
+  title: "KenCode | Web Development and Business Systems",
   description:
-    "Ken Code creates premium websites, landing pages, e-commerce and modern digital solutions for businesses that want to grow with an international presence.",
+    "KenCode builds websites, accounting and invoicing systems, CRM and automation that connect sales, inventory, customers and financial operations.",
   path: "/en",
   locale: "en",
-  keywords: ["international web development", "premium web studio", "business websites", "remote web developer"],
+  keywords: ["international web development", "business websites", "accounting systems", "invoicing systems", "business software"],
 });
 
 export default function EnglishHomePage() {

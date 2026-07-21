@@ -4,9 +4,9 @@ import "./globals.css";
 import { PublicShell } from "@/components/site/public-shell";
 import { site, seoKeywords } from "@/lib/site";
 
-const title = "KenCode | Estudio internacional de desarrollo web";
+const title = "KenCode | Desarrollo web y sistemas para negocios";
 const description =
-  "KenCode crea paginas web premium, landing pages, e-commerce y soluciones digitales modernas para negocios que trabajan localmente e internacionalmente.";
+  "KenCode desarrolla paginas web, sistemas contables y de facturacion, CRM y automatizaciones que conectan ventas, inventario, clientes y finanzas.";
 
 const inter = Inter({
   subsets: ["latin"],

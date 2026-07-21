@@ -2,12 +2,12 @@ import { QuoteView } from "@/components/site/localized-pages";
 import { createMetadata } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Quote a Website",
+  title: "Quote a Digital Solution",
   description:
-    "Quote a professional website with Ken Code. Form ready for remote landing page, business website, e-commerce and future admin panel projects.",
+    "Request a quote from KenCode for a website, accounting system, invoicing, CRM or administrative module tailored to your business processes.",
   path: "/en/quote",
   locale: "en",
-  keywords: ["quote website", "website project quote", "remote web development", "professional business website"],
+  keywords: ["quote website", "accounting system quote", "invoicing system", "business software", "remote web development"],
 });
 
 export default function EnglishQuotePage() {

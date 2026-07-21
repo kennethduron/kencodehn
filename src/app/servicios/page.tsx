@@ -2,11 +2,11 @@ import { ServicesView } from "@/components/site/localized-pages";
 import { createMetadata } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Servicios de desarrollo web",
+  title: "Desarrollo web y sistemas para negocios",
   description:
-    "Servicios de Ken Code para paginas web en Honduras, landing pages, e-commerce, CRM, restaurantes, negocios locales y desarrollo web internacional.",
+    "Desarrollo web y sistemas administrativos, contables y de facturacion con CRM, inventario y automatizacion para negocios.",
   path: "/servicios",
-  keywords: ["servicios web Honduras", "landing pages Honduras", "ecommerce Honduras", "CRM para empresas", "paginas web para restaurantes"],
+  keywords: ["servicios web Honduras", "sistemas administrativos", "sistemas contables en Honduras", "sistemas de facturacion", "CRM para empresas", "inventario y contabilidad"],
 });
 
 export default function ServicesPage() {

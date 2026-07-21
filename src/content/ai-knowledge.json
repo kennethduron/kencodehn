@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-13T00:59:45.952Z",
+  "generatedAt": "2026-07-21T18:54:44.178Z",
   "visibility": "public",
   "purpose": "Base de conocimiento publica para Ken Code AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
   "sourcePolicy": {
     "allowedSources": [
       {
         "path": "src/content/site-content.ts",
-        "sha256": "ae784a9cf73ab00f91fa3ea7432d8dfddf3260210e1885a01ead4e8046001ba9",
+        "sha256": "5714dd82e170ef5ded487493bbb0cfe5cba01a955161c4c1b6bb9e1f6670a573",
         "visibility": "public"
       },
       {
@@ -17,7 +17,7 @@
       },
       {
         "path": "src/lib/site.ts",
-        "sha256": "1f50583c280ad3fb611541f44ce3cb8bf408ca79d4969f5c0b4e9907d8d21673",
+        "sha256": "e783f425604af401ffee39689b7e7f9c584c0337db82b54d1f51a8d7eaadd342",
         "visibility": "public"
       }
     ],
@@ -36,7 +36,7 @@
     ]
   },
   "company": {
-    "name": "Ken Code",
+    "name": "KenCode",
     "domain": "kencodehn.com",
     "url": "https://kencodehn.com",
     "email": "kencodehn@gmail.com",
@@ -124,6 +124,14 @@
       "paginas web para restaurantes",
       "e-commerce Honduras",
       "CRM para negocios Honduras",
+      "sistemas contables en Honduras",
+      "sistemas de facturacion",
+      "software contable para negocios",
+      "cuentas por cobrar",
+      "cuentas por pagar",
+      "inventario y contabilidad",
+      "CRM y automatizacion",
+      "paginas web y sistemas administrativos",
       "desarrollo web San Pedro Sula"
     ],
     "en": [
@@ -138,6 +146,15 @@
       "landing pages",
       "e-commerce development",
       "CRM systems",
+      "accounting systems",
+      "invoicing systems",
+      "business software",
+      "accounts receivable",
+      "accounts payable",
+      "inventory and accounting",
+      "CRM and automation",
+      "web development for businesses",
+      "administrative systems",
       "web development Honduras",
       "Latin America web studio"
     ]
@@ -164,10 +181,10 @@
           "detail": "Productos, categorías, mensajes de compra y rutas de contacto listas para recibir consultas o pedidos con mayor orden."
         },
         {
-          "slug": "panel-administrativo",
-          "title": "Panel administrativo",
-          "summary": "Base privada para organizar contactos, solicitudes y seguimiento comercial.",
-          "detail": "La web pública queda preparada para una fase privada posterior, sin mezclar información interna con la experiencia del cliente."
+          "slug": "sistemas-contables-facturacion",
+          "title": "Sistemas administrativos, contables y facturación",
+          "summary": "Plataformas personalizadas para gestionar facturación, ventas, compras, inventario, clientes, cuentas por cobrar y pagar, libros contables, reportes financieros y procesos administrativos desde un solo sistema.",
+          "detail": "Puede incluir libro diario digital, libros contables, automatización de registros administrativos y contables, y apoyo para el control y revisión de movimientos, integrado con inventario, clientes, productos y proveedores según el alcance del negocio."
         },
         {
           "slug": "whatsapp-integrado",
@@ -186,6 +203,12 @@
           "title": "Automatización de correos",
           "summary": "Notificaciones y respuestas iniciales para que los contactos importantes no se pierdan.",
           "detail": "Flujos de comunicación preparados para responder mejor y mantener orden en solicitudes comerciales."
+        }
+      ],
+      "faqs": [
+        {
+          "question": "¿KenCode puede desarrollar sistemas contables o de facturación?",
+          "answer": "Sí. Podemos desarrollar sistemas contables y de facturación adaptados a las necesidades del negocio, incluyendo ventas, compras, cuentas por cobrar, cuentas por pagar, historial de pagos, saldos pendientes, reportes financieros y conexión con inventario o clientes. El alcance exacto se define según los procesos de cada empresa."
         }
       ],
       "projects": [
@@ -387,11 +410,11 @@
         {
           "name": "Web Pro + Panel",
           "price": "Cotización personalizada",
-          "audience": "Para equipos que quieren preparar seguimiento comercial sin mezclar operaciones privadas con la web pública.",
+          "audience": "Para equipos que necesitan una web profesional, un panel administrativo y sistemas personalizados de gestión interna, contabilidad o facturación adaptados a sus procesos.",
           "includes": [
             "Web premium",
-            "Base lista para panel futuro",
-            "Área privada separada",
+            "Panel administrativo según alcance",
+            "Gestión interna, contable o de facturación",
             "Automatizaciones base",
             "SEO inicial avanzado"
           ],
@@ -424,8 +447,8 @@
           "copy": "Metadata, sitemap, robots, URLs limpias y palabras clave globales combinadas con búsqueda local."
         },
         {
-          "title": "Crecimiento por fases",
-          "copy": "Primero una web pública premium; después sistemas privados cuando el negocio lo necesite."
+          "title": "Operaciones conectadas",
+          "copy": "Podemos conectar inventario, ventas, clientes y contabilidad por etapas para mejorar el seguimiento y reducir trabajo manual."
         }
       ],
       "process": [
@@ -461,7 +484,7 @@
         "Contacto por WhatsApp",
         "Formularios profesionales",
         "SEO básico",
-        "Panel administrativo",
+        "Sistemas administrativos, contables y facturación",
         "Soporte post-lanzamiento",
         "Experiencia profesional"
       ],
@@ -492,10 +515,10 @@
           "detail": "Products, categories, purchase messages and contact paths ready to receive inquiries or orders with better structure."
         },
         {
-          "slug": "admin-panel",
-          "title": "Admin panel",
-          "summary": "Private foundation to organize contacts, requests and commercial follow-up.",
-          "detail": "The public website stays ready for a future private phase without mixing internal information into the customer experience."
+          "slug": "accounting-invoicing-systems",
+          "title": "Administrative, accounting and invoicing systems",
+          "summary": "Custom platforms to manage invoicing, sales, purchases, inventory, customers, accounts receivable and payable, accounting ledgers, financial reports and administrative processes from one system.",
+          "detail": "They can include a digital general ledger, other accounting ledgers, automated administrative and accounting entries, and support for transaction tracking and review, integrated with inventory, customers, products and suppliers depending on scope."
         },
         {
           "slug": "whatsapp-contact",
@@ -514,6 +537,12 @@
           "title": "Email automation",
           "summary": "Notifications and initial responses so important contacts do not get lost.",
           "detail": "Communication flows prepared to respond better and keep commercial requests organized."
+        }
+      ],
+      "faqs": [
+        {
+          "question": "Can KenCode build accounting or invoicing systems?",
+          "answer": "Yes. We can build accounting and invoicing systems tailored to the business, including sales, purchases, accounts receivable, accounts payable, payment history, outstanding balances, financial reports and integration with inventory or customers. The exact scope depends on each company's processes."
         }
       ],
       "projects": [
@@ -665,11 +694,11 @@
         {
           "name": "Web Pro + Panel",
           "price": "Custom quote",
-          "audience": "For teams preparing commercial follow-up without mixing private operations into the public website.",
+          "audience": "For teams that need a professional website, an admin panel and custom systems for internal management, accounting or invoicing tailored to their processes.",
           "includes": [
             "Premium website",
-            "Future panel foundation",
-            "Separate private area",
+            "Admin panel based on scope",
+            "Internal, accounting or invoicing management",
             "Base automations",
             "Advanced initial SEO"
           ],
@@ -702,8 +731,8 @@
           "copy": "Metadata, sitemap, robots, clean URLs and global keywords combined with local search."
         },
         {
-          "title": "Phased growth",
-          "copy": "First a premium public website; later private systems when the business needs them."
+          "title": "Connected operations",
+          "copy": "We can connect inventory, sales, customers and accounting in phases to improve tracking and reduce manual work."
         }
       ],
       "process": [
@@ -739,7 +768,7 @@
         "WhatsApp contact",
         "Professional forms",
         "Basic SEO",
-        "Admin panel",
+        "Administrative, accounting and invoicing systems",
         "Post-launch support",
         "Professional experience"
       ],

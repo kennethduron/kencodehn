@@ -2,11 +2,11 @@ import { QuoteView } from "@/components/site/localized-pages";
 import { createMetadata } from "@/lib/site";
 
 export const metadata = createMetadata({
-  title: "Cotizar pagina web",
+  title: "Cotizar solucion digital",
   description:
-    "Cotiza una pagina web profesional con Ken Code. Formulario listo para proyectos remotos de landing pages, sitios web, e-commerce y panel administrativo futuro.",
+    "Cotiza con KenCode una pagina web, sistema contable, facturacion, CRM o modulo administrativo adaptado a los procesos de tu negocio.",
   path: "/cotizar",
-  keywords: ["cotizar pagina web Honduras", "precio landing page Honduras", "cotizacion desarrollo web", "pagina web profesional"],
+  keywords: ["cotizar pagina web Honduras", "cotizar sistema contable", "sistema de facturacion", "cotizacion desarrollo web", "software para negocios"],
 });
 
 export default function QuotePage() {

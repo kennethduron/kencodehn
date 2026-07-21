@@ -39,7 +39,7 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
       phonePlaceholder: "+504 0000-0000",
       project: "Proyecto",
       details: "Detalles del proyecto",
-      detailsPlaceholder: "Cuentame que necesitas, que vendes y cuando quieres lanzar.",
+      detailsPlaceholder: "Cuéntame qué necesitas, qué procesos quieres controlar y cuándo quieres lanzar.",
       submit: "Enviar solicitud",
       submitting: "Enviando solicitud",
       note: "Tu solicitud quedara registrada para seguimiento interno. WhatsApp sigue disponible para contacto directo.",
@@ -64,7 +64,7 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
       phonePlaceholder: "+1 000 000 0000",
       project: "Project",
       details: "Project details",
-      detailsPlaceholder: "Tell me what you need, what you sell and when you want to launch.",
+      detailsPlaceholder: "Tell me what you need, which processes you want to manage and when you want to launch.",
       submit: "Send request",
       submitting: "Sending request",
       note: "Your request will be registered for internal follow-up. WhatsApp remains available for direct contact.",
@@ -228,6 +228,7 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
               <option>{locale === "es" ? "Pagina de aterrizaje" : "Landing Page"}</option>
               <option>{locale === "es" ? "Web para negocios" : "Web Business"}</option>
               <option>Web Pro + Panel</option>
+              <option>{locale === "es" ? "Sistema administrativo, contable o de facturación" : "Administrative, accounting or invoicing system"}</option>
               <option>{locale === "es" ? "Tienda en linea" : "E-commerce"}</option>
             </select>
             {errors.project ? <span className="text-xs font-bold text-red-300">{errors.project}</span> : null}

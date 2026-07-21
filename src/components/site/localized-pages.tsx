@@ -18,12 +18,12 @@ const labels = {
     heroEyebrow: "Estudio web y software internacional",
     heroTitle: "Páginas web premium para negocios modernos que quieren crecer",
     heroCopy:
-      "Ken Code crea experiencias web modernas para empresas, marcas y emprendedores que trabajan localmente o de forma remota con clientes de cualquier parte del mundo.",
+      "KenCode crea páginas web y sistemas de negocio modernos, incluyendo facturación y contabilidad, para empresas, marcas y emprendedores que quieren crecer con procesos más claros.",
     quote: "Solicitar cotización",
     projects: "Ver proyectos",
     photoCaption: "Experiencias digitales listas para vender, contactar y crecer en diferentes mercados.",
-    servicesTitle: "Soluciones digitales para negocios que necesitan una presencia más fuerte.",
-    servicesCopy: "Páginas rápidas, responsive y enfocadas en conversión para clientes locales e internacionales.",
+    servicesTitle: "Soluciones web y sistemas para negocios que necesitan crecer con mayor control.",
+    servicesCopy: "Páginas web, sistemas administrativos, contables y de facturación, CRM y automatización conectados con las operaciones del negocio.",
     allServices: "Ver todos los servicios",
     selectedWork: "Proyectos reales creados con objetivos de negocio.",
     selectedWorkCopy: "Cada proyecto mejora claridad, confianza y el camino del visitante hacia una conversación calificada.",
@@ -48,12 +48,12 @@ const labels = {
     heroEyebrow: "International web and software studio",
     heroTitle: "Premium websites for modern businesses ready to grow",
     heroCopy:
-      "Ken Code creates modern web experiences for companies, brands and founders working locally or remotely with clients around the world.",
+      "KenCode builds modern websites and business systems, including accounting and invoicing, for companies, brands and founders ready to grow with clearer processes.",
     quote: "Request a quote",
     projects: "View projects",
     photoCaption: "Digital experiences ready to sell, connect and grow across markets.",
-    servicesTitle: "Digital solutions for businesses that need a stronger presence.",
-    servicesCopy: "Fast, responsive and conversion-focused websites for local and international clients.",
+    servicesTitle: "Web solutions and business systems for companies ready to grow with more control.",
+    servicesCopy: "Websites, administrative and accounting systems, invoicing, CRM and automation connected with business operations.",
     allServices: "View all services",
     selectedWork: "Real projects built around business goals.",
     selectedWorkCopy: "Each project improves clarity, trust and the path from visitor to qualified conversation.",
@@ -273,7 +273,7 @@ export function ServicesView({ locale }: { locale: Locale }) {
   const servicesSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
-    name: locale === "es" ? "Servicios de desarrollo web Ken Code" : "Ken Code web development services",
+    name: locale === "es" ? "Servicios web y sistemas para negocios de KenCode" : "KenCode web and business systems services",
     provider: { "@type": "ProfessionalService", name: site.name, url: site.url },
     areaServed: ["Global", "United States", "Canada", "Europe", "Latin America", "Honduras"],
     inLanguage: locale,
@@ -291,13 +291,25 @@ export function ServicesView({ locale }: { locale: Locale }) {
     },
   };
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    inLanguage: locale,
+    mainEntity: data.faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: { "@type": "Answer", text: faq.answer },
+    })),
+  };
+
   return (
     <main className="min-h-screen overflow-x-hidden">
       <JsonLd data={servicesSchema} />
+      <JsonLd data={faqSchema} />
       <PageHero
         eyebrow={locale === "es" ? "Servicios" : "Services"}
-        title={locale === "es" ? "Desarrollo web completo para negocios modernos y marcas globales." : "Complete web development for modern businesses and global brands."}
-        copy={locale === "es" ? "Desde landing pages hasta e-commerce y bases listas para panel administrativo, cada servicio se diseña para claridad, rapidez, conversión y colaboración remota." : "From landing pages to e-commerce and future-ready admin foundations, every service is designed for clarity, speed, conversion and remote collaboration."}
+        title={locale === "es" ? "Desarrollo web y sistemas para las operaciones de negocios modernos." : "Web development and systems for modern business operations."}
+        copy={locale === "es" ? "Desarrollamos páginas web, e-commerce y sistemas administrativos que pueden integrar facturación, cuentas por cobrar, cuentas por pagar, inventario, clientes y reportes financieros según el alcance de cada negocio." : "We build websites, e-commerce and administrative systems that can integrate invoicing, accounts receivable, accounts payable, inventory, customers and financial reports based on each business scope."}
         primaryLabel={locale === "es" ? "Solicitar cotización" : "Request a quote"}
         primaryHref={path(locale, "/cotizar", "/en/quote")}
       />
@@ -366,6 +378,23 @@ export function ServicesView({ locale }: { locale: Locale }) {
               <h2 className="mt-4 text-sm font-bold leading-6 text-kc-text">{step}</h2>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="border-t border-white/10 bg-white/[0.025]">
+        <div className="kc-shell py-16">
+          <SectionIntro
+            eyebrow={locale === "es" ? "Preguntas frecuentes" : "Frequently asked questions"}
+            title={locale === "es" ? "Sistemas adaptados a los procesos de cada negocio." : "Systems tailored to each business process."}
+          />
+          <div className="mt-8 grid gap-4">
+            {data.faqs.map((faq) => (
+              <article key={faq.question} className="rounded-xl border border-white/10 bg-white/[0.04] p-6">
+                <h2 className="font-display text-xl font-bold text-kc-text">{faq.question}</h2>
+                <p className="mt-3 max-w-4xl text-sm leading-7 text-kc-muted sm:text-base">{faq.answer}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -525,7 +554,7 @@ export function QuoteView({ locale }: { locale: Locale }) {
       <PageHero
         eyebrow={locale === "es" ? "Cotizar" : "Quote"}
         title={locale === "es" ? "Cuentame que necesitas y preparo un camino claro." : "Tell me what you need and I will prepare a clear path."}
-        copy={locale === "es" ? "Este formulario envia tu solicitud al flujo interno de leads y queda preparado para el futuro panel administrativo." : "This form sends your request into the internal lead flow and is prepared for the future admin panel."}
+        copy={locale === "es" ? "Cuéntanos si necesitas una página web o un sistema administrativo, contable o de facturación, y qué procesos deseas controlar para preparar una propuesta adecuada." : "Tell us whether you need a website or an administrative, accounting or invoicing system, and which processes you want to manage so we can prepare the right proposal."}
         primaryLabel={locale === "es" ? "Enviar mensaje" : "Send message"}
         primaryHref="#formulario"
       />
@@ -534,11 +563,11 @@ export function QuoteView({ locale }: { locale: Locale }) {
           <h2 className="font-display text-2xl font-black text-kc-text">{locale === "es" ? "Antes de enviar" : "Before sending"}</h2>
           <p className="mt-4 text-sm leading-7 text-kc-muted">
             {locale === "es"
-              ? "Incluye tu tipo de negocio, mercado objetivo, meta principal, contenido disponible y fecha ideal de lanzamiento. Eso permite recomendar el camino correcto."
-              : "Include your business type, target market, main goal, available content and ideal launch date. That makes it easier to recommend the right path."}
+              ? "Incluye tu tipo de negocio, objetivo, procesos que deseas controlar, información disponible y fecha ideal de lanzamiento. Eso permite recomendar el alcance correcto."
+              : "Include your business type, main goal, processes you want to manage, available information and ideal launch date. That makes it easier to recommend the right scope."}
           </p>
           <div className="mt-6 grid gap-3 text-sm font-semibold text-kc-muted">
-            {(locale === "es" ? ["Páginas de aterrizaje", "Webs para negocios", "Tiendas en línea", "Base para panel futuro"] : ["Landing pages", "Business websites", "E-commerce", "Future panel foundation"]).map((item) => (
+            {(locale === "es" ? ["Páginas de aterrizaje", "Webs para negocios", "Tiendas en línea", "Sistemas administrativos, contables y facturación"] : ["Landing pages", "Business websites", "E-commerce", "Administrative, accounting and invoicing systems"]).map((item) => (
               <span key={item} className="rounded-lg border border-kc-border bg-kc-bg/70 px-4 py-3">{item}</span>
             ))}
           </div>

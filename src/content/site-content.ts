@@ -49,6 +49,7 @@ export type Package = {
 
 type SiteCopy = {
   services: Service[];
+  faqs: { question: string; answer: string }[];
   projects: Project[];
   packages: Package[];
   benefits: { title: string; copy: string; icon: LucideIcon }[];
@@ -96,11 +97,11 @@ export const content: Record<Locale, SiteCopy> = {
         icon: ShoppingCart,
       },
       {
-        slug: "panel-administrativo",
-        title: "Panel administrativo",
-        summary: "Base privada para organizar contactos, solicitudes y seguimiento comercial.",
+        slug: "sistemas-contables-facturacion",
+        title: "Sistemas administrativos, contables y facturación",
+        summary: "Plataformas personalizadas para gestionar facturación, ventas, compras, inventario, clientes, cuentas por cobrar y pagar, libros contables, reportes financieros y procesos administrativos desde un solo sistema.",
         detail:
-          "La web pública queda preparada para una fase privada posterior, sin mezclar información interna con la experiencia del cliente.",
+          "Puede incluir libro diario digital, libros contables, automatización de registros administrativos y contables, y apoyo para el control y revisión de movimientos, integrado con inventario, clientes, productos y proveedores según el alcance del negocio.",
         icon: Blocks,
       },
       {
@@ -126,6 +127,13 @@ export const content: Record<Locale, SiteCopy> = {
         detail:
           "Flujos de comunicación preparados para responder mejor y mantener orden en solicitudes comerciales.",
         icon: MailCheck,
+      },
+    ],
+    faqs: [
+      {
+        question: "¿KenCode puede desarrollar sistemas contables o de facturación?",
+        answer:
+          "Sí. Podemos desarrollar sistemas contables y de facturación adaptados a las necesidades del negocio, incluyendo ventas, compras, cuentas por cobrar, cuentas por pagar, historial de pagos, saldos pendientes, reportes financieros y conexión con inventario o clientes. El alcance exacto se define según los procesos de cada empresa.",
       },
     ],
     projects: [
@@ -262,8 +270,8 @@ export const content: Record<Locale, SiteCopy> = {
       {
         name: "Web Pro + Panel",
         price: "Cotización personalizada",
-        audience: "Para equipos que quieren preparar seguimiento comercial sin mezclar operaciones privadas con la web pública.",
-        includes: ["Web premium", "Base lista para panel futuro", "Área privada separada", "Automatizaciones base", "SEO inicial avanzado"],
+        audience: "Para equipos que necesitan una web profesional, un panel administrativo y sistemas personalizados de gestión interna, contabilidad o facturación adaptados a sus procesos.",
+        includes: ["Web premium", "Panel administrativo según alcance", "Gestión interna, contable o de facturación", "Automatizaciones base", "SEO inicial avanzado"],
         featured: true,
       },
       {
@@ -277,7 +285,7 @@ export const content: Record<Locale, SiteCopy> = {
       { title: "Alcance internacional", copy: "Trabajo remoto, comunicación clara y experiencias web listas para clientes de diferentes países.", icon: Gauge },
       { title: "Contacto sin fricción", copy: "WhatsApp, correo y formularios visibles para que el cliente dé el siguiente paso desde cualquier zona horaria.", icon: MessageCircle },
       { title: "SEO internacional + local", copy: "Metadata, sitemap, robots, URLs limpias y palabras clave globales combinadas con búsqueda local.", icon: SearchCheck },
-      { title: "Crecimiento por fases", copy: "Primero una web pública premium; después sistemas privados cuando el negocio lo necesite.", icon: ShieldCheck },
+      { title: "Operaciones conectadas", copy: "Podemos conectar inventario, ventas, clientes y contabilidad por etapas para mejorar el seguimiento y reducir trabajo manual.", icon: ShieldCheck },
     ],
     process: ["Diagnóstico", "Estructura", "Diseño", "Construcción", "Revisión", "Lanzamiento", "Soporte"],
     testimonials: [
@@ -297,7 +305,7 @@ export const content: Record<Locale, SiteCopy> = {
         role: "Servicios empresariales",
       },
     ],
-    strengths: ["Diseño moderno", "Página rápida", "Adaptada a celulares", "Contacto por WhatsApp", "Formularios profesionales", "SEO básico", "Panel administrativo", "Soporte post-lanzamiento", "Experiencia profesional"],
+    strengths: ["Diseño moderno", "Página rápida", "Adaptada a celulares", "Contacto por WhatsApp", "Formularios profesionales", "SEO básico", "Sistemas administrativos, contables y facturación", "Soporte post-lanzamiento", "Experiencia profesional"],
     blogTopics: [
       "Cómo una landing page ayuda a vender servicios en internet",
       "Qué necesita una web moderna para generar confianza",
@@ -331,11 +339,11 @@ export const content: Record<Locale, SiteCopy> = {
         icon: ShoppingCart,
       },
       {
-        slug: "admin-panel",
-        title: "Admin panel",
-        summary: "Private foundation to organize contacts, requests and commercial follow-up.",
+        slug: "accounting-invoicing-systems",
+        title: "Administrative, accounting and invoicing systems",
+        summary: "Custom platforms to manage invoicing, sales, purchases, inventory, customers, accounts receivable and payable, accounting ledgers, financial reports and administrative processes from one system.",
         detail:
-          "The public website stays ready for a future private phase without mixing internal information into the customer experience.",
+          "They can include a digital general ledger, other accounting ledgers, automated administrative and accounting entries, and support for transaction tracking and review, integrated with inventory, customers, products and suppliers depending on scope.",
         icon: Blocks,
       },
       {
@@ -361,6 +369,13 @@ export const content: Record<Locale, SiteCopy> = {
         detail:
           "Communication flows prepared to respond better and keep commercial requests organized.",
         icon: MailCheck,
+      },
+    ],
+    faqs: [
+      {
+        question: "Can KenCode build accounting or invoicing systems?",
+        answer:
+          "Yes. We can build accounting and invoicing systems tailored to the business, including sales, purchases, accounts receivable, accounts payable, payment history, outstanding balances, financial reports and integration with inventory or customers. The exact scope depends on each company's processes.",
       },
     ],
     projects: [
@@ -479,8 +494,8 @@ export const content: Record<Locale, SiteCopy> = {
       {
         name: "Web Pro + Panel",
         price: "Custom quote",
-        audience: "For teams preparing commercial follow-up without mixing private operations into the public website.",
-        includes: ["Premium website", "Future panel foundation", "Separate private area", "Base automations", "Advanced initial SEO"],
+        audience: "For teams that need a professional website, an admin panel and custom systems for internal management, accounting or invoicing tailored to their processes.",
+        includes: ["Premium website", "Admin panel based on scope", "Internal, accounting or invoicing management", "Base automations", "Advanced initial SEO"],
         featured: true,
       },
       {
@@ -494,7 +509,7 @@ export const content: Record<Locale, SiteCopy> = {
       { title: "International reach", copy: "Remote work, clear communication and web experiences ready for clients in different countries.", icon: Gauge },
       { title: "Frictionless contact", copy: "WhatsApp, email and forms visible so clients can take the next step from any time zone.", icon: MessageCircle },
       { title: "International + local SEO", copy: "Metadata, sitemap, robots, clean URLs and global keywords combined with local search.", icon: SearchCheck },
-      { title: "Phased growth", copy: "First a premium public website; later private systems when the business needs them.", icon: ShieldCheck },
+      { title: "Connected operations", copy: "We can connect inventory, sales, customers and accounting in phases to improve tracking and reduce manual work.", icon: ShieldCheck },
     ],
     process: ["Diagnosis", "Structure", "Design", "Build", "Review", "Launch", "Support"],
     testimonials: [
@@ -514,7 +529,7 @@ export const content: Record<Locale, SiteCopy> = {
         role: "Business services",
       },
     ],
-    strengths: ["Modern design", "Fast pages", "Mobile-ready", "WhatsApp contact", "Professional forms", "Basic SEO", "Admin panel", "Post-launch support", "Professional experience"],
+    strengths: ["Modern design", "Fast pages", "Mobile-ready", "WhatsApp contact", "Professional forms", "Basic SEO", "Administrative, accounting and invoicing systems", "Post-launch support", "Professional experience"],
     blogTopics: [
       "How a landing page helps service businesses sell online",
       "What a modern website needs to build trust",
