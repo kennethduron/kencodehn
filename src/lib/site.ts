@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export type Locale = "es" | "en";
 
 export const site = {
-  name: "Ken Code",
+  name: "KenCode",
   url: "https://kencodehn.com",
   wwwUrl: "https://www.kencodehn.com",
   domain: "kencodehn.com",
@@ -12,7 +12,13 @@ export const site = {
   phoneRaw: "50499112211",
   facebook: "https://www.facebook.com/share/1CMt5EQ8Jo/?mibextid=wwXIfr",
   instagram: "https://www.instagram.com/kencodehn",
-  ogImage: "/images/logo-kenneth.jpg",
+  ogImage: "/images/og/kencode-og.jpg",
+  ogImageWidth: 877,
+  ogImageHeight: 877,
+  ogImageType: "image/jpeg",
+  ogImageAltEs: "Imagen de marca de KenCode",
+  ogImageAltEn: "KenCode logo and brand image",
+  brandLogo: "/images/brand/kencode-logo.jpg",
   favicon: "/images/fav-icon.jpg",
   portrait: "/images/kenneth.jpg",
 };
@@ -119,15 +125,13 @@ export function createMetadata({
   alternatePath,
 }: PageMetadata): Metadata {
   const canonical = absoluteUrl(path);
-  const fullTitle = title.includes(site.name) ? title : `${title} | ${site.name}`;
+  const normalizedTitle = title.replace(/Ken\s+Code/g, site.name);
+  const fullTitle = normalizedTitle.includes(site.name) ? normalizedTitle : `${normalizedTitle} | ${site.name}`;
   const resolvedAlternatePath = alternatePath === null ? null : alternatePath ?? getAlternatePath(path, locale);
   const esPath = locale === "es" ? path : resolvedAlternatePath;
   const enPath = locale === "en" ? path : resolvedAlternatePath;
   const keywordBase = locale === "es" ? seoKeywordsEs : seoKeywordsEn;
-  const ogAlt =
-    locale === "es"
-      ? "Ken Code - Estudio internacional de desarrollo web"
-      : "Ken Code - International web development studio";
+  const ogAlt = locale === "es" ? site.ogImageAltEs : site.ogImageAltEn;
 
   return {
     title: fullTitle,
@@ -158,10 +162,10 @@ export function createMetadata({
       images: [
         {
           url: absoluteAssetUrl(site.ogImage),
-          width: 785,
-          height: 981,
+          width: site.ogImageWidth,
+          height: site.ogImageHeight,
           alt: ogAlt,
-          type: "image/jpeg",
+          type: site.ogImageType,
         },
       ],
     },
@@ -172,7 +176,10 @@ export function createMetadata({
       images: [
         {
           url: absoluteAssetUrl(site.ogImage),
+          width: site.ogImageWidth,
+          height: site.ogImageHeight,
           alt: ogAlt,
+          type: site.ogImageType,
         },
       ],
     },

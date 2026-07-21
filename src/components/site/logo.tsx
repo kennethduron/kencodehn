@@ -2,29 +2,27 @@ import Image from "next/image";
 import { site } from "@/lib/site";
 
 type LogoProps = {
-  subtitle?: string;
+  variant?: "header" | "footer";
 };
 
-export function Logo({ subtitle = "Estudio web" }: LogoProps) {
+export function Logo({ variant = "header" }: LogoProps) {
+  const isFooter = variant === "footer";
+
   return (
-    <span className="inline-flex items-center gap-3">
-      <span className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-xl border border-kc-cyan/40 bg-kc-bg-soft shadow-[0_0_28px_rgba(0,217,255,0.2)]">
+    <span className="inline-flex items-center" aria-label="KenCode">
+      <span
+        className={`relative grid place-items-center overflow-hidden rounded-xl bg-kc-bg-soft shadow-[0_0_28px_rgba(0,217,255,0.18)] ${
+          isFooter ? "h-24 w-24" : "h-14 w-14"
+        }`}
+      >
         <Image
-          src={site.favicon}
-          alt="Icono de Ken Code"
-          width={44}
-          height={44}
-          className="h-full w-full object-cover"
+          src={site.brandLogo}
+          alt="KenCode logo"
+          width={isFooter ? 96 : 56}
+          height={isFooter ? 96 : 56}
+          className="h-full w-full object-contain"
           priority
         />
-      </span>
-      <span className="leading-none">
-        <span className="block font-display text-lg font-bold tracking-tight text-kc-text">
-          {site.name}
-        </span>
-        <span className="block text-[0.67rem] font-semibold uppercase tracking-[0.22em] text-kc-cyan">
-          {subtitle}
-        </span>
       </span>
     </span>
   );

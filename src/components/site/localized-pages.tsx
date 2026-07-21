@@ -110,7 +110,7 @@ export function HomeView({ locale }: { locale: Locale }) {
         alternateName: ["Ken Code Honduras"],
         url: site.url,
         image: absoluteAssetUrl(site.ogImage),
-        logo: absoluteAssetUrl(site.favicon),
+        logo: absoluteAssetUrl(site.brandLogo),
         email: site.email,
         telephone: site.phone,
         founder: { "@id": `${site.url}#kenneth-duron` },

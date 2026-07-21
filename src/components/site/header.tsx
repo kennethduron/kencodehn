@@ -33,7 +33,6 @@ export function Header() {
   const alternateHref = getAlternatePath(pathname, locale);
   const quoteHref = locale === "es" ? "/cotizar" : "/en/quote";
   const homeHref = "/";
-  const logoSubtitle = locale === "es" ? "Estudio web" : "Web Studio";
   const quoteLabel = locale === "es" ? "Cotizar" : "Quote";
 
   function closeMenu() {
@@ -73,8 +72,8 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-kc-bg/82 backdrop-blur-xl">
       <nav className="kc-shell flex h-20 items-center justify-between gap-4" aria-label="Navegacion principal">
-        <Link href={homeHref} onClick={handleLogoClick} aria-label={locale === "es" ? "Ir al inicio de Ken Code" : "Go to Ken Code home"} className="shrink-0 transition opacity-95 hover:opacity-100">
-          <Logo subtitle={logoSubtitle} />
+        <Link href={homeHref} onClick={handleLogoClick} aria-label={locale === "es" ? "Ir al inicio de KenCode" : "Go to KenCode home"} className="shrink-0 transition opacity-95 hover:opacity-100">
+          <Logo />
         </Link>
 
         <div className="hidden items-center gap-1 lg:flex">

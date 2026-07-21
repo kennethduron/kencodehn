@@ -4,9 +4,9 @@ import "./globals.css";
 import { PublicShell } from "@/components/site/public-shell";
 import { site, seoKeywords } from "@/lib/site";
 
-const title = "Ken Code | Estudio internacional de desarrollo web";
+const title = "KenCode | Estudio internacional de desarrollo web";
 const description =
-  "Ken Code crea paginas web premium, landing pages, e-commerce y soluciones digitales modernas para negocios que trabajan localmente e internacionalmente.";
+  "KenCode crea paginas web premium, landing pages, e-commerce y soluciones digitales modernas para negocios que trabajan localmente e internacionalmente.";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -57,10 +57,10 @@ export const metadata: Metadata = {
     images: [
       {
         url: `${site.wwwUrl}${site.ogImage}`,
-        width: 785,
-        height: 981,
-        alt: "Ken Code - Estudio internacional de desarrollo web",
-        type: "image/jpeg",
+        width: site.ogImageWidth,
+        height: site.ogImageHeight,
+        alt: site.ogImageAltEs,
+        type: site.ogImageType,
       },
     ],
   },
@@ -71,10 +71,10 @@ export const metadata: Metadata = {
     images: [
       {
         url: `${site.wwwUrl}${site.ogImage}`,
-        width: 785,
-        height: 981,
-        alt: "Ken Code - Estudio internacional de desarrollo web",
-        type: "image/jpeg",
+        width: site.ogImageWidth,
+        height: site.ogImageHeight,
+        alt: site.ogImageAltEs,
+        type: site.ogImageType,
       },
     ],
   },

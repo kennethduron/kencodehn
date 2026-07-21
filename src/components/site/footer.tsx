@@ -41,7 +41,7 @@ export function Footer() {
     <footer className="border-t border-white/10 bg-kc-bg-soft/70">
       <div className="kc-shell grid gap-8 py-10 md:grid-cols-[1fr_auto] md:items-center">
         <div>
-          <Logo subtitle={locale === "es" ? "Estudio web" : "Web Studio"} />
+          <Logo variant="footer" />
           <p className="mt-4 max-w-xl text-sm leading-6 text-kc-muted">{copy}</p>
           <SocialLinks className="mt-5" whatsappMessage={whatsappMessage} />
         </div>
