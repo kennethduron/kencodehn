@@ -18,7 +18,7 @@ const labels = {
     heroEyebrow: "Estudio web y software internacional",
     heroTitle: "Páginas web premium para negocios modernos que quieren crecer",
     heroCopy:
-      "KenCode crea páginas web y sistemas de negocio modernos, incluyendo facturación y contabilidad, para empresas, marcas y emprendedores que quieren crecer con procesos más claros.",
+      "Ken Code crea páginas web y sistemas de negocio modernos, incluyendo facturación y contabilidad, para empresas, marcas y emprendedores que quieren crecer con procesos más claros.",
     quote: "Solicitar cotización",
     projects: "Ver proyectos",
     photoCaption: "Experiencias digitales listas para vender, contactar y crecer en diferentes mercados.",
@@ -48,7 +48,7 @@ const labels = {
     heroEyebrow: "International web and software studio",
     heroTitle: "Premium websites for modern businesses ready to grow",
     heroCopy:
-      "KenCode builds modern websites and business systems, including accounting and invoicing, for companies, brands and founders ready to grow with clearer processes.",
+      "Ken Code builds modern websites and business systems, including accounting and invoicing, for companies, brands and founders ready to grow with clearer processes.",
     quote: "Request a quote",
     projects: "View projects",
     photoCaption: "Digital experiences ready to sell, connect and grow across markets.",
@@ -273,7 +273,7 @@ export function ServicesView({ locale }: { locale: Locale }) {
   const servicesSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
-    name: locale === "es" ? "Servicios web y sistemas para negocios de KenCode" : "KenCode web and business systems services",
+    name: locale === "es" ? "Servicios web y sistemas para negocios de Ken Code" : "Ken Code web and business systems services",
     provider: { "@type": "ProfessionalService", name: site.name, url: site.url },
     areaServed: ["Global", "United States", "Canada", "Europe", "Latin America", "Honduras"],
     inLanguage: locale,

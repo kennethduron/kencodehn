@@ -4,9 +4,9 @@ import { createMetadata } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Contacto",
   description:
-    "Contacta a KenCode para cotizar paginas web, sistemas contables, facturacion, CRM, automatizacion o modulos administrativos para tu negocio.",
+    "Contacta a Ken Code para cotizar paginas web, sistemas contables, facturacion, CRM, automatizacion o modulos administrativos para tu negocio.",
   path: "/contacto",
-  keywords: ["contacto desarrollo web Honduras", "cotizar pagina web Honduras", "sistemas contables Honduras", "sistemas de facturacion", "KenCode contacto"],
+  keywords: ["contacto desarrollo web Honduras", "cotizar pagina web Honduras", "sistemas contables Honduras", "sistemas de facturacion", "Ken Code contacto"],
 });
 
 export default function ContactPage() {

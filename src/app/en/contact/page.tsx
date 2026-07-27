@@ -4,10 +4,10 @@ import { createMetadata } from "@/lib/site";
 export const metadata = createMetadata({
   title: "Contact",
   description:
-    "Contact KenCode to quote websites, accounting systems, invoicing, CRM, automation or administrative modules for your business.",
+    "Contact Ken Code to quote websites, accounting systems, invoicing, CRM, automation or administrative modules for your business.",
   path: "/en/contact",
   locale: "en",
-  keywords: ["contact web developer", "quote website", "accounting systems", "invoicing systems", "KenCode contact"],
+  keywords: ["contact web developer", "quote website", "accounting systems", "invoicing systems", "Ken Code contact"],
 });
 
 export default function EnglishContactPage() {

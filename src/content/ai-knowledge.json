@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-21T18:54:44.178Z",
+  "generatedAt": "2026-07-27T02:38:16.188Z",
   "visibility": "public",
   "purpose": "Base de conocimiento publica para Ken Code AI. Solo contiene informacion publicada o derivada de contenido publico del sitio.",
   "sourcePolicy": {
     "allowedSources": [
       {
         "path": "src/content/site-content.ts",
-        "sha256": "5714dd82e170ef5ded487493bbb0cfe5cba01a955161c4c1b6bb9e1f6670a573",
+        "sha256": "22dbb7fd43a6599073066973ae05f34545ee1314ffd0e00b53286f2da5f79c9a",
         "visibility": "public"
       },
       {
@@ -17,7 +17,7 @@
       },
       {
         "path": "src/lib/site.ts",
-        "sha256": "e783f425604af401ffee39689b7e7f9c584c0337db82b54d1f51a8d7eaadd342",
+        "sha256": "8c02bf2344b4db5546d817bfad25b901fdb3a8e8492a27727a4d96e04780b529",
         "visibility": "public"
       }
     ],
@@ -36,7 +36,7 @@
     ]
   },
   "company": {
-    "name": "KenCode",
+    "name": "Ken Code",
     "domain": "kencodehn.com",
     "url": "https://kencodehn.com",
     "email": "kencodehn@gmail.com",
@@ -207,7 +207,7 @@
       ],
       "faqs": [
         {
-          "question": "¿KenCode puede desarrollar sistemas contables o de facturación?",
+          "question": "¿Ken Code puede desarrollar sistemas contables o de facturación?",
           "answer": "Sí. Podemos desarrollar sistemas contables y de facturación adaptados a las necesidades del negocio, incluyendo ventas, compras, cuentas por cobrar, cuentas por pagar, historial de pagos, saldos pendientes, reportes financieros y conexión con inventario o clientes. El alcance exacto se define según los procesos de cada empresa."
         }
       ],
@@ -541,7 +541,7 @@
       ],
       "faqs": [
         {
-          "question": "Can KenCode build accounting or invoicing systems?",
+          "question": "Can Ken Code build accounting or invoicing systems?",
           "answer": "Yes. We can build accounting and invoicing systems tailored to the business, including sales, purchases, accounts receivable, accounts payable, payment history, outstanding balances, financial reports and integration with inventory or customers. The exact scope depends on each company's processes."
         }
       ],

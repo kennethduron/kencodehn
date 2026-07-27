@@ -131,7 +131,7 @@ export const content: Record<Locale, SiteCopy> = {
     ],
     faqs: [
       {
-        question: "¿KenCode puede desarrollar sistemas contables o de facturación?",
+        question: "¿Ken Code puede desarrollar sistemas contables o de facturación?",
         answer:
           "Sí. Podemos desarrollar sistemas contables y de facturación adaptados a las necesidades del negocio, incluyendo ventas, compras, cuentas por cobrar, cuentas por pagar, historial de pagos, saldos pendientes, reportes financieros y conexión con inventario o clientes. El alcance exacto se define según los procesos de cada empresa.",
       },
@@ -373,7 +373,7 @@ export const content: Record<Locale, SiteCopy> = {
     ],
     faqs: [
       {
-        question: "Can KenCode build accounting or invoicing systems?",
+        question: "Can Ken Code build accounting or invoicing systems?",
         answer:
           "Yes. We can build accounting and invoicing systems tailored to the business, including sales, purchases, accounts receivable, accounts payable, payment history, outstanding balances, financial reports and integration with inventory or customers. The exact scope depends on each company's processes.",
       },

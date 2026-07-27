@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export type Locale = "es" | "en";
 
 export const site = {
-  name: "KenCode",
+  name: "Ken Code",
   url: "https://kencodehn.com",
   wwwUrl: "https://www.kencodehn.com",
   domain: "kencodehn.com",
@@ -16,8 +16,8 @@ export const site = {
   ogImageWidth: 877,
   ogImageHeight: 877,
   ogImageType: "image/jpeg",
-  ogImageAltEs: "Imagen de marca de KenCode",
-  ogImageAltEn: "KenCode logo and brand image",
+  ogImageAltEs: "Imagen de marca de Ken Code",
+  ogImageAltEn: "Ken Code logo and brand image",
   brandLogo: "/images/brand/kencode-logo.jpg",
   favicon: "/images/fav-icon.jpg",
   portrait: "/images/kenneth.jpg",
