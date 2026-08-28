@@ -10,9 +10,13 @@
     "lint": "next lint",
     "check": "node --check api/cron/followups.js",
     "test:auth": "node --experimental-strip-types --test tests/admin-authorization.test.mjs tests/admin-sales-access.test.mjs tests/admin-automation.test.mjs",
+    "test:m1": "node --experimental-strip-types --test tests/supabase-m1.test.mjs",
+    "migrate:supabase": "node --experimental-strip-types scripts/migrate-firebase-to-supabase.mts",
     "generate:ai-knowledge": "node scripts/generate-ai-knowledge.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "framer-motion": "^12.23.24",
