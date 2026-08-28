@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { listNotifications, markAllNotificationsRead } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "notifications:view");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const notifications = await listNotifications();
   return NextResponse.json({ ok: true, notifications });
 }
@@ -19,10 +17,9 @@ const bulkSchema = z.object({
 }).strict();
 
 export async function PATCH(request: NextRequest) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "notifications:edit");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
   const parsed = bulkSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Accion invalida.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });

@@ -4,6 +4,7 @@ import type { AdminTask, AdminUser } from "@/lib/admin/types";
 import { sendTaskOverdueEmail, sendTaskReminderEmail } from "@/lib/email/service";
 import { sendPushToAdmins } from "@/lib/push/service";
 import { getAdminSettings } from "@/lib/admin/settings";
+import { defaultPermissionsForRole } from "@/lib/admin/authorization";
 
 type ReminderKind = "1day" | "1hour" | "due" | "overdue";
 
@@ -85,13 +86,22 @@ async function dispatchTaskReminder(task: AdminTask, kind: ReminderKind, admin: 
       action: kind === "overdue" ? "task_overdue" : "task_reminder_sent",
       before: { status: task.status },
       after: { reminder: kind, sentAt: now, notificationId: notificationRef?.id ?? null },
+      userUid: admin.uid,
       userEmail: admin.email,
     }),
   );
   return true;
 }
 
-export async function processTaskReminders(admin: AdminUser = { uid: "system", email: "cron@kencodehn.com", role: "admin" }) {
+export async function processTaskReminders(
+  admin: AdminUser = {
+    uid: "system",
+    email: "cron@kencodehn.com",
+    role: "admin",
+    active: true,
+    permissions: defaultPermissionsForRole("admin"),
+  },
+) {
   const tasks = await listTasks();
   const settings = await getAdminSettings();
   const now = Date.now();

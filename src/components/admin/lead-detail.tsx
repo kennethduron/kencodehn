@@ -20,11 +20,25 @@ export function LeadDetail({
   initialNotes,
   initialTasks,
   initialActivity,
+  canEditLead,
+  canViewNotes,
+  canEditNotes,
+  canViewTasks,
+  canEditTasks,
+  canViewActivity,
+  canDeleteLead,
 }: {
   initialLead: AdminLead;
   initialNotes: AdminNote[];
   initialTasks: AdminTask[];
   initialActivity: ActivityLog[];
+  canEditLead: boolean;
+  canViewNotes: boolean;
+  canEditNotes: boolean;
+  canViewTasks: boolean;
+  canEditTasks: boolean;
+  canViewActivity: boolean;
+  canDeleteLead: boolean;
 }) {
   const router = useRouter();
   const [lead, setLead] = useState(initialLead);
@@ -62,6 +76,7 @@ export function LeadDetail({
   }, [activity, lead.createdAt, lead.id]);
 
   async function refreshActivity() {
+    if (!canViewActivity) return;
     const response = await fetch(`/api/admin/leads/${lead.id}/activity`);
     const result = await response.json();
     if (result.ok) {
@@ -70,6 +85,7 @@ export function LeadDetail({
   }
 
   async function updateLead(updates: Partial<AdminLead>) {
+    if (!canEditLead) return;
     const response = await fetch(`/api/admin/leads/${lead.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -113,6 +129,7 @@ export function LeadDetail({
 
   async function addNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canEditNotes) return;
     setIsSavingNote(true);
     const response = await fetch(`/api/admin/leads/${lead.id}/notes`, {
       method: "POST",
@@ -133,6 +150,7 @@ export function LeadDetail({
 
   async function addTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canEditTasks) return;
     const response = await fetch("/api/admin/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -187,6 +205,7 @@ export function LeadDetail({
   }
 
   async function deleteLead() {
+    if (!canDeleteLead) return;
     setIsDeletingLead(true);
     try {
       const response = await fetch(`/api/admin/leads/${lead.id}`, { method: "DELETE" });
@@ -307,7 +326,7 @@ export function LeadDetail({
           </div>
         </article>
 
-        <aside className="grid gap-4">
+        {canEditLead || canDeleteLead ? <aside className="grid gap-4">
           <div className="kc-admin-card p-5">
             <h2 className="font-display text-xl font-black text-kc-text">Gestion comercial</h2>
             <div className="mt-4 grid gap-3">
@@ -413,7 +432,7 @@ export function LeadDetail({
             </div>
           </div>
 
-          <div className="kc-admin-card border-rose-300/20 bg-rose-950/10 p-5">
+          {canDeleteLead ? <div className="kc-admin-card border-rose-300/20 bg-rose-950/10 p-5">
             <h2 className="font-display text-xl font-black text-rose-100">Zona peligrosa</h2>
             <p className="mt-2 text-sm leading-6 text-rose-100/75">
               Elimina este lead y todos sus datos relacionados solo cuando sea informacion de prueba o duplicada.
@@ -426,17 +445,17 @@ export function LeadDetail({
               <Trash2 size={16} aria-hidden="true" />
               Eliminar lead
             </button>
-          </div>
-        </aside>
+          </div> : null}
+        </aside> : null}
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <article className="kc-admin-card p-5">
+      {canViewNotes || canViewTasks ? <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        {canViewNotes ? <article className="kc-admin-card p-5">
           <h2 className="font-display text-2xl font-black text-kc-text">Notas internas</h2>
-          <form className="mt-4 grid gap-3" onSubmit={addNote}>
+          {canEditNotes ? <form className="mt-4 grid gap-3" onSubmit={addNote}>
             <textarea value={noteText} onChange={(event) => setNoteText(event.target.value)} rows={4} placeholder="Agregar nota privada..." className="rounded-xl border border-white/10 bg-kc-bg p-4 text-sm text-kc-text outline-none focus:border-kc-cyan" required />
             <button disabled={isSavingNote} className="min-h-11 rounded-xl bg-kc-electric px-4 text-sm font-black text-white disabled:opacity-60">{isSavingNote ? "Guardando..." : "Agregar nota"}</button>
-          </form>
+          </form> : null}
           <div className="mt-5 grid gap-3">
             {notes.map((note) => (
               <div key={note.id} className="rounded-xl border border-white/10 bg-kc-bg/55 p-4">
@@ -446,16 +465,16 @@ export function LeadDetail({
             ))}
             {notes.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">No hay notas todavia.</p> : null}
           </div>
-        </article>
+        </article> : null}
 
-        <article className="kc-admin-card p-5">
+        {canViewTasks ? <article className="kc-admin-card p-5">
           <h2 className="font-display text-2xl font-black text-kc-text">Tareas relacionadas</h2>
-          <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={addTask}>
+          {canEditTasks ? <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={addTask}>
             <input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text sm:col-span-2" required />
             <input type="date" value={taskDate} onChange={(event) => setTaskDate(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" required />
             <input type="time" value={taskTime} onChange={(event) => setTaskTime(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" required />
             <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-kc-electric px-4 text-sm font-black text-white sm:col-span-2"><CalendarPlus size={16} /> Crear tarea</button>
-          </form>
+          </form> : null}
           <div className="mt-5 grid gap-3">
             {tasks.map((task) => (
               <div key={task.id} className="rounded-xl border border-white/10 bg-kc-bg/55 p-4">
@@ -470,10 +489,10 @@ export function LeadDetail({
             ))}
             {tasks.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">No hay tareas para este lead.</p> : null}
           </div>
-        </article>
-      </section>
+        </article> : null}
+      </section> : null}
 
-      <section className="kc-admin-card p-5">
+      {canViewActivity ? <section className="kc-admin-card p-5">
         <h2 className="font-display text-2xl font-black text-kc-text">Timeline de actividad</h2>
         <div className="mt-5 grid gap-4">
           {timeline.map((item) => {
@@ -493,7 +512,7 @@ export function LeadDetail({
             </div>
           )})}
         </div>
-      </section>
+      </section> : null}
     </div>
   );
 }

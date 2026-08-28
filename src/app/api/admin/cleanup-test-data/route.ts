@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { canRunMaintenance, cleanupOperationalData, getCleanupSummary } from "@/lib/admin/cleanup";
 
 export const runtime = "nodejs";
@@ -10,10 +10,9 @@ const cleanupSchema = z.object({
 }).strict();
 
 export async function GET(request: NextRequest) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "maintenance:run");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
   if (!canRunMaintenance(admin)) {
     return NextResponse.json({ ok: false, message: "No tienes permiso para ver mantenimiento." }, { status: 403 });
   }
@@ -22,10 +21,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "maintenance:run");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
   if (!canRunMaintenance(admin)) {
     return NextResponse.json({ ok: false, message: "No tienes permiso para limpiar el CRM." }, { status: 403 });
   }

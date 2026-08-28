@@ -205,6 +205,7 @@ export function mapActivityLog(doc: QueryDocumentSnapshot<DocumentData>): Activi
     description: String(data.description ?? ""),
     before: data.before ?? null,
     after: data.after ?? null,
+    userUid: data.userUid ? String(data.userUid) : undefined,
     userEmail: String(data.userEmail ?? ""),
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
   } satisfies ActivityLog;
@@ -324,6 +325,7 @@ export async function checkOverdueTasks(admin?: AdminUser) {
       action: "task_overdue",
       before: { status: task.status },
       after: { status: "overdue", overdueNotifiedAt: notifiedAt },
+      userUid: admin?.uid ?? "system",
       userEmail: admin?.email ?? "system",
     });
     if (settings.taskOverdueEnabled) {
@@ -461,6 +463,7 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
     action: primaryAction,
     before: beforeData,
     after: payload,
+    userUid: admin.uid,
     userEmail: admin.email,
   });
 }
@@ -495,6 +498,7 @@ export async function addNote(leadId: string, text: string, admin: AdminUser) {
     action: "note_added",
     before: null,
     after: { leadId, text },
+    userUid: admin.uid,
     userEmail: admin.email,
   });
   return doc.id;
@@ -548,6 +552,7 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
     action: "task_created",
     before: null,
     after: { ...payload, notificationId },
+    userUid: admin.uid,
     userEmail: admin.email,
   });
   return doc.id;
@@ -611,6 +616,7 @@ export async function updateTask(id: string, updates: Partial<AdminTask>, admin:
     action: "task_updated",
     before: before.exists ? before.data() : null,
     after: payload,
+    userUid: admin.uid,
     userEmail: admin.email,
   });
 }
@@ -631,6 +637,7 @@ export async function deleteTask(id: string, admin: AdminUser) {
     action: "task_deleted",
     before: before.exists ? before.data() : null,
     after: null,
+    userUid: admin.uid,
     userEmail: admin.email,
   });
 }
@@ -648,6 +655,7 @@ export async function updateNotificationRead(id: string, read: boolean, admin: A
     action: read ? "notification_read" : "notification_unread",
     before: null,
     after: { read },
+    userUid: admin.uid,
     userEmail: admin.email,
   });
 }
@@ -669,6 +677,7 @@ export async function markAllNotificationsRead(admin: AdminUser) {
     action: "notifications_read_all",
     before: null,
     after: { count: snapshot.size },
+    userUid: admin.uid,
     userEmail: admin.email,
   });
 }
@@ -686,6 +695,7 @@ export async function deleteNotification(id: string, admin: AdminUser) {
     action: "notification_deleted",
     before: null,
     after: { deletedAt: true },
+    userUid: admin.uid,
     userEmail: admin.email,
   });
 }

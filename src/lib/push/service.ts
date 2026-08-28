@@ -52,13 +52,21 @@ export async function registerDeviceToken(input: {
   return tokenId;
 }
 
-export async function deactivateDeviceToken(token: string, email: string) {
+export async function deactivateDeviceToken(token: string, actor: { uid: string; email: string }) {
   const db = getAdminDb();
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");
   }
   const tokenId = Buffer.from(token).toString("base64url").slice(0, 120);
-  await db.collection("deviceTokens").doc(tokenId).set({ active: false, updatedAt: new Date().toISOString(), disabledBy: email }, { merge: true });
+  await db.collection("deviceTokens").doc(tokenId).set(
+    {
+      active: false,
+      updatedAt: new Date().toISOString(),
+      disabledByUid: actor.uid,
+      disabledBy: actor.email,
+    },
+    { merge: true },
+  );
 }
 
 export async function listDeviceTokens(email?: string) {

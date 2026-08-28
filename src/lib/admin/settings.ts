@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
 import type { AdminSettings, AdminUser } from "@/lib/admin/types";
+import { hasPermission } from "@/lib/admin/authorization";
 
 export const adminSettingsSchema = z
   .object({
@@ -29,27 +30,12 @@ export const defaultAdminSettings: AdminSettings = {
   notificationSoundEnabled: false,
   compactModeEnabled: false,
   updatedAt: null,
+  updatedByUid: null,
   updatedBy: null,
 };
 
-const ownerPermissions = [
-  "leads:view",
-  "leads:edit",
-  "tasks:delete",
-  "reports:view",
-  "settings:manage",
-  "users:manage",
-];
-
-export function defaultPermissionsForRole(role: AdminUser["role"]) {
-  if (role === "owner") return ownerPermissions;
-  if (role === "admin") return ownerPermissions.filter((permission) => permission !== "users:manage");
-  if (role === "manager") return ["leads:view", "leads:edit", "reports:view"];
-  return ["leads:view"];
-}
-
 export function canManageSettings(admin: AdminUser) {
-  return admin.role === "owner" || admin.permissions?.includes("settings:manage") === true;
+  return hasPermission(admin, "settings:manage");
 }
 
 function toBoolean(value: unknown, fallback: boolean) {
@@ -69,6 +55,7 @@ function mapSettings(data: Record<string, unknown> | undefined): AdminSettings {
     notificationSoundEnabled: toBoolean(data?.notificationSoundEnabled, defaultAdminSettings.notificationSoundEnabled),
     compactModeEnabled: toBoolean(data?.compactModeEnabled, defaultAdminSettings.compactModeEnabled),
     updatedAt: typeof data?.updatedAt === "string" ? data.updatedAt : null,
+    updatedByUid: typeof data?.updatedByUid === "string" ? data.updatedByUid : null,
     updatedBy: typeof data?.updatedBy === "string" ? data.updatedBy : null,
   };
 }
@@ -90,26 +77,10 @@ export async function updateAdminSettings(settings: z.infer<typeof adminSettings
     {
       ...settings,
       updatedAt: now,
+      updatedByUid: admin.uid,
       updatedBy: admin.email,
     },
     { merge: true },
   );
-  return { ...settings, updatedAt: now, updatedBy: admin.email };
-}
-
-export async function ensureAdminUserProfile(admin: AdminUser) {
-  const db = getAdminDb();
-  if (!db) return;
-  const now = new Date().toISOString();
-  await db.collection("adminUsers").doc(admin.uid).set(
-    {
-      uid: admin.uid,
-      email: admin.email,
-      role: admin.role,
-      permissions: admin.permissions ?? defaultPermissionsForRole(admin.role),
-      active: true,
-      updatedAt: now,
-    },
-    { merge: true },
-  );
+  return { ...settings, updatedAt: now, updatedByUid: admin.uid, updatedBy: admin.email };
 }

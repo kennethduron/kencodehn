@@ -8,7 +8,7 @@ import { AdminBarChart, AdminDonutMetric } from "./admin-chart";
 import { KpiCard } from "./kpi-card";
 import { LeadList } from "./lead-list";
 
-export function AdminDashboard({ leads, tasks, notifications, activity }: { leads: AdminLead[]; tasks: AdminTask[]; notifications: AdminNotification[]; activity: ActivityLog[] }) {
+export function AdminDashboard({ leads, tasks, notifications, activity, canEditLeads, canCreateTasks, canViewTasks, canViewNotifications, canViewActivity }: { leads: AdminLead[]; tasks: AdminTask[]; notifications: AdminNotification[]; activity: ActivityLog[]; canEditLeads: boolean; canCreateTasks: boolean; canViewTasks: boolean; canViewNotifications: boolean; canViewActivity: boolean }) {
   const total = leads.length;
   const newLeads = leads.filter((lead) => lead.status === "new").length;
   const contacted = leads.filter((lead) => lead.status === "contacted").length;
@@ -35,15 +35,15 @@ export function AdminDashboard({ leads, tasks, notifications, activity }: { lead
     { label: "Total de leads", value: total, detail: `${newLeads} nuevos en pipeline`, icon: Users, accent: "cyan" as const },
     { label: "Leads ganados", value: won, detail: `${money(wonValue)} cerrados`, icon: TrendingUp, accent: "green" as const },
     { label: "Leads perdidos", value: lost, detail: "Oportunidades para revisar", icon: TrendingDown, accent: "rose" as const },
-    { label: "Tareas pendientes", value: pendingTasks, detail: `${todayTasks} para hoy`, icon: CalendarClock, accent: overdueTasks ? "rose" as const : "blue" as const },
-    { label: "Sin leer", value: unread, detail: "Notificaciones internas", icon: Bell, accent: unread ? "rose" as const : "slate" as const },
+    ...(canViewTasks ? [{ label: "Tareas pendientes", value: pendingTasks, detail: `${todayTasks} para hoy`, icon: CalendarClock, accent: overdueTasks ? "rose" as const : "blue" as const }] : []),
+    ...(canViewNotifications ? [{ label: "Sin leer", value: unread, detail: "Notificaciones internas", icon: Bell, accent: unread ? "rose" as const : "slate" as const }] : []),
     { label: "Valor potencial", value: money(potentialValue), detail: "Estimado del pipeline", icon: CircleDollarSign, accent: "lime" as const },
     { label: "Inicial potencial", value: money(potentialInitialRevenue), detail: "Monto inicial de proyectos", icon: CircleDollarSign, accent: "lime" as const },
     { label: "Inicial ganado", value: money(wonInitialRevenue), detail: "Proyectos cerrados", icon: TrendingUp, accent: "green" as const },
     { label: "Mensualidad potencial", value: `${money(potentialMonthlyRevenue)}/mes`, detail: `${leadsWithMonthly} leads con mensualidad`, icon: CircleDollarSign, accent: "blue" as const },
     { label: "Mensualidad activa", value: `${money(activeMonthlyRevenue)}/mes`, detail: `${wonWithMonthly} clientes ganados`, icon: TrendingUp, accent: "green" as const },
     { label: "Conversion", value: `${conversion}%`, detail: "Ganados sobre total", icon: TrendingUp, accent: "green" as const },
-    { label: "Tareas vencidas", value: overdueTasks, detail: overdueTasks ? "Requieren accion" : "Todo bajo control", icon: Clock3, accent: overdueTasks ? "rose" as const : "slate" as const },
+    ...(canViewTasks ? [{ label: "Tareas vencidas", value: overdueTasks, detail: overdueTasks ? "Requieren accion" : "Todo bajo control", icon: Clock3, accent: overdueTasks ? "rose" as const : "slate" as const }] : []),
   ];
   const pipeline = [
     { label: leadStatusLabels.new, value: newLeads, tone: "cyan" as const },
@@ -63,10 +63,10 @@ export function AdminDashboard({ leads, tasks, notifications, activity }: { lead
           <h1 className="mt-2 font-display text-3xl font-black text-kc-text sm:text-4xl">Centro de operaciones</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-kc-muted">Pipeline, tareas y alertas internas en una vista rapida para operar Ken Code con claridad.</p>
         </div>
-        <Link href="/admin/notificaciones" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-kc-cyan/30 bg-kc-cyan/10 px-4 text-sm font-black text-kc-cyan transition hover:border-kc-cyan/60 hover:bg-kc-cyan/15">
+        {canViewNotifications ? <Link href="/admin/notificaciones" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-kc-cyan/30 bg-kc-cyan/10 px-4 text-sm font-black text-kc-cyan transition hover:border-kc-cyan/60 hover:bg-kc-cyan/15">
           <Bell size={17} aria-hidden="true" />
           {unread} sin leer
-        </Link>
+        </Link> : null}
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -78,8 +78,8 @@ export function AdminDashboard({ leads, tasks, notifications, activity }: { lead
         <AdminDonutMetric title="Tasa de cierre" value={won} total={total} label={`${won} de ${total} leads convertidos`} />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
-        <article className="kc-admin-card p-5">
+      {canViewTasks || canViewActivity ? <section className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+        {canViewTasks ? <article className="kc-admin-card p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-display text-xl font-black text-kc-text">Proximos seguimientos</h2>
             <Link href="/admin/tareas" className="inline-flex items-center gap-1 text-sm font-black text-kc-cyan">
@@ -100,8 +100,8 @@ export function AdminDashboard({ leads, tasks, notifications, activity }: { lead
             ))}
             {tasks.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">No hay tareas creadas todavia.</p> : null}
           </div>
-        </article>
-        <article className="kc-admin-card p-5">
+        </article> : null}
+        {canViewActivity ? <article className="kc-admin-card p-5">
           <h2 className="font-display text-xl font-black text-kc-text">Actividad reciente</h2>
           <div className="mt-4 grid gap-3">
             {recentActivity.map((item) => {
@@ -119,15 +119,15 @@ export function AdminDashboard({ leads, tasks, notifications, activity }: { lead
             )})}
             {recentActivity.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">Aun no hay actividad reciente.</p> : null}
           </div>
-        </article>
-      </section>
+        </article> : null}
+      </section> : null}
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-display text-2xl font-black text-kc-text">Leads recientes</h2>
           <Link href="/admin/leads" className="text-sm font-black text-kc-cyan">Ver todos</Link>
         </div>
-        <LeadList initialLeads={leads.slice(0, 6)} />
+        <LeadList initialLeads={leads.slice(0, 6)} canEdit={canEditLeads} canCreateTasks={canCreateTasks} />
       </section>
     </div>
   );

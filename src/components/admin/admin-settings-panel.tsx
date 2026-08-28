@@ -6,7 +6,7 @@ import type { AdminSettings } from "@/lib/admin/types";
 import { PushSettings } from "./push-settings";
 import { ConfirmDialog, Toast } from "./ui";
 
-type SettingKey = keyof Omit<AdminSettings, "updatedAt" | "updatedBy">;
+type SettingKey = keyof Omit<AdminSettings, "updatedAt" | "updatedByUid" | "updatedBy">;
 
 type CleanupSummary = {
   leads: number;
@@ -133,7 +133,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: () =
   );
 }
 
-export function AdminSettingsPanel({ initialSettings }: { initialSettings: AdminSettings }) {
+export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { initialSettings: AdminSettings; canRunMaintenance: boolean }) {
   const [settings, setSettings] = useState(initialSettings);
   const [savingKey, setSavingKey] = useState<SettingKey | null>(null);
   const [pendingToggle, setPendingToggle] = useState<SettingKey | null>(null);
@@ -317,7 +317,7 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
             ))}
           </div>
         </section>
-        <section className="rounded-2xl border border-rose-300/20 bg-rose-950/10 p-5">
+        {canRunMaintenance ? <section className="rounded-2xl border border-rose-300/20 bg-rose-950/10 p-5">
           <div className="flex items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-rose-300/25 bg-rose-300/10 text-rose-200">
               <AlertTriangle size={19} aria-hidden="true" />
@@ -337,7 +337,7 @@ export function AdminSettingsPanel({ initialSettings }: { initialSettings: Admin
             <Trash2 size={16} aria-hidden="true" />
             Limpiar datos de prueba
           </button>
-        </section>
+        </section> : null}
       </div>
 
       <PushSettings />

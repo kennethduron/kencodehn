@@ -4,13 +4,7 @@ export type PaymentStatus = "not_started" | "pending" | "partial" | "paid" | "ov
 export type TaskStatus = "pending" | "in_progress" | "completed" | "overdue";
 export type TaskPriority = "low" | "medium" | "high";
 export type TaskType = "call" | "whatsapp" | "email" | "meeting" | "proposal" | "follow_up";
-
-export type AdminUser = {
-  uid: string;
-  email: string;
-  role: "owner" | "admin" | "manager" | "viewer";
-  permissions?: string[];
-};
+export type { AdminPermission, AdminRole, AdminUser } from "@/lib/admin/authorization";
 
 export type AdminSettings = {
   emailNotificationsEnabled: boolean;
@@ -24,6 +18,7 @@ export type AdminSettings = {
   notificationSoundEnabled: boolean;
   compactModeEnabled: boolean;
   updatedAt: string | null;
+  updatedByUid: string | null;
   updatedBy: string | null;
 };
 
@@ -120,6 +115,7 @@ export type ActivityLog = {
   description: string;
   before: unknown;
   after: unknown;
+  userUid?: string;
   userEmail: string;
   createdAt: string;
 };

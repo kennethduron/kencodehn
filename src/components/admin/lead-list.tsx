@@ -20,7 +20,7 @@ function uniqueValues(leads: AdminLead[], key: keyof Pick<AdminLead, "project" |
   return Array.from(new Set(leads.map((lead) => String(lead[key] || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
-export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
+export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLeads: AdminLead[]; canEdit: boolean; canCreateTasks: boolean }) {
   const [leads, setLeads] = useState(initialLeads);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -59,6 +59,7 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
   }, [leads, locale, priority, project, query, sort, source, status]);
 
   async function updateLead(id: string, updates: Partial<AdminLead>) {
+    if (!canEdit) return;
     const response = await fetch(`/api/admin/leads/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -74,6 +75,7 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
   }
 
   async function createQuickTask(lead: AdminLead) {
+    if (!canCreateTasks) return;
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const date = tomorrow.toISOString().slice(0, 10);
@@ -191,14 +193,18 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
                   </Link>
                 </td>
                 <td className="px-4 py-4">
-                  <select value={lead.status} onChange={(event) => updateLead(lead.id, { status: event.target.value as LeadStatus })} className="min-h-10 w-full rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
-                    {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                  </select>
+                  {canEdit ? (
+                    <select value={lead.status} onChange={(event) => updateLead(lead.id, { status: event.target.value as LeadStatus })} className="min-h-10 w-full rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
+                      {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  ) : <LeadStatusBadge status={lead.status} />}
                 </td>
                 <td className="px-4 py-4">
-                  <select value={lead.priority} onChange={(event) => updateLead(lead.id, { priority: event.target.value as LeadPriority })} className="min-h-10 w-full rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
-                    {priorities.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                  </select>
+                  {canEdit ? (
+                    <select value={lead.priority} onChange={(event) => updateLead(lead.id, { priority: event.target.value as LeadPriority })} className="min-h-10 w-full rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
+                      {priorities.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  ) : <LeadPriorityBadge priority={lead.priority} />}
                 </td>
                 <td className="px-4 py-4">
                   <p className="font-bold text-kc-text">{money(lead.initialProjectAmount || lead.estimatedValue)}</p>
@@ -213,9 +219,11 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
                     <Tooltip label="Abrir WhatsApp">
                       <Link href={whatsappLink(`Hola ${lead.name}. Te contacto de Ken Code sobre tu solicitud para ${lead.project}.`)} target="_blank" rel="noopener noreferrer" title="Abrir WhatsApp" className="grid h-10 w-10 place-items-center rounded-xl border border-kc-turquoise/30 text-kc-turquoise" aria-label="Abrir WhatsApp"><WhatsAppIcon size={16} /></Link>
                     </Tooltip>
-                    <Tooltip label="Crear tarea">
-                      <button type="button" onClick={() => createQuickTask(lead)} title="Crear tarea" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-kc-text" aria-label="Crear tarea"><CalendarPlus size={16} /></button>
-                    </Tooltip>
+                    {canCreateTasks ? (
+                      <Tooltip label="Crear tarea">
+                        <button type="button" onClick={() => createQuickTask(lead)} title="Crear tarea" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-kc-text" aria-label="Crear tarea"><CalendarPlus size={16} /></button>
+                      </Tooltip>
+                    ) : null}
                   </div>
                 </td>
               </tr>
@@ -245,14 +253,16 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
                 <p className="mt-1 font-black text-kc-text">{lead.monthlyFee > 0 ? `${money(lead.monthlyFee)}/mes` : "Sin mensualidad"}</p>
               </div>
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              <select value={lead.status} onChange={(event) => updateLead(lead.id, { status: event.target.value as LeadStatus })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
-                {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-              <select value={lead.priority} onChange={(event) => updateLead(lead.id, { priority: event.target.value as LeadPriority })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
-                {priorities.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </div>
+            {canEdit ? (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <select value={lead.status} onChange={(event) => updateLead(lead.id, { status: event.target.value as LeadStatus })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
+                  {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+                <select value={lead.priority} onChange={(event) => updateLead(lead.id, { priority: event.target.value as LeadPriority })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
+                  {priorities.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </div>
+            ) : null}
             <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               <Link href={`/admin/leads/${lead.id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-kc-electric px-4 text-sm font-black text-white">
                 Ver <ExternalLink size={16} aria-hidden="true" />
@@ -266,9 +276,11 @@ export function LeadList({ initialLeads }: { initialLeads: AdminLead[] }) {
               <button type="button" onClick={() => copy(lead.email, "Correo")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text">
                 <Mail size={16} aria-hidden="true" /> Correo
               </button>
-              <button type="button" onClick={() => createQuickTask(lead)} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text sm:col-span-1">
-                <CalendarPlus size={16} aria-hidden="true" /> Crear tarea
-              </button>
+              {canCreateTasks ? (
+                <button type="button" onClick={() => createQuickTask(lead)} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text sm:col-span-1">
+                  <CalendarPlus size={16} aria-hidden="true" /> Crear tarea
+                </button>
+              ) : null}
             </div>
           </article>
         ))}

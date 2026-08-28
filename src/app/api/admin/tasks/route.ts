@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { checkOverdueTasks, createTask, listTasks } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
@@ -18,10 +18,9 @@ const taskSchema = z.object({
 }).strict();
 
 export async function GET(request: NextRequest) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "tasks:view");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
   await checkOverdueTasks(admin);
   const leadId = request.nextUrl.searchParams.get("leadId") ?? undefined;
   const tasks = await listTasks(leadId);
@@ -29,10 +28,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "tasks:edit");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
   const parsed = taskSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Datos invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });

@@ -4,22 +4,24 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Settings, Sparkles, Users, X } from "lucide-react";
 import { useState } from "react";
-import type { AdminUser } from "@/lib/admin/types";
+import type { AdminPermission, AdminUser } from "@/lib/admin/types";
+import { hasPermission } from "@/lib/admin/authorization";
 import { NotificationDropdown } from "./notification-dropdown";
 import { Tooltip } from "./ui";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: BarChart3 },
-  { href: "/admin/leads", label: "Leads", icon: Users },
-  { href: "/admin/tareas", label: "Tareas", icon: ClipboardList },
-  { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
-  { href: "/admin/configuracion", label: "Config.", icon: Settings },
-];
+  { href: "/admin", label: "Dashboard", icon: BarChart3, permission: "reports:view" },
+  { href: "/admin/leads", label: "Leads", icon: Users, permission: "leads:view" },
+  { href: "/admin/tareas", label: "Tareas", icon: ClipboardList, permission: "tasks:view" },
+  { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell, permission: "notifications:view" },
+  { href: "/admin/configuracion", label: "Config.", icon: Settings, permission: "settings:view" },
+] satisfies Array<{ href: string; label: string; icon: typeof BarChart3; permission: AdminPermission }>;
 
 export function AdminChrome({ children, admin, unreadCount = 0 }: { children: React.ReactNode; admin: AdminUser; unreadCount?: number }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const visibleNavItems = navItems.filter((item) => hasPermission(admin, item.permission));
 
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -28,7 +30,7 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
 
   const nav = (
     <nav className="mt-6 grid gap-2">
-      {navItems.map((item) => {
+      {visibleNavItems.map((item) => {
         const Icon = item.icon;
         const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
         return (
@@ -106,7 +108,7 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
                   <Search size={16} aria-hidden="true" />
                   <span>CRM listo</span>
                 </div>
-                <NotificationDropdown initialUnreadCount={unreadCount} />
+                {hasPermission(admin, "notifications:view") ? <NotificationDropdown initialUnreadCount={unreadCount} /> : null}
                 <Tooltip label="Cerrar sesion">
                   <button type="button" onClick={logout} title="Cerrar sesion" aria-label="Cerrar sesion" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-bold text-kc-text transition hover:border-rose-300/45 hover:text-rose-200 sm:px-4">
                     <LogOut size={17} aria-hidden="true" />
@@ -120,8 +122,8 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
         </section>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-white/10 bg-kc-bg-soft/96 p-2 backdrop-blur-xl lg:hidden">
-        {navItems.map((item) => {
+      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-flow-col auto-cols-fr border-t border-white/10 bg-kc-bg-soft/96 p-2 backdrop-blur-xl lg:hidden">
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
           return (

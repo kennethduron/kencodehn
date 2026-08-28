@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { listActivityLogs } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
@@ -11,10 +11,8 @@ const activityQuerySchema = z.object({
 }).strict();
 
 export async function GET(request: NextRequest) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "activity:view");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const parsed = activityQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Filtros invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });

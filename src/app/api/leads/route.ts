@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
           action: "lead_created",
           before: null,
           after: { source: "public_website", notificationId },
+          userUid: "system",
           userEmail: "system",
           createdAt: now,
         }),

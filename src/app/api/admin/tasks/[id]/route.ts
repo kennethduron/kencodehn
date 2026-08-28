@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { deleteTask, listTasks, updateTask } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
@@ -18,10 +18,9 @@ const taskUpdateSchema = z.object({
 }).strict();
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "tasks:edit");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
   const { id } = await params;
   const parsed = taskUpdateSchema.safeParse(await request.json());
   if (!parsed.success) {
@@ -34,10 +33,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "tasks:delete");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
   const { id } = await params;
   await deleteTask(id, admin);
   const tasks = await listTasks();

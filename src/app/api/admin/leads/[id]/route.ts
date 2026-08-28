@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { canRunMaintenance, deleteLeadCascade, getLeadDeletionSummary } from "@/lib/admin/cleanup";
 import { getLead, updateLead } from "@/lib/admin/data";
 
@@ -26,10 +26,8 @@ const leadUpdateSchema = z.object({
 }).strict();
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "leads:view");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const { id } = await params;
   const lead = await getLead(id);
   if (!lead) {
@@ -39,13 +37,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
-  if (!canRunMaintenance(admin)) {
-    return NextResponse.json({ ok: false, message: "No tienes permiso para eliminar leads." }, { status: 403 });
-  }
+  const access = await requirePermissionsFromRequest(request, "maintenance:run");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
+  if (!canRunMaintenance(admin)) return NextResponse.json({ ok: false, message: "No tienes permiso para eliminar leads." }, { status: 403 });
   const { id } = await params;
   const summary = await getLeadDeletionSummary(id);
   if (summary.leads === 0) {
@@ -56,10 +51,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, "leads:edit");
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
+  const admin = access.admin;
   const { id } = await params;
   const parsed = leadUpdateSchema.safeParse(await request.json());
   if (!parsed.success) {

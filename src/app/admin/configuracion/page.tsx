@@ -3,7 +3,9 @@ import { AdminLogin } from "@/components/admin/admin-login";
 import { AdminSettingsPanel } from "@/components/admin/admin-settings-panel";
 import { getCurrentAdmin, getMissingAdminEnv, getMissingFirebaseClientEnv } from "@/lib/admin/auth";
 import { listNotifications } from "@/lib/admin/data";
-import { ensureAdminUserProfile, getAdminSettings } from "@/lib/admin/settings";
+import { getAdminSettings } from "@/lib/admin/settings";
+import { hasPermission } from "@/lib/admin/authorization";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -12,12 +14,12 @@ export default async function AdminSettingsPage() {
   if (!admin) {
     return <AdminLogin missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingFirebaseClientEnv()} />;
   }
-  await ensureAdminUserProfile(admin);
+  if (!hasPermission(admin, "settings:view")) redirect("/admin/leads");
   const [notifications, settings] = await Promise.all([listNotifications(), getAdminSettings()]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
   return (
     <AdminChrome admin={admin} unreadCount={unreadCount}>
-      <AdminSettingsPanel initialSettings={settings} />
+      <AdminSettingsPanel initialSettings={settings} canRunMaintenance={hasPermission(admin, "maintenance:run")} />
     </AdminChrome>
   );
 }

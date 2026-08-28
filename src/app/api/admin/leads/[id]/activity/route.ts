@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { listActivityLogs } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
@@ -10,10 +10,8 @@ const querySchema = z.object({
 }).strict();
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdminFromRequest(request);
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
-  }
+  const access = await requirePermissionsFromRequest(request, ["leads:view", "activity:view"]);
+  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const { id } = await params;
   const parsed = querySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
   if (!parsed.success) {

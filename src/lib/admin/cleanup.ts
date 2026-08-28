@@ -1,6 +1,7 @@
 import type { Query } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import type { AdminUser } from "@/lib/admin/types";
+import { hasPermission } from "@/lib/admin/authorization";
 
 export type CleanupCounts = {
   leads: number;
@@ -23,7 +24,7 @@ export const emptyCleanupCounts: CleanupCounts = {
 };
 
 export function canRunMaintenance(admin: AdminUser) {
-  return admin.role === "owner" || admin.role === "admin" || admin.permissions?.includes("settings:manage") === true;
+  return hasPermission(admin, "maintenance:run");
 }
 
 async function countCollection(collection: keyof CleanupCounts) {

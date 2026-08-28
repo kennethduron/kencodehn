@@ -1,18 +1,18 @@
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
-import type { AdminUser } from "@/lib/admin/types";
-import { defaultPermissionsForRole } from "@/lib/admin/settings";
+import {
+  defaultPermissionsForRole,
+  hasEveryPermission,
+  isEmailInList,
+  parseEmailList,
+  resolveAdminUserFromProfile,
+  type AdminPermission,
+  type AdminUser,
+} from "@/lib/admin/authorization";
 
 export const CRM_SESSION_COOKIE = "kc_crm_session";
 const SESSION_DAYS = 5;
-
-function getAllowedEmails() {
-  return (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
 
 export function getMissingAdminEnv() {
   const missing: string[] = [];
@@ -35,14 +35,79 @@ export function getMissingFirebaseClientEnv() {
 }
 
 export function isEmailAllowed(email?: string | null) {
-  if (!email) {
-    return false;
-  }
-  return getAllowedEmails().includes(email.toLowerCase());
+  return isEmailInList(email, process.env.ADMIN_EMAILS);
 }
 
 export function getSessionMaxAge() {
   return SESSION_DAYS * 24 * 60 * 60;
+}
+
+type AdminProfileResult =
+  | { ok: true; admin: AdminUser; created: boolean }
+  | { ok: false; reason: "firebase_not_configured" | "profile_missing" | "profile_inactive" | "profile_invalid" };
+
+function isBootstrapOwnerEmail(email: string) {
+  return parseEmailList(process.env.CRM_OWNER_EMAILS).includes(email.toLowerCase());
+}
+
+async function loadAdminProfile(uid: string, email: string, allowBootstrap: boolean): Promise<AdminProfileResult> {
+  const db = getAdminDb();
+  if (!db) {
+    return { ok: false, reason: "firebase_not_configured" };
+  }
+
+  const ref = db.collection("adminUsers").doc(uid);
+  let snapshot = await ref.get();
+
+  if (!snapshot.exists && allowBootstrap && isBootstrapOwnerEmail(email)) {
+    const now = new Date().toISOString();
+    try {
+      await ref.create({
+        uid,
+        email: email.toLowerCase(),
+        role: "owner",
+        permissions: defaultPermissionsForRole("owner"),
+        active: true,
+        bootstrapCreatedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+      snapshot = await ref.get();
+    } catch (error) {
+      const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+      if (code !== "6" && code !== "already-exists") throw error;
+      snapshot = await ref.get();
+    }
+  }
+
+  if (!snapshot.exists) {
+    return { ok: false, reason: "profile_missing" };
+  }
+
+  const profile = snapshot.data() ?? {};
+  if (profile.active === false) {
+    return { ok: false, reason: "profile_inactive" };
+  }
+
+  const admin = resolveAdminUserFromProfile({ uid, email, profile });
+  if (!admin) {
+    return { ok: false, reason: "profile_invalid" };
+  }
+
+  return { ok: true, admin, created: Boolean(profile.bootstrapCreatedAt) };
+}
+
+function profileFailure(reason: Exclude<AdminProfileResult, { ok: true }>["reason"]) {
+  if (reason === "firebase_not_configured") {
+    return { status: 500, message: "Firebase Admin no esta configurado." };
+  }
+  if (reason === "profile_inactive") {
+    return { status: 403, message: "Tu acceso al CRM esta desactivado." };
+  }
+  if (reason === "profile_invalid") {
+    return { status: 403, message: "Tu perfil administrativo no tiene un rol valido." };
+  }
+  return { status: 403, message: "Tu perfil administrativo no esta configurado." };
 }
 
 export async function createCrmSession(idToken: string) {
@@ -56,36 +121,37 @@ export async function createCrmSession(idToken: string) {
     return { ok: false as const, status: 403, message: "Este correo no esta autorizado para entrar al CRM." };
   }
 
+  const email = (decodedToken.email ?? "").toLowerCase();
+  const profile = await loadAdminProfile(decodedToken.uid, email, true);
+  if (!profile.ok) {
+    const failure = profileFailure(profile.reason);
+    return { ok: false as const, ...failure };
+  }
+
   const expiresIn = getSessionMaxAge() * 1000;
   const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
   const db = getAdminDb();
-  if (db && decodedToken.email) {
-    const now = new Date().toISOString();
-    await db.collection("adminUsers").doc(decodedToken.uid).set(
-      {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        role: "owner",
-        permissions: defaultPermissionsForRole("owner"),
-        active: true,
-        lastLoginAt: now,
-        updatedAt: now,
-      },
-      { merge: true },
-    );
+  if (db) {
+    try {
+      await db.collection("adminUsers").doc(decodedToken.uid).set(
+        {
+          uid: decodedToken.uid,
+          email,
+          lastLoginAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
+    } catch (error) {
+      console.warn("[Ken Code CRM profile login timestamp warning]", error);
+    }
   }
 
   return {
     ok: true as const,
     sessionCookie,
     maxAge: getSessionMaxAge(),
-    admin: {
-      uid: decodedToken.uid,
-      email: decodedToken.email ?? "",
-      role: "owner" as const,
-      permissions: defaultPermissionsForRole("owner"),
-    },
+    admin: profile.admin,
   };
 }
 
@@ -104,13 +170,8 @@ export async function verifyCrmSession(sessionCookie: string | undefined | null)
     if (!isEmailAllowed(decoded.email)) {
       return null;
     }
-
-    return {
-      uid: decoded.uid,
-      email: decoded.email ?? "",
-      role: "owner",
-      permissions: defaultPermissionsForRole("owner"),
-    };
+    const profile = await loadAdminProfile(decoded.uid, (decoded.email ?? "").toLowerCase(), false);
+    return profile.ok ? profile.admin : null;
   } catch {
     return null;
   }
@@ -123,4 +184,19 @@ export async function getCurrentAdmin() {
 
 export async function requireAdminFromRequest(request: NextRequest) {
   return verifyCrmSession(request.cookies.get(CRM_SESSION_COOKIE)?.value);
+}
+
+export async function requirePermissionsFromRequest(
+  request: NextRequest,
+  required: AdminPermission | readonly AdminPermission[],
+) {
+  const admin = await requireAdminFromRequest(request);
+  if (!admin) {
+    return { ok: false as const, status: 401 as const, message: "No autorizado." };
+  }
+  const permissions = Array.isArray(required) ? required : [required];
+  if (!hasEveryPermission(admin, permissions)) {
+    return { ok: false as const, status: 403 as const, message: "No tienes permiso para realizar esta accion." };
+  }
+  return { ok: true as const, admin };
 }

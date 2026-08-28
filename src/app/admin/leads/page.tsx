@@ -3,6 +3,8 @@ import { AdminLogin } from "@/components/admin/admin-login";
 import { LeadList } from "@/components/admin/lead-list";
 import { getCurrentAdmin, getMissingAdminEnv, getMissingFirebaseClientEnv } from "@/lib/admin/auth";
 import { listLeads, listNotifications } from "@/lib/admin/data";
+import { hasPermission } from "@/lib/admin/authorization";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +13,12 @@ export default async function AdminLeadsPage() {
   if (!admin) {
     return <AdminLogin missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingFirebaseClientEnv()} />;
   }
+  if (!hasPermission(admin, "leads:view")) redirect("/admin");
 
-  const [leads, notifications] = await Promise.all([listLeads(), listNotifications()]);
+  const [leads, notifications] = await Promise.all([
+    listLeads(),
+    hasPermission(admin, "notifications:view") ? listNotifications() : Promise.resolve([]),
+  ]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (
@@ -22,7 +28,7 @@ export default async function AdminLeadsPage() {
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-kc-cyan">Leads</p>
           <h1 className="mt-2 font-display text-3xl font-black text-kc-text sm:text-4xl">Solicitudes y oportunidades</h1>
         </div>
-        <LeadList initialLeads={leads} />
+        <LeadList initialLeads={leads} canEdit={hasPermission(admin, "leads:edit")} canCreateTasks={hasPermission(admin, "tasks:edit")} />
       </div>
     </AdminChrome>
   );
