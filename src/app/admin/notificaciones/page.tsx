@@ -15,7 +15,7 @@ export default async function AdminNotificationsPage() {
   }
   if (!hasPermission(admin, "notifications:view")) redirect("/admin/leads");
 
-  const notifications = await listNotifications();
+  const notifications = await listNotifications(admin);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (

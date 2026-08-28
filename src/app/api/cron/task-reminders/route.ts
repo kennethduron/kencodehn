@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { processTaskReminders } from "@/lib/admin/reminders";
 
 export const runtime = "nodejs";
@@ -13,12 +14,23 @@ function readBearerToken(header: string | null) {
   return normalizeSecret(match?.[1]);
 }
 
+function secretsMatch(expected: string, received: string) {
+  const expectedBuffer = Buffer.from(expected);
+  const receivedBuffer = Buffer.from(received);
+  return expectedBuffer.length === receivedBuffer.length && timingSafeEqual(expectedBuffer, receivedBuffer);
+}
+
 export async function GET(request: NextRequest) {
   const expected = normalizeSecret(process.env.CRON_SECRET);
   const received = readBearerToken(request.headers.get("authorization"));
-  if (!expected || !received || received !== expected) {
+  if (!expected || !received || !secretsMatch(expected, received)) {
     return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
   }
-  const result = await processTaskReminders();
-  return NextResponse.json({ ok: true, result });
+  try {
+    const result = await processTaskReminders();
+    return NextResponse.json({ ok: true, result });
+  } catch (error) {
+    console.error("[Ken Code task reminder cron failed]", error instanceof Error ? error.name : "unknown");
+    return NextResponse.json({ ok: false, message: "No se pudo completar el procesamiento." }, { status: 500 });
+  }
 }

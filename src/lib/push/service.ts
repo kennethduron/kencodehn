@@ -12,6 +12,7 @@ export type PushPayload = {
   actionUrl?: string | null;
   relatedLeadId?: string | null;
   relatedTaskId?: string | null;
+  idempotencyKey?: string | null;
 };
 
 const pushPayloadSchema = z.object({
@@ -21,6 +22,7 @@ const pushPayloadSchema = z.object({
   actionUrl: z.string().trim().max(240).optional().nullable(),
   relatedLeadId: z.string().trim().max(160).optional().nullable(),
   relatedTaskId: z.string().trim().max(160).optional().nullable(),
+  idempotencyKey: z.string().trim().max(200).optional().nullable(),
 });
 
 export async function registerDeviceToken(input: {
@@ -81,6 +83,7 @@ export async function listDeviceTokens(email?: string) {
     const data = doc.data();
     return {
       id: doc.id,
+      uid: String(data.uid ?? ""),
       email: String(data.email ?? ""),
       token: String(data.token ?? ""),
       userAgent: String(data.userAgent ?? ""),
@@ -97,7 +100,7 @@ async function logPush(input: PushPayload, tokenId: string | null, sent: boolean
   if (!db) {
     return false;
   }
-  await db.collection("pushLogs").add({
+  const payload = {
     type: input.type,
     title: input.title,
     message: input.message,
@@ -107,11 +110,20 @@ async function logPush(input: PushPayload, tokenId: string | null, sent: boolean
     relatedLeadId: input.relatedLeadId ?? null,
     relatedTaskId: input.relatedTaskId ?? null,
     createdAt: new Date().toISOString(),
-  });
+  };
+  if (input.idempotencyKey && tokenId) {
+    await db.collection("pushLogs").doc(pushDeliveryId(input.idempotencyKey, tokenId)).set(payload, { merge: true });
+  } else {
+    await db.collection("pushLogs").add(payload);
+  }
   return true;
 }
 
-export async function sendPushToAdmins(input: PushPayload) {
+function pushDeliveryId(idempotencyKey: string, tokenId: string) {
+  return `${idempotencyKey}_${tokenId}`.replace(/\//g, "_").slice(0, 500);
+}
+
+async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType<typeof listDeviceTokens>>) {
   const parsed = pushPayloadSchema.safeParse(input);
   if (!parsed.success) {
     return { sent: 0, failed: 0, reason: "invalid_push_payload" };
@@ -126,16 +138,22 @@ export async function sendPushToAdmins(input: PushPayload) {
     await logPush(parsed.data, null, false, "firebase_messaging_not_configured");
     return { sent: 0, failed: 0, reason: "firebase_messaging_not_configured" };
   }
-  const devices = (await listDeviceTokens()).filter((device) => device.active && device.token);
-  if (devices.length === 0) {
+  let activeDevices = devices.filter((device) => device.active && device.token);
+  if (activeDevices.length === 0) {
     await logPush(parsed.data, null, false, "no_active_devices");
     return { sent: 0, failed: 0, reason: "no_active_devices" };
+  }
+  if (parsed.data.idempotencyKey) {
+    const db = getAdminDb();
+    const priorDeliveries = await Promise.all(activeDevices.map((device) => db?.collection("pushLogs").doc(pushDeliveryId(parsed.data.idempotencyKey as string, device.id)).get()));
+    activeDevices = activeDevices.filter((_, index) => priorDeliveries[index]?.data()?.sent !== true);
+    if (activeDevices.length === 0) return { sent: 0, failed: 0, reason: "already_delivered" };
   }
 
   let sent = 0;
   let failed = 0;
   await Promise.all(
-    devices.map(async (device) => {
+    activeDevices.map(async (device) => {
       try {
         await messaging.send({
           token: device.token,
@@ -168,4 +186,29 @@ export async function sendPushToAdmins(input: PushPayload) {
     }),
   );
   return { sent, failed };
+}
+
+export async function sendPushToAdmins(input: PushPayload) {
+  return sendPushToDevices(input, await listDeviceTokens());
+}
+
+export async function sendPushToUser(uid: string, input: PushPayload) {
+  const db = getAdminDb();
+  if (!db) return { sent: 0, failed: 0, reason: "firebase_admin_not_configured" };
+  const snapshot = await db.collection("deviceTokens").where("uid", "==", uid).where("active", "==", true).limit(50).get();
+  const devices = snapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      uid: String(data.uid ?? ""),
+      email: String(data.email ?? ""),
+      token: String(data.token ?? ""),
+      userAgent: String(data.userAgent ?? ""),
+      platform: String(data.platform ?? ""),
+      active: data.active === true,
+      createdAt: String(data.createdAt ?? ""),
+      updatedAt: String(data.updatedAt ?? ""),
+    };
+  });
+  return sendPushToDevices(input, devices);
 }

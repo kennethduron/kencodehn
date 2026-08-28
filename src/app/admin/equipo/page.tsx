@@ -16,7 +16,7 @@ export default async function AdminTeamPage() {
   }
   if (!hasPermission(admin, "users:manage")) redirect("/admin");
 
-  const [members, notifications] = await Promise.all([listAdminMembers(), listNotifications()]);
+  const [members, notifications] = await Promise.all([listAdminMembers(), listNotifications(admin)]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (

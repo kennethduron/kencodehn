@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   const access = await requirePermissionsFromRequest(request, "notifications:view");
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
-  const notifications = await listNotifications();
+  const notifications = await listNotifications(access.admin);
   return NextResponse.json({ ok: true, notifications });
 }
 
@@ -25,6 +25,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "Accion invalida.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
   await markAllNotificationsRead(admin);
-  const notifications = await listNotifications();
+  const notifications = await listNotifications(admin);
   return NextResponse.json({ ok: true, notifications });
 }

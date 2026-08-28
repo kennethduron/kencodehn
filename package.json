@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "check": "node --check api/cron/followups.js",
-    "test:auth": "node --experimental-strip-types --test tests/admin-authorization.test.mjs tests/admin-sales-access.test.mjs",
+    "test:auth": "node --experimental-strip-types --test tests/admin-authorization.test.mjs tests/admin-sales-access.test.mjs tests/admin-automation.test.mjs",
     "generate:ai-knowledge": "node scripts/generate-ai-knowledge.mjs"
   },
   "dependencies": {

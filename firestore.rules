@@ -40,8 +40,20 @@ service cloud.firestore {
       return adminRole() == 'owner' || adminRole() == 'admin' || adminRole() == 'sales_agent';
     }
 
-    function canReadTasksOrNotifications() {
+    function globalTaskScope() {
       return adminRole() == 'owner' || adminRole() == 'admin';
+    }
+
+    function assignedTask() {
+      return adminRole() == 'sales_agent'
+        && resource.data.assignedToUid == request.auth.uid
+        && (!('leadId' in resource.data) || resource.data.leadId == null || assignedLead(resource.data.leadId));
+    }
+
+    function canReadNotification() {
+      return (('recipientUid' in resource.data) && resource.data.recipientUid == request.auth.uid)
+        || ((adminRole() == 'owner' || adminRole() == 'admin')
+          && (!('recipientUid' in resource.data) || resource.data.recipientUid == null));
     }
 
     function canReadActivity() {
@@ -66,18 +78,20 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow read: if adminUser() && canReadTasksOrNotifications();
+      allow read: if adminUser() && (globalTaskScope() || assignedTask());
       allow write: if false;
     }
 
     match /notifications/{notificationId} {
-      allow read: if adminUser() && canReadTasksOrNotifications();
+      allow read: if adminUser() && canReadNotification();
       allow write: if false;
     }
 
     match /activityLogs/{logId} {
       allow read: if adminUser() && canReadActivity()
-        && (globalLeadScope() || (resource.data.leadId != null && assignedLead(resource.data.leadId)));
+        && (globalLeadScope()
+          || (('recipientUid' in resource.data) && resource.data.recipientUid == request.auth.uid)
+          || (resource.data.leadId != null && assignedLead(resource.data.leadId)));
       allow write: if false;
     }
 

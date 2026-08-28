@@ -44,6 +44,7 @@ export type SendEmailInput = EmailTemplate & {
   relatedLeadId?: string | null;
   relatedTaskId?: string | null;
   relatedUserUid?: string | null;
+  idempotencyKey?: string | null;
 };
 
 let resend: Resend | null = null;
@@ -57,6 +58,7 @@ const sendEmailSchema = z.object({
   relatedLeadId: z.string().trim().max(160).optional().nullable(),
   relatedTaskId: z.string().trim().max(160).optional().nullable(),
   relatedUserUid: z.string().trim().max(160).optional().nullable(),
+  idempotencyKey: z.string().trim().max(256).optional().nullable(),
 });
 
 function getEmailTarget() {
@@ -107,6 +109,7 @@ async function logEmail(input: SendEmailInput, result: EmailSendResult) {
       relatedLeadId: input.relatedLeadId ?? null,
       relatedTaskId: input.relatedTaskId ?? null,
       relatedUserUid: input.relatedUserUid ?? null,
+      idempotencyKey: input.idempotencyKey ?? null,
       createdAt: new Date().toISOString(),
     });
     return true;
@@ -122,8 +125,12 @@ async function withLog(input: SendEmailInput, result: EmailSendResult): Promise<
 }
 
 export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult> {
-  const to = input.type === "client_lead_confirmation" ? input.to : input.to || getEmailTarget();
-  if (input.type === "client_lead_confirmation" && !to) {
+  const requiresExplicitRecipient = input.type === "client_lead_confirmation"
+    || input.type === "task_reminder"
+    || input.type === "task_overdue"
+    || input.type === "user_invitation";
+  const to = requiresExplicitRecipient ? input.to : input.to || getEmailTarget();
+  if (requiresExplicitRecipient && !to) {
     return withLog({ ...input, to, subject: input.subject || "Confirmacion Ken Code" }, { sent: false, reason: "email_to_missing" });
   }
   const parsed = sendEmailSchema.safeParse({ ...input, to });
@@ -154,14 +161,17 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
   }
 
   try {
-    const { data, error } = await client.emails.send({
-      from,
-      to,
-      subject: parsed.data.subject,
-      text: parsed.data.text,
-      html: parsed.data.html,
-      replyTo: getReplyTo(parsed.data),
-    });
+    const { data, error } = await client.emails.send(
+      {
+        from,
+        to,
+        subject: parsed.data.subject,
+        text: parsed.data.text,
+        html: parsed.data.html,
+        replyTo: getReplyTo(parsed.data),
+      },
+      parsed.data.idempotencyKey ? { idempotencyKey: parsed.data.idempotencyKey } : undefined,
+    );
     if (error) {
       console.warn("[Ken Code email send failed]", error);
       return withLog(parsed.data, { sent: false, reason: "resend_send_failed" });
@@ -183,23 +193,29 @@ export async function sendClientLeadConfirmationEmail(lead: LeadRecord | Partial
   return sendEmail({ ...template, type: "client_lead_confirmation", to: lead.email, relatedLeadId: leadId });
 }
 
-export async function sendTaskReminderEmail(task: Partial<AdminTask>, reminderLabel?: string) {
+export async function sendTaskReminderEmail(task: Partial<AdminTask>, reminderLabel?: string, idempotencyKey?: string) {
   const template = taskReminderTemplate(task, reminderLabel);
   return sendEmail({
     ...template,
     type: "task_reminder",
+    to: task.assignedToEmail ?? null,
     relatedLeadId: task.leadId ?? null,
     relatedTaskId: task.id ?? null,
+    relatedUserUid: task.assignedToUid ?? null,
+    idempotencyKey: idempotencyKey ?? null,
   });
 }
 
-export async function sendTaskOverdueEmail(task: Partial<AdminTask>) {
+export async function sendTaskOverdueEmail(task: Partial<AdminTask>, idempotencyKey?: string) {
   const template = taskOverdueTemplate(task);
   return sendEmail({
     ...template,
     type: "task_overdue",
+    to: task.assignedToEmail ?? null,
     relatedLeadId: task.leadId ?? null,
     relatedTaskId: task.id ?? null,
+    relatedUserUid: task.assignedToUid ?? null,
+    idempotencyKey: idempotencyKey ?? null,
   });
 }
 

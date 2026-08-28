@@ -151,11 +151,13 @@ test("sales agent no puede ejecutar unassign", () => {
   assert.equal(canAssignLead(agentA), false);
 });
 
-test("sales agent no recibe tareas ni notificaciones globales en 0B", () => {
+test("sales agent recibe modulos personales de tareas y notificaciones en 0C", () => {
   assert.ok(agentA);
-  assert.equal(hasPermission(agentA, "tasks:view"), false);
-  assert.equal(hasPermission(agentA, "tasks:edit"), false);
-  assert.equal(hasPermission(agentA, "notifications:view"), false);
+  assert.equal(hasPermission(agentA, "tasks:view"), true);
+  assert.equal(hasPermission(agentA, "tasks:edit"), true);
+  assert.equal(hasPermission(agentA, "tasks:delete"), false);
+  assert.equal(hasPermission(agentA, "notifications:view"), true);
+  assert.equal(hasPermission(agentA, "notifications:edit"), true);
 });
 
 test("perfil invitado deriva permisos exclusivamente de su rol almacenado", () => {

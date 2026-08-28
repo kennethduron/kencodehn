@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { getAccessibleLead, listActivityLogs } from "@/lib/admin/data";
-import { leadDataScopeForAdmin } from "@/lib/admin/authorization";
 
 export const runtime = "nodejs";
 
@@ -18,12 +17,9 @@ export async function GET(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Filtros invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  if (leadDataScopeForAdmin(access.admin) === "assigned" && !parsed.data.leadId) {
-    return NextResponse.json({ ok: false, message: "Debes consultar la actividad de un lead asignado." }, { status: 403 });
-  }
   if (parsed.data.leadId && !(await getAccessibleLead(parsed.data.leadId, access.admin))) {
     return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
   }
-  const activity = await listActivityLogs(parsed.data.leadId, parsed.data.limit);
+  const activity = await listActivityLogs(access.admin, parsed.data.leadId, parsed.data.limit);
   return NextResponse.json({ ok: true, activity });
 }

@@ -12,6 +12,7 @@ const statusClass: Record<LeadStatus | TaskStatus, string> = {
   in_progress: "border-kc-turquoise/35 bg-kc-turquoise/10 text-kc-turquoise",
   completed: "border-emerald-300/35 bg-emerald-300/10 text-emerald-200",
   overdue: "border-rose-300/35 bg-rose-300/10 text-rose-200",
+  cancelled: "border-slate-300/25 bg-slate-300/10 text-slate-200",
 };
 
 const priorityClass: Record<LeadPriority | TaskPriority, string> = {

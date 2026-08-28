@@ -1,6 +1,7 @@
 import type { DocumentData, QueryDocumentSnapshot } from "firebase-admin/firestore";
 import {
   defaultPermissionsForRole,
+  canAssignTask,
   canAssignLead,
   canResendInvitation,
   hasPermission,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/admin/authorization";
 import { addActivityLog } from "@/lib/admin/data";
 import { buildCrmInvitationEmail } from "@/lib/admin/invitation";
-import type { AdminMember, AdminUser, AssignableSalesAgent } from "@/lib/admin/types";
+import type { AdminMember, AdminUser, AssignableSalesAgent, TaskAssignee } from "@/lib/admin/types";
 import { sendEmail } from "@/lib/email/service";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { site } from "@/lib/site";
@@ -83,6 +84,32 @@ export async function listAssignableSalesAgents(actor: AdminUser): Promise<Assig
       uid: doc.id,
       name: String(doc.data().name ?? doc.data().displayName ?? "").trim(),
       email: String(doc.data().email ?? "").trim().toLowerCase(),
+    }))
+    .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+}
+
+export async function listTaskAssignees(actor: AdminUser): Promise<TaskAssignee[]> {
+  const db = getAdminDb();
+  if (!db) return [];
+  if (!canAssignTask(actor)) {
+    const snapshot = await db.collection("adminUsers").doc(actor.uid).get();
+    const data = snapshot.data() ?? {};
+    if (!snapshot.exists || data.active !== true || data.role !== "sales_agent") return [];
+    return [{
+      uid: actor.uid,
+      name: String(data.name ?? data.displayName ?? "").trim(),
+      email: String(data.email ?? actor.email).trim().toLowerCase(),
+      role: "sales_agent",
+    }];
+  }
+  const snapshot = await db.collection("adminUsers").limit(200).get();
+  return snapshot.docs
+    .filter((doc) => doc.data().active === true && (doc.data().role === "owner" || doc.data().role === "admin" || doc.data().role === "sales_agent"))
+    .map((doc) => ({
+      uid: doc.id,
+      name: String(doc.data().name ?? doc.data().displayName ?? "").trim(),
+      email: String(doc.data().email ?? "").trim().toLowerCase(),
+      role: doc.data().role as TaskAssignee["role"],
     }))
     .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
 }

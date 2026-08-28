@@ -3,7 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { CalendarDays, Check, Clock3, Edit3, Filter, Plus, Trash2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { AdminLead, AdminTask, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
+import type { AdminLead, AdminTask, TaskAssignee, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 import { shortDate, taskPriorityLabels, taskStatusLabels, taskTypeLabels, timeAgo } from "./admin-labels";
 import { TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 import { ConfirmDialog, Toast, Tooltip } from "./ui";
@@ -25,7 +25,7 @@ const emptyTask: Partial<AdminTask> = {
 };
 
 function isOverdue(task: AdminTask) {
-  return task.status !== "completed" && Boolean(task.dueAt) && new Date(task.dueAt as string) < new Date();
+  return task.status !== "completed" && task.status !== "cancelled" && Boolean(task.dueAt) && new Date(task.dueAt as string) < new Date();
 }
 
 function isToday(task: AdminTask) {
@@ -39,7 +39,21 @@ function weekDays() {
   });
 }
 
-export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[]; leads: AdminLead[] }) {
+export function TasksPanel({
+  initialTasks,
+  leads,
+  assignees,
+  currentUserUid,
+  canAssign,
+  canDelete,
+}: {
+  initialTasks: AdminTask[];
+  leads: AdminLead[];
+  assignees: TaskAssignee[];
+  currentUserUid: string;
+  canAssign: boolean;
+  canDelete: boolean;
+}) {
   const [tasks, setTasks] = useState(initialTasks);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -54,8 +68,8 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
   const [isDeleting, setIsDeleting] = useState(false);
 
   const stats = useMemo(() => {
-    const pending = tasks.filter((task) => task.status !== "completed").length;
-    const today = tasks.filter((task) => isToday(task) && task.status !== "completed").length;
+    const pending = tasks.filter((task) => task.status !== "completed" && task.status !== "cancelled").length;
+    const today = tasks.filter((task) => isToday(task) && task.status !== "completed" && task.status !== "cancelled").length;
     const overdue = tasks.filter(isOverdue).length;
     const completed = tasks.filter((task) => task.status === "completed").length;
     return { pending, today, overdue, completed };
@@ -83,7 +97,7 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
         title: draft.title,
         description: draft.description || "",
         leadId: selectedLead?.id ?? null,
-        leadName: selectedLead?.name ?? null,
+        assignedToUid: canAssign ? draft.assignedToUid || currentUserUid : currentUserUid,
         date: draft.date,
         time: draft.time,
         type: draft.type,
@@ -102,8 +116,17 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
   }
 
   async function update(id: string, updates: Partial<AdminTask>) {
-    const selectedLead = updates.leadId ? leads.find((lead) => lead.id === updates.leadId) : null;
-    const payload = selectedLead ? { ...updates, leadName: selectedLead.name } : updates;
+    const payload = {
+      title: updates.title,
+      description: updates.description,
+      leadId: updates.leadId,
+      date: updates.date,
+      time: updates.time,
+      priority: updates.priority,
+      status: updates.status,
+      type: updates.type,
+      assignedToUid: canAssign ? updates.assignedToUid : undefined,
+    };
     const response = await fetch(`/api/admin/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -149,6 +172,7 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
         </div>
         <h2 className="mt-4 font-display text-2xl font-black text-kc-text">{task.title}</h2>
         <p className="mt-2 text-sm font-bold text-kc-cyan">{task.leadName || "Sin lead relacionado"}</p>
+        <p className="mt-1 text-xs font-bold text-kc-muted">Responsable: {task.assignedToName || task.assignedToEmail || "Sin responsable"}</p>
         <p className="mt-3 line-clamp-2 min-h-12 text-sm leading-6 text-kc-muted">{task.description || taskTypeLabels[task.type]}</p>
         <div className="mt-4 rounded-xl border border-white/10 bg-kc-bg/50 p-3">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-kc-muted">Fecha limite</p>
@@ -165,9 +189,11 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
           <select value={task.status} onChange={(event) => update(task.id, { status: event.target.value as TaskStatus })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm text-kc-text">
             {Object.entries(taskStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
-          <button type="button" onClick={() => setConfirmDelete(task)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-300/10 px-3 text-sm font-black text-rose-100">
-            <Trash2 size={16} /> Eliminar
-          </button>
+          {canDelete ? (
+            <button type="button" onClick={() => setConfirmDelete(task)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-300/10 px-3 text-sm font-black text-rose-100">
+              <Trash2 size={16} /> Eliminar
+            </button>
+          ) : null}
         </div>
       </article>
     );
@@ -215,6 +241,11 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
         </select>
         <input type="date" value={draft.date || ""} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none" required />
         <input type="time" value={draft.time || "09:00"} onChange={(event) => setDraft((current) => ({ ...current, time: event.target.value }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none" required />
+        {canAssign ? (
+          <select value={draft.assignedToUid || currentUserUid} onChange={(event) => setDraft((current) => ({ ...current, assignedToUid: event.target.value }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none" required>
+            {assignees.map((assignee) => <option key={assignee.uid} value={assignee.uid}>{assignee.name || assignee.email}</option>)}
+          </select>
+        ) : null}
         <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-kc-electric px-4 text-sm font-black text-white"><Plus size={17} /> Crear</button>
         <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value as TaskType }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none">
           {Object.entries(taskTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -276,7 +307,7 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
 
       {editing ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-sm">
-          <form onSubmit={(event) => { event.preventDefault(); update(editing.id, editing); }} className="kc-admin-card grid w-full max-w-2xl gap-3 p-5">
+          <form onSubmit={(event) => { event.preventDefault(); update(editing.id, editing); }} className="kc-admin-card grid max-h-[calc(100vh-2rem)] w-full max-w-2xl gap-3 overflow-y-auto p-5">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-display text-2xl font-black text-kc-text">Editar tarea</h2>
               <Tooltip label="Cerrar">
@@ -301,6 +332,11 @@ export function TasksPanel({ initialTasks, leads }: { initialTasks: AdminTask[];
               <select value={editing.status} onChange={(event) => setEditing({ ...editing, status: event.target.value as TaskStatus })} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-kc-text">
                 {Object.entries(taskStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
+              {canAssign ? (
+                <select value={editing.assignedToUid || currentUserUid} onChange={(event) => setEditing({ ...editing, assignedToUid: event.target.value })} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-kc-text" required>
+                  {assignees.map((assignee) => <option key={assignee.uid} value={assignee.uid}>{assignee.name || assignee.email}</option>)}
+                </select>
+              ) : null}
             </div>
             <button className="min-h-12 rounded-xl bg-kc-electric px-4 text-sm font-black text-white">Guardar cambios</button>
           </form>

@@ -1,10 +1,21 @@
 import { FieldValue, type DocumentData, type QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { formatActivityMessage, formatActivityTitle } from "@/lib/admin/activity";
-import { sendLeadStatusEmail, sendTaskOverdueEmail } from "@/lib/email/service";
-import { sendPushToAdmins } from "@/lib/push/service";
+import { sendLeadStatusEmail } from "@/lib/email/service";
 import { getAdminSettings } from "@/lib/admin/settings";
-import { canAccessLead, canAssignLead, isAssignableSalesAgent, leadDataScopeForAdmin, resolveLeadAssignmentAction } from "@/lib/admin/authorization";
+import {
+  canAccessLead,
+  canAccessNotification,
+  canAccessTask,
+  canAssignLead,
+  isAssignableSalesAgent,
+  isTaskAssigneeProfile,
+  leadDataScopeForAdmin,
+  notificationDataScopeForAdmin,
+  resolveLeadAssignmentAction,
+  resolveTaskAssigneeForRequest,
+  taskDataScopeForAdmin,
+} from "@/lib/admin/authorization";
 import { HONDURAS_TIME_ZONE, getHondurasDatePart, getHondurasTimePart, hondurasDateTimeToIso } from "@/lib/time";
 import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, PaymentStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 
@@ -19,6 +30,20 @@ export class LeadAssignmentError extends Error {
   constructor(public status: number, message: string) {
     super(message);
     this.name = "LeadAssignmentError";
+  }
+}
+
+export class TaskAccessError extends Error {
+  constructor(public status = 404, message = "Tarea no encontrada.") {
+    super(message);
+    this.name = "TaskAccessError";
+  }
+}
+
+export class NotificationAccessError extends Error {
+  constructor(public status = 404, message = "Notificacion no encontrada.") {
+    super(message);
+    this.name = "NotificationAccessError";
   }
 }
 
@@ -71,7 +96,7 @@ function normalizePaymentStatus(value: unknown): PaymentStatus {
 }
 
 function normalizeTaskStatus(value: unknown): TaskStatus {
-  if (value === "in_progress" || value === "completed" || value === "overdue") {
+  if (value === "in_progress" || value === "completed" || value === "overdue" || value === "cancelled") {
     return value;
   }
   return "pending";
@@ -188,7 +213,17 @@ export function mapTask(doc: QueryDocumentSnapshot<DocumentData>): AdminTask {
     completedAt: toIso(data.completedAt),
     overdueEmailSentAt: toIso(data.overdueEmailSentAt),
     overdueNotifiedAt: toIso(data.overdueNotifiedAt),
-    createdBy: String(data.createdBy ?? ""),
+    assignedToUid: data.assignedToUid ? String(data.assignedToUid) : null,
+    assignedToName: data.assignedToName ? String(data.assignedToName) : null,
+    assignedToEmail: data.assignedToEmail ? String(data.assignedToEmail) : null,
+    assignedAt: toIso(data.assignedAt),
+    assignedByUid: data.assignedByUid ? String(data.assignedByUid) : null,
+    assignedByEmail: data.assignedByEmail ? String(data.assignedByEmail) : null,
+    createdByUid: data.createdByUid ? String(data.createdByUid) : null,
+    createdByEmail: String(data.createdByEmail ?? data.createdBy ?? ""),
+    createdBy: String(data.createdBy ?? data.createdByEmail ?? ""),
+    completedByUid: data.completedByUid ? String(data.completedByUid) : null,
+    completedByEmail: data.completedByEmail ? String(data.completedByEmail) : null,
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(data.updatedAt) ?? new Date(0).toISOString(),
   };
@@ -205,6 +240,9 @@ export function mapNotification(doc: QueryDocumentSnapshot<DocumentData>): Admin
     leadId: data.leadId ? String(data.leadId) : null,
     taskId: data.taskId ? String(data.taskId) : null,
     actionUrl: data.actionUrl ? String(data.actionUrl) : null,
+    recipientUid: data.recipientUid ? String(data.recipientUid) : null,
+    recipientName: data.recipientName ? String(data.recipientName) : null,
+    recipientEmail: data.recipientEmail ? String(data.recipientEmail) : null,
     read: Boolean(data.read),
     readAt: toIso(data.readAt),
     deletedAt: toIso(data.deletedAt),
@@ -233,7 +271,9 @@ export function mapActivityLog(doc: QueryDocumentSnapshot<DocumentData>): Activi
     performedByUid: data.performedByUid ? String(data.performedByUid) : undefined,
     performedByEmail: data.performedByEmail ? String(data.performedByEmail) : undefined,
     actorUid: data.actorUid ? String(data.actorUid) : undefined,
+    actorEmail: data.actorEmail ? String(data.actorEmail) : undefined,
     targetUid: data.targetUid ? String(data.targetUid) : undefined,
+    recipientUid: data.recipientUid ? String(data.recipientUid) : undefined,
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
   } satisfies ActivityLog;
   return {
@@ -263,14 +303,16 @@ export async function addActivityLog(entry: Omit<ActivityLog, "id" | "createdAt"
   });
 }
 
-export async function listActivityLogs(leadId?: string, limit = 100) {
+export async function listActivityLogs(admin: AdminUser, leadId?: string, limit = 100) {
   const db = getAdminDb();
   if (!db) {
     return [];
   }
   const snapshot = leadId
     ? await db.collection("activityLogs").where("leadId", "==", leadId).limit(limit).get()
-    : await db.collection("activityLogs").orderBy("createdAt", "desc").limit(limit).get();
+    : leadDataScopeForAdmin(admin) === "assigned"
+      ? await db.collection("activityLogs").where("recipientUid", "==", admin.uid).orderBy("createdAt", "desc").limit(limit).get()
+      : await db.collection("activityLogs").orderBy("createdAt", "desc").limit(limit).get();
   return snapshot.docs.map(mapActivityLog).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -312,6 +354,11 @@ export async function assignLead(id: string, assignedToUid: string | null, admin
   const leadRef = db.collection("leads").doc(id);
   const targetRef = assignedToUid ? db.collection("adminUsers").doc(assignedToUid) : null;
   const activityRef = db.collection("activityLogs").doc();
+  const newAssigneeNotificationRef = db.collection("notifications").doc();
+  const previousAssigneeNotificationRef = db.collection("notifications").doc();
+  const newAssigneeNotificationActivityRef = db.collection("activityLogs").doc();
+  const previousAssigneeNotificationActivityRef = db.collection("activityLogs").doc();
+  const settings = await getAdminSettings();
   const now = new Date().toISOString();
 
   const changed = await db.runTransaction(async (transaction) => {
@@ -374,8 +421,81 @@ export async function assignLead(id: string, assignedToUid: string | null, admin
       performedByEmail: admin.email,
       userUid: admin.uid,
       userEmail: admin.email,
+      actorUid: admin.uid,
+      actorEmail: admin.email,
       createdAt: now,
     });
+    if (settings.internalNotificationsEnabled && assignedToUid) {
+      const title = assignmentAction === "reassigned" ? "Prospecto reasignado" : "Nuevo prospecto asignado";
+      const message = `${String(leadData.name ?? "Un prospecto")} fue asignado a tu cartera.`;
+      transaction.create(newAssigneeNotificationRef, {
+        title,
+        message,
+        type: "lead",
+        severity: "info",
+        leadId: id,
+        taskId: null,
+        actionUrl: `/admin/leads/${id}`,
+        recipientUid: assignedToUid,
+        recipientName: assignedToName,
+        recipientEmail: assignedToEmail,
+        read: false,
+        readAt: null,
+        deletedAt: null,
+        createdAt: now,
+      });
+      transaction.create(newAssigneeNotificationActivityRef, {
+        entityType: "notification",
+        entityId: newAssigneeNotificationRef.id,
+        leadId: id,
+        action: "notification_created",
+        title: "Notificacion creada",
+        description: "Se notifico al nuevo responsable del prospecto.",
+        before: null,
+        after: { type: "lead", recipientUid: assignedToUid },
+        recipientUid: assignedToUid,
+        userUid: admin.uid,
+        userEmail: admin.email,
+        actorUid: admin.uid,
+        actorEmail: admin.email,
+        createdAt: now,
+      });
+    }
+    if (settings.internalNotificationsEnabled && previousAssignedToUid && previousAssignedToUid !== assignedToUid) {
+      const message = assignedToUid
+        ? `${String(leadData.name ?? "Un prospecto")} fue reasignado a otro responsable.`
+        : `${String(leadData.name ?? "Un prospecto")} fue retirado de tu cartera.`;
+      transaction.create(previousAssigneeNotificationRef, {
+        title: assignedToUid ? "Prospecto reasignado" : "Asignacion retirada",
+        message,
+        type: "lead",
+        severity: "info",
+        leadId: id,
+        taskId: null,
+        actionUrl: "/admin/leads",
+        recipientUid: previousAssignedToUid,
+        recipientName: previousAssignedToName,
+        recipientEmail: previousAssignedToEmail,
+        read: false,
+        readAt: null,
+        deletedAt: null,
+        createdAt: now,
+      });
+      transaction.create(previousAssigneeNotificationActivityRef, {
+        entityType: "notification",
+        entityId: previousAssigneeNotificationRef.id,
+        leadId: id,
+        action: "notification_created",
+        title: "Notificacion creada",
+        description: "Se notifico al responsable anterior del cambio de asignacion.",
+        before: null,
+        after: { type: "lead", recipientUid: previousAssignedToUid },
+        recipientUid: previousAssignedToUid,
+        userUid: admin.uid,
+        userEmail: admin.email,
+        createdAt: now,
+      });
+    }
     return true;
   });
 
@@ -391,79 +511,83 @@ export async function listNotes(leadId: string) {
   return snapshot.docs.map(mapNote).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function listTasks(leadId?: string) {
+async function filterTasksForAdmin(admin: AdminUser, tasks: AdminTask[]) {
   const db = getAdminDb();
-  if (!db) {
-    return [];
-  }
-  const snapshot = leadId
-    ? await db.collection("tasks").where("leadId", "==", leadId).limit(200).get()
-    : await db.collection("tasks").orderBy("createdAt", "desc").limit(200).get();
-  return snapshot.docs.map(mapTask).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
-export async function checkOverdueTasks(admin?: AdminUser) {
-  const db = getAdminDb();
-  if (!db) {
-    return [];
-  }
-  const settings = await getAdminSettings();
-  const now = new Date();
-  const snapshot = await db.collection("tasks").where("status", "in", ["pending", "in_progress"]).limit(200).get();
-  const changed: string[] = [];
-
-  for (const doc of snapshot.docs) {
-    const task = mapTask(doc);
-    if (!task.dueAt || new Date(task.dueAt) >= now || task.overdueNotifiedAt) {
-      continue;
-    }
-    const notifiedAt = now.toISOString();
-    await doc.ref.set({ status: "overdue", overdueNotifiedAt: notifiedAt, updatedAt: notifiedAt }, { merge: true });
-    if (settings.taskOverdueEnabled) {
-      await createNotification({
-        title: "Tarea vencida",
-        message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
-        type: "task_overdue",
-        severity: "danger",
-        leadId: task.leadId,
-        taskId: task.id,
-        actionUrl: task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas",
-      });
-    }
-    await addActivityLog({
-      entityType: "task",
-      entityId: task.id,
-      leadId: task.leadId,
-      taskId: task.id,
-      action: "task_overdue",
-      before: { status: task.status },
-      after: { status: "overdue", overdueNotifiedAt: notifiedAt },
-      userUid: admin?.uid ?? "system",
-      userEmail: admin?.email ?? "system",
+  if (!db || taskDataScopeForAdmin(admin) !== "assigned") return tasks.slice(0, 200);
+  const leadIds = Array.from(new Set(tasks.map((task) => task.leadId).filter((value): value is string => Boolean(value))));
+  const leadAssignments = new Map<string, string | null>();
+  if (leadIds.length) {
+    const leadSnapshots = await db.getAll(...leadIds.map((leadId) => db.collection("leads").doc(leadId)));
+    leadSnapshots.forEach((snapshot) => {
+      const data = snapshot.data();
+      leadAssignments.set(snapshot.id, data?.assignedToUid ? String(data.assignedToUid) : null);
     });
-    if (settings.taskOverdueEnabled) {
-      await sendTaskOverdueEmail({ ...task, status: "overdue", overdueNotifiedAt: notifiedAt });
-      await sendPushToAdmins({
-        type: "task_overdue",
-        title: "Tarea vencida",
-        message: `${task.title}${task.leadName ? ` para ${task.leadName}` : ""} vencio y requiere seguimiento.`,
-        actionUrl: task.leadId ? `/admin/leads/${task.leadId}` : "/admin/tareas",
-        relatedLeadId: task.leadId,
-        relatedTaskId: task.id,
-      });
-    }
-    changed.push(task.id);
   }
-  return changed;
+  return tasks.filter((task) => canAccessTask(admin, {
+    assignedToUid: task.assignedToUid,
+    leadId: task.leadId,
+    leadAssignedToUid: task.leadId ? leadAssignments.get(task.leadId) ?? null : null,
+  })).slice(0, 200);
 }
 
-export async function listNotifications() {
+export async function listTasks(admin: AdminUser, leadId?: string) {
   const db = getAdminDb();
   if (!db) {
     return [];
   }
-  const snapshot = await db.collection("notifications").orderBy("createdAt", "desc").limit(100).get();
-  return snapshot.docs.map(mapNotification).filter((notification) => !notification.deletedAt);
+  const scope = taskDataScopeForAdmin(admin);
+  if (scope === "none") return [];
+  const base = db.collection("tasks");
+  const query = scope === "assigned"
+    ? leadId
+      ? base.where("assignedToUid", "==", admin.uid).where("leadId", "==", leadId).limit(200)
+      : base.where("assignedToUid", "==", admin.uid).orderBy("createdAt", "desc").limit(300)
+    : leadId
+      ? base.where("leadId", "==", leadId).limit(200)
+      : base.orderBy("createdAt", "desc").limit(200);
+  const snapshot = await query.get();
+  const tasks = snapshot.docs.map(mapTask).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return filterTasksForAdmin(admin, tasks);
+}
+
+export async function getTask(id: string) {
+  const db = getAdminDb();
+  if (!db) return null;
+  const snapshot = await db.collection("tasks").doc(id).get();
+  return snapshot.exists ? mapTask(snapshot as QueryDocumentSnapshot<DocumentData>) : null;
+}
+
+export async function getAccessibleTask(id: string, admin: AdminUser) {
+  const task = await getTask(id);
+  if (!task) return null;
+  if (taskDataScopeForAdmin(admin) === "global") return canAccessTask(admin, task) ? task : null;
+  const lead = task.leadId ? await getLead(task.leadId) : null;
+  return canAccessTask(admin, {
+    assignedToUid: task.assignedToUid,
+    leadId: task.leadId,
+    leadAssignedToUid: lead?.assignedToUid ?? null,
+  }) ? task : null;
+}
+
+export async function listNotifications(admin: AdminUser) {
+  const db = getAdminDb();
+  if (!db || notificationDataScopeForAdmin(admin) === "none") return [];
+  const personalSnapshot = await db.collection("notifications")
+    .where("recipientUid", "==", admin.uid)
+    .orderBy("createdAt", "desc")
+    .limit(100)
+    .get();
+  const notifications = personalSnapshot.docs.map(mapNotification);
+  if (notificationDataScopeForAdmin(admin) === "personal_with_legacy") {
+    const legacySnapshot = await db.collection("notifications").orderBy("createdAt", "desc").limit(200).get();
+    legacySnapshot.docs.map(mapNotification).filter((notification) => !notification.recipientUid).forEach((notification) => {
+      if (!notifications.some((item) => item.id === notification.id)) notifications.push(notification);
+    });
+  }
+  return notifications
+    .filter((notification) => !notification.deletedAt && canAccessNotification(admin, notification))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 100);
 }
 
 export async function createNotification(input: {
@@ -474,6 +598,11 @@ export async function createNotification(input: {
   leadId?: string | null;
   taskId?: string | null;
   actionUrl?: string | null;
+  recipientUid: string;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+  actorUid?: string | null;
+  actorEmail?: string | null;
 }) {
   const db = getAdminDb();
   if (!db) {
@@ -484,7 +613,10 @@ export async function createNotification(input: {
     return null;
   }
   const now = new Date().toISOString();
-  const doc = await db.collection("notifications").add({
+  const doc = db.collection("notifications").doc();
+  const activity = db.collection("activityLogs").doc();
+  const batch = db.batch();
+  batch.create(doc, {
     title: input.title,
     message: input.message,
     type: input.type,
@@ -492,11 +624,30 @@ export async function createNotification(input: {
     leadId: input.leadId ?? null,
     taskId: input.taskId ?? null,
     actionUrl: input.actionUrl ?? null,
+    recipientUid: input.recipientUid,
+    recipientName: input.recipientName ?? null,
+    recipientEmail: input.recipientEmail ?? null,
     read: false,
     readAt: null,
     deletedAt: null,
     createdAt: now,
   });
+  batch.create(activity, {
+    entityType: "notification",
+    entityId: doc.id,
+    leadId: input.leadId ?? null,
+    taskId: input.taskId ?? null,
+    action: "notification_created",
+    title: "Notificacion creada",
+    description: "Se creo una notificacion privada para su destinatario.",
+    before: null,
+    after: { type: input.type, recipientUid: input.recipientUid },
+    recipientUid: input.recipientUid,
+    userUid: input.actorUid ?? "system",
+    userEmail: input.actorEmail ?? "system",
+    createdAt: now,
+  });
+  await batch.commit();
   return doc.id;
 }
 
@@ -533,6 +684,7 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
             ? "lead_value_updated"
             : "lead_updated";
   if (primaryAction === "lead_status_changed") {
+    const recipientUid = beforeData?.assignedToUid ? String(beforeData.assignedToUid) : admin.uid;
     await createNotification({
       title: "Estado de lead actualizado",
       message: `${String(beforeData?.name ?? "Lead")} cambio a ${String(updates.status)}.`,
@@ -540,6 +692,11 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
       severity: updates.status === "won" ? "success" : updates.status === "lost" ? "warning" : "info",
       leadId: id,
       actionUrl: `/admin/leads/${id}`,
+      recipientUid,
+      recipientName: beforeData?.assignedToName ? String(beforeData.assignedToName) : null,
+      recipientEmail: beforeData?.assignedToEmail ? String(beforeData.assignedToEmail) : admin.email,
+      actorUid: admin.uid,
+      actorEmail: admin.email,
     });
     if (updates.status === "won" || updates.status === "quoted") {
       await sendLeadStatusEmail(
@@ -567,6 +724,7 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
     }
   }
   if (primaryAction === "lead_priority_changed") {
+    const recipientUid = beforeData?.assignedToUid ? String(beforeData.assignedToUid) : admin.uid;
     await createNotification({
       title: "Prioridad de lead actualizada",
       message: `${String(beforeData?.name ?? "Lead")} ahora tiene prioridad ${String(updates.priority)}.`,
@@ -574,6 +732,11 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
       severity: updates.priority === "high" ? "warning" : "info",
       leadId: id,
       actionUrl: `/admin/leads/${id}`,
+      recipientUid,
+      recipientName: beforeData?.assignedToName ? String(beforeData.assignedToName) : null,
+      recipientEmail: beforeData?.assignedToEmail ? String(beforeData.assignedToEmail) : admin.email,
+      actorUid: admin.uid,
+      actorEmail: admin.email,
     });
   }
   await addActivityLog({
@@ -603,7 +766,7 @@ export async function addNote(leadId: string, text: string, admin: AdminUser) {
     createdByEmail: admin.email,
     createdAt: now,
   };
-  await db.runTransaction(async (transaction) => {
+  const leadData = await db.runTransaction(async (transaction) => {
     const leadSnapshot = await transaction.get(leadRef);
     if (!leadSnapshot.exists) throw new LeadAccessError();
     const leadData = leadSnapshot.data() ?? {};
@@ -612,6 +775,7 @@ export async function addNote(leadId: string, text: string, admin: AdminUser) {
     }
     transaction.create(doc, notePayload);
     transaction.set(leadRef, { updatedAt: now }, { merge: true });
+    return leadData;
   });
   await createNotification({
     title: "Nota agregada",
@@ -620,6 +784,11 @@ export async function addNote(leadId: string, text: string, admin: AdminUser) {
     severity: "info",
     leadId,
     actionUrl: `/admin/leads/${leadId}`,
+    recipientUid: leadData.assignedToUid ? String(leadData.assignedToUid) : admin.uid,
+    recipientName: leadData.assignedToName ? String(leadData.assignedToName) : null,
+    recipientEmail: leadData.assignedToEmail ? String(leadData.assignedToEmail) : admin.email,
+    actorUid: admin.uid,
+    actorEmail: admin.email,
   });
   await addActivityLog({
     entityType: "note",
@@ -640,53 +809,125 @@ export async function createTask(input: Partial<AdminTask>, admin: AdminUser) {
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");
   }
+  const assignee = resolveTaskAssigneeForRequest(admin, input.assignedToUid);
+  if (!assignee.ok) throw new TaskAccessError(403, "No puedes asignar la tarea a ese usuario.");
   const now = new Date().toISOString();
   const dueAt = hondurasDateTimeToIso(input.date, input.time || "09:00");
-  const payload = {
-    title: input.title || "Seguimiento",
-    description: input.description || "",
-    leadId: input.leadId || null,
-    leadName: input.leadName || null,
-    date: input.date || "",
-    time: input.time || "",
-    timezone: HONDURAS_TIME_ZONE,
-    dueAt,
-    priority: normalizeTaskPriority(input.priority),
-    status: normalizeTaskStatus(input.status),
-    type: normalizeTaskType(input.type),
-    reminderAt: dueAt,
-    reminder1DaySentAt: null,
-    reminder1HourSentAt: null,
-    dueNotificationSentAt: null,
-    completedAt: input.status === "completed" ? now : null,
-    overdueEmailSentAt: null,
-    overdueNotifiedAt: null,
-    createdBy: admin.email,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const doc = await db.collection("tasks").add(payload);
-  const notificationId = await createNotification({
-    title: "Nueva tarea creada",
-    message: `${payload.title}${payload.leadName ? ` para ${payload.leadName}` : ""}.`,
-    type: "task_created",
-    severity: payload.priority === "high" ? "warning" : "info",
-    leadId: payload.leadId,
-    taskId: doc.id,
-    actionUrl: payload.leadId ? `/admin/leads/${payload.leadId}` : "/admin/tareas",
+  const taskRef = db.collection("tasks").doc();
+  const activityRef = db.collection("activityLogs").doc();
+  const notificationRef = db.collection("notifications").doc();
+  const notificationActivityRef = db.collection("activityLogs").doc();
+  const assigneeRef = db.collection("adminUsers").doc(assignee.assignedToUid);
+  const leadRef = input.leadId ? db.collection("leads").doc(input.leadId) : null;
+  const settings = await getAdminSettings();
+
+  await db.runTransaction(async (transaction) => {
+    const assigneeSnapshot = await transaction.get(assigneeRef);
+    if (!assigneeSnapshot.exists || !isTaskAssigneeProfile(assigneeSnapshot.data() ?? {})) {
+      throw new TaskAccessError(400, "El responsable seleccionado no esta activo o no puede recibir tareas.");
+    }
+    const assigneeData = assigneeSnapshot.data() ?? {};
+    const leadSnapshot = leadRef ? await transaction.get(leadRef) : null;
+    if (leadRef && !leadSnapshot?.exists) throw new TaskAccessError(404, "Lead no encontrado.");
+    const leadData = leadSnapshot?.data() ?? null;
+    const leadAssignedToUid = leadData?.assignedToUid ? String(leadData.assignedToUid) : null;
+    if (taskDataScopeForAdmin(admin) === "assigned" && (!leadData || !canAccessLead(admin, { assignedToUid: leadAssignedToUid }))) {
+      throw new TaskAccessError(404, "Lead no encontrado.");
+    }
+    if (assigneeData.role === "sales_agent" && leadData && leadAssignedToUid !== assignee.assignedToUid) {
+      throw new TaskAccessError(400, "La tarea y el lead deben pertenecer al mismo vendedor.");
+    }
+    const assignedToName = String(assigneeData.name ?? assigneeData.displayName ?? "").trim() || null;
+    const assignedToEmail = String(assigneeData.email ?? "").trim().toLowerCase() || null;
+    const status = normalizeTaskStatus(input.status);
+    const payload = {
+      title: input.title || "Seguimiento",
+      description: input.description || "",
+      leadId: input.leadId || null,
+      leadName: leadData ? String(leadData.name ?? "Sin nombre") : null,
+      date: input.date || "",
+      time: input.time || "",
+      timezone: HONDURAS_TIME_ZONE,
+      dueAt,
+      priority: normalizeTaskPriority(input.priority),
+      status,
+      type: normalizeTaskType(input.type),
+      reminderAt: dueAt,
+      reminder1DaySentAt: null,
+      reminder1HourSentAt: null,
+      dueNotificationSentAt: null,
+      completedAt: status === "completed" ? now : null,
+      completedByUid: status === "completed" ? admin.uid : null,
+      completedByEmail: status === "completed" ? admin.email : null,
+      overdueEmailSentAt: null,
+      overdueNotifiedAt: null,
+      assignedToUid: assignee.assignedToUid,
+      assignedToName,
+      assignedToEmail,
+      assignedAt: now,
+      assignedByUid: admin.uid,
+      assignedByEmail: admin.email,
+      createdByUid: admin.uid,
+      createdByEmail: admin.email,
+      createdBy: admin.email,
+      createdAt: now,
+      updatedAt: now,
+    };
+    transaction.create(taskRef, payload);
+    transaction.create(activityRef, {
+      entityType: "task",
+      entityId: taskRef.id,
+      leadId: payload.leadId,
+      taskId: taskRef.id,
+      action: "task_created",
+      title: formatActivityTitle("task_created"),
+      description: "Se creo una tarea y se asigno un responsable.",
+      before: null,
+      after: payload,
+      recipientUid: assignee.assignedToUid,
+      userUid: admin.uid,
+      userEmail: admin.email,
+      actorUid: admin.uid,
+      actorEmail: admin.email,
+      createdAt: now,
+    });
+    if (settings.internalNotificationsEnabled) {
+      transaction.create(notificationRef, {
+        title: "Nueva tarea asignada",
+        message: `${payload.title}${payload.leadName ? ` para ${payload.leadName}` : ""}.`,
+        type: "task_created",
+        severity: payload.priority === "high" ? "warning" : "info",
+        leadId: payload.leadId,
+        taskId: taskRef.id,
+        actionUrl: payload.leadId ? `/admin/leads/${payload.leadId}` : "/admin/tareas",
+        recipientUid: assignee.assignedToUid,
+        recipientName: assignedToName,
+        recipientEmail: assignedToEmail,
+        read: false,
+        readAt: null,
+        deletedAt: null,
+        createdAt: now,
+      });
+      transaction.create(notificationActivityRef, {
+        entityType: "notification",
+        entityId: notificationRef.id,
+        leadId: payload.leadId,
+        taskId: taskRef.id,
+        action: "notification_created",
+        title: "Notificacion creada",
+        description: "Se notifico al responsable de la nueva tarea.",
+        before: null,
+        after: { type: "task_created", recipientUid: assignee.assignedToUid },
+        recipientUid: assignee.assignedToUid,
+        userUid: admin.uid,
+        userEmail: admin.email,
+        actorUid: admin.uid,
+        actorEmail: admin.email,
+        createdAt: now,
+      });
+    }
   });
-  await addActivityLog({
-    entityType: "task",
-    entityId: doc.id,
-    leadId: payload.leadId,
-    taskId: doc.id,
-    action: "task_created",
-    before: null,
-    after: { ...payload, notificationId },
-    userUid: admin.uid,
-    userEmail: admin.email,
-  });
-  return doc.id;
+  return taskRef.id;
 }
 
 export async function updateTask(id: string, updates: Partial<AdminTask>, admin: AdminUser) {
@@ -695,60 +936,165 @@ export async function updateTask(id: string, updates: Partial<AdminTask>, admin:
     throw new Error("Firebase Admin no esta configurado.");
   }
   const ref = db.collection("tasks").doc(id);
-  const before = await ref.get();
-  const beforeData = before.exists ? before.data() : {};
-  const date = updates.date ?? String(beforeData?.date ?? "");
-  const time = updates.time ?? String(beforeData?.time ?? "");
+  const activityRef = db.collection("activityLogs").doc();
+  const notificationRef = db.collection("notifications").doc();
+  const notificationActivityRef = db.collection("activityLogs").doc();
   const now = new Date().toISOString();
-  const payload: Record<string, unknown> = { ...updates, updatedAt: now };
-  if (updates.date !== undefined || updates.time !== undefined) {
-    payload.dueAt = hondurasDateTimeToIso(date, time || "09:00");
-    payload.reminderAt = payload.dueAt;
-    payload.timezone = HONDURAS_TIME_ZONE;
-    payload.reminder1DaySentAt = null;
-    payload.reminder1HourSentAt = null;
-    payload.dueNotificationSentAt = null;
-    payload.overdueEmailSentAt = null;
-    payload.overdueNotifiedAt = null;
-  }
-  if (updates.status === "completed") {
-    payload.completedAt = now;
-  }
-  if (updates.status && updates.status !== "completed") {
-    payload.completedAt = null;
-  }
-  await ref.set(payload, { merge: true });
-  if (updates.status === "completed") {
-    await createNotification({
-      title: "Tarea completada",
-      message: `${String(beforeData?.title ?? updates.title ?? "Tarea")} fue marcada como completada.`,
-      type: "task_completed",
-      severity: "success",
-      leadId: beforeData?.leadId ? String(beforeData.leadId) : null,
+  const settings = await getAdminSettings();
+  await db.runTransaction(async (transaction) => {
+    const before = await transaction.get(ref);
+    if (!before.exists) throw new TaskAccessError();
+    const beforeData = before.data() ?? {};
+    const beforeTask = mapTask(before as QueryDocumentSnapshot<DocumentData>);
+    const currentLeadRef = beforeTask.leadId ? db.collection("leads").doc(beforeTask.leadId) : null;
+    const currentLeadSnapshot = currentLeadRef ? await transaction.get(currentLeadRef) : null;
+    const currentLeadAssignedToUid = currentLeadSnapshot?.data()?.assignedToUid ? String(currentLeadSnapshot.data()?.assignedToUid) : null;
+    if (!canAccessTask(admin, {
+      assignedToUid: beforeTask.assignedToUid,
+      leadId: beforeTask.leadId,
+      leadAssignedToUid: currentLeadAssignedToUid,
+    })) throw new TaskAccessError();
+
+    const nextLeadId = updates.leadId !== undefined ? updates.leadId : beforeTask.leadId;
+    const nextLeadRef = nextLeadId ? db.collection("leads").doc(nextLeadId) : null;
+    const nextLeadSnapshot = nextLeadRef
+      ? currentLeadRef?.path === nextLeadRef.path ? currentLeadSnapshot : await transaction.get(nextLeadRef)
+      : null;
+    if (nextLeadRef && !nextLeadSnapshot?.exists) throw new TaskAccessError(404, "Lead no encontrado.");
+    const nextLeadData = nextLeadSnapshot?.data() ?? null;
+    const nextLeadAssignedToUid = nextLeadData?.assignedToUid ? String(nextLeadData.assignedToUid) : null;
+    if (taskDataScopeForAdmin(admin) === "assigned" && nextLeadData && !canAccessLead(admin, { assignedToUid: nextLeadAssignedToUid })) {
+      throw new TaskAccessError(404, "Lead no encontrado.");
+    }
+
+    let nextAssignedToUid = beforeTask.assignedToUid;
+    if (updates.assignedToUid !== undefined || taskDataScopeForAdmin(admin) === "assigned") {
+      const resolved = resolveTaskAssigneeForRequest(admin, updates.assignedToUid ?? beforeTask.assignedToUid);
+      if (!resolved.ok) throw new TaskAccessError(403, "No puedes reasignar esta tarea.");
+      nextAssignedToUid = resolved.assignedToUid;
+    }
+    if (!nextAssignedToUid) throw new TaskAccessError(400, "La tarea necesita un responsable activo.");
+    const assigneeRef = db.collection("adminUsers").doc(nextAssignedToUid);
+    const assigneeSnapshot = await transaction.get(assigneeRef);
+    if (!assigneeSnapshot.exists || !isTaskAssigneeProfile(assigneeSnapshot.data() ?? {})) {
+      throw new TaskAccessError(400, "El responsable seleccionado no esta activo o no puede recibir tareas.");
+    }
+    const assigneeData = assigneeSnapshot.data() ?? {};
+    if (assigneeData.role === "sales_agent" && nextLeadData && nextLeadAssignedToUid !== nextAssignedToUid) {
+      throw new TaskAccessError(400, "La tarea y el lead deben pertenecer al mismo vendedor.");
+    }
+
+    const payload: Record<string, unknown> = { updatedAt: now };
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.description !== undefined) payload.description = updates.description;
+    if (updates.priority !== undefined) payload.priority = normalizeTaskPriority(updates.priority);
+    if (updates.type !== undefined) payload.type = normalizeTaskType(updates.type);
+    if (updates.status !== undefined) payload.status = normalizeTaskStatus(updates.status);
+    if (updates.leadId !== undefined) {
+      payload.leadId = nextLeadId ?? null;
+      payload.leadName = nextLeadData ? String(nextLeadData.name ?? "Sin nombre") : null;
+    }
+    const date = updates.date ?? beforeTask.date;
+    const time = updates.time ?? beforeTask.time;
+    if (updates.date !== undefined) payload.date = updates.date;
+    if (updates.time !== undefined) payload.time = updates.time;
+    if (updates.date !== undefined || updates.time !== undefined) {
+      payload.dueAt = hondurasDateTimeToIso(date, time || "09:00");
+      payload.reminderAt = payload.dueAt;
+      payload.timezone = HONDURAS_TIME_ZONE;
+      payload.reminder1DaySentAt = null;
+      payload.reminder1HourSentAt = null;
+      payload.dueNotificationSentAt = null;
+      payload.overdueEmailSentAt = null;
+      payload.overdueNotifiedAt = null;
+    }
+    const assignmentChanged = nextAssignedToUid !== beforeTask.assignedToUid;
+    const assignedToName = String(assigneeData.name ?? assigneeData.displayName ?? "").trim() || null;
+    const assignedToEmail = String(assigneeData.email ?? "").trim().toLowerCase() || null;
+    if (assignmentChanged) {
+      payload.assignedToUid = nextAssignedToUid;
+      payload.assignedToName = assignedToName;
+      payload.assignedToEmail = assignedToEmail;
+      payload.assignedAt = now;
+      payload.assignedByUid = admin.uid;
+      payload.assignedByEmail = admin.email;
+    }
+    const completed = updates.status === "completed" && beforeTask.status !== "completed";
+    const cancelled = updates.status === "cancelled" && beforeTask.status !== "cancelled";
+    if (completed) {
+      payload.completedAt = now;
+      payload.completedByUid = admin.uid;
+      payload.completedByEmail = admin.email;
+    } else if (updates.status && updates.status !== "completed") {
+      payload.completedAt = null;
+      payload.completedByUid = null;
+      payload.completedByEmail = null;
+    }
+    const action = assignmentChanged
+      ? beforeTask.assignedToUid ? "task_reassigned" : "task_assigned"
+      : completed ? "task_completed"
+        : cancelled ? "task_cancelled"
+          : "task_updated";
+    transaction.set(ref, payload, { merge: true });
+    transaction.create(activityRef, {
+      entityType: "task",
+      entityId: id,
+      leadId: nextLeadId ?? null,
       taskId: id,
-      actionUrl: beforeData?.leadId ? `/admin/leads/${beforeData.leadId}` : "/admin/tareas",
+      action,
+      title: formatActivityTitle(action),
+      description: action === "task_completed"
+        ? "La tarea fue marcada como completada."
+        : action === "task_cancelled"
+          ? "La tarea fue cancelada."
+          : assignmentChanged
+            ? "La tarea fue reasignada de forma explicita."
+            : "La tarea fue actualizada.",
+      before: beforeData,
+      after: payload,
+      recipientUid: nextAssignedToUid,
+      userUid: admin.uid,
+      userEmail: admin.email,
+      actorUid: admin.uid,
+      actorEmail: admin.email,
+      createdAt: now,
     });
-  } else if (Object.keys(updates).some((field) => ["title", "description", "date", "time", "priority", "type"].includes(field))) {
-    await createNotification({
-      title: "Tarea actualizada",
-      message: `${String(beforeData?.title ?? updates.title ?? "Tarea")} fue actualizada.`,
-      type: "task_updated",
-      severity: updates.priority === "high" ? "warning" : "info",
-      leadId: beforeData?.leadId ? String(beforeData.leadId) : null,
-      taskId: id,
-      actionUrl: beforeData?.leadId ? `/admin/leads/${beforeData.leadId}` : "/admin/tareas",
-    });
-  }
-  await addActivityLog({
-    entityType: "task",
-    entityId: id,
-    leadId: before.exists ? String(before.data()?.leadId ?? "") || null : null,
-    taskId: id,
-    action: "task_updated",
-    before: before.exists ? before.data() : null,
-    after: payload,
-    userUid: admin.uid,
-    userEmail: admin.email,
+    if (settings.internalNotificationsEnabled) {
+      const notificationType = completed ? "task_completed" : "task_updated";
+      transaction.create(notificationRef, {
+        title: completed ? "Tarea completada" : assignmentChanged ? "Tarea asignada" : cancelled ? "Tarea cancelada" : "Tarea actualizada",
+        message: `${String(beforeData.title ?? updates.title ?? "Tarea")} ${completed ? "fue completada" : assignmentChanged ? "fue asignada a tu cuenta" : cancelled ? "fue cancelada" : "fue actualizada"}.`,
+        type: notificationType,
+        severity: completed ? "success" : cancelled ? "warning" : updates.priority === "high" ? "warning" : "info",
+        leadId: nextLeadId ?? null,
+        taskId: id,
+        actionUrl: nextLeadId ? `/admin/leads/${nextLeadId}` : "/admin/tareas",
+        recipientUid: nextAssignedToUid,
+        recipientName: assignedToName,
+        recipientEmail: assignedToEmail,
+        read: false,
+        readAt: null,
+        deletedAt: null,
+        createdAt: now,
+      });
+      transaction.create(notificationActivityRef, {
+        entityType: "notification",
+        entityId: notificationRef.id,
+        leadId: nextLeadId ?? null,
+        taskId: id,
+        action: "notification_created",
+        title: "Notificacion creada",
+        description: "Se notifico al responsable de la tarea.",
+        before: null,
+        after: { type: notificationType, recipientUid: nextAssignedToUid },
+        recipientUid: nextAssignedToUid,
+        userUid: admin.uid,
+        userEmail: admin.email,
+        actorUid: admin.uid,
+        actorEmail: admin.email,
+        createdAt: now,
+      });
+    }
   });
 }
 
@@ -758,18 +1104,30 @@ export async function deleteTask(id: string, admin: AdminUser) {
     throw new Error("Firebase Admin no esta configurado.");
   }
   const ref = db.collection("tasks").doc(id);
-  const before = await ref.get();
-  await ref.delete();
-  await addActivityLog({
-    entityType: "task",
-    entityId: id,
-    leadId: before.exists ? String(before.data()?.leadId ?? "") || null : null,
-    taskId: id,
-    action: "task_deleted",
-    before: before.exists ? before.data() : null,
-    after: null,
-    userUid: admin.uid,
-    userEmail: admin.email,
+  const activityRef = db.collection("activityLogs").doc();
+  await db.runTransaction(async (transaction) => {
+    const before = await transaction.get(ref);
+    if (!before.exists) throw new TaskAccessError();
+    const task = mapTask(before as QueryDocumentSnapshot<DocumentData>);
+    if (!canAccessTask(admin, task)) throw new TaskAccessError();
+    transaction.delete(ref);
+    transaction.create(activityRef, {
+      entityType: "task",
+      entityId: id,
+      leadId: task.leadId,
+      taskId: id,
+      action: "task_deleted",
+      title: formatActivityTitle("task_deleted"),
+      description: "La tarea fue eliminada por un administrador.",
+      before: before.data(),
+      after: null,
+      recipientUid: task.assignedToUid,
+      userUid: admin.uid,
+      userEmail: admin.email,
+      actorUid: admin.uid,
+      actorEmail: admin.email,
+      createdAt: new Date().toISOString(),
+    });
   });
 }
 
@@ -778,7 +1136,16 @@ export async function updateNotificationRead(id: string, read: boolean, admin: A
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");
   }
-  await db.collection("notifications").doc(id).set({ read, readAt: read ? new Date().toISOString() : null, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  const ref = db.collection("notifications").doc(id);
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists) throw new NotificationAccessError();
+    const data = snapshot.data() ?? {};
+    if (!canAccessNotification(admin, { recipientUid: data.recipientUid ? String(data.recipientUid) : null })) {
+      throw new NotificationAccessError();
+    }
+    transaction.set(ref, { read, readAt: read ? new Date().toISOString() : null, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  });
   await addActivityLog({
     entityType: "notification",
     entityId: id,
@@ -797,9 +1164,9 @@ export async function markAllNotificationsRead(admin: AdminUser) {
     throw new Error("Firebase Admin no esta configurado.");
   }
   const now = new Date().toISOString();
-  const snapshot = await db.collection("notifications").where("read", "==", false).limit(100).get();
+  const accessible = (await listNotifications(admin)).filter((notification) => !notification.read);
   const batch = db.batch();
-  snapshot.docs.forEach((doc) => batch.set(doc.ref, { read: true, readAt: now, updatedAt: FieldValue.serverTimestamp() }, { merge: true }));
+  accessible.forEach((notification) => batch.set(db.collection("notifications").doc(notification.id), { read: true, readAt: now, updatedAt: FieldValue.serverTimestamp() }, { merge: true }));
   await batch.commit();
   await addActivityLog({
     entityType: "notification",
@@ -807,7 +1174,7 @@ export async function markAllNotificationsRead(admin: AdminUser) {
     leadId: null,
     action: "notifications_read_all",
     before: null,
-    after: { count: snapshot.size },
+    after: { count: accessible.length },
     userUid: admin.uid,
     userEmail: admin.email,
   });
@@ -818,7 +1185,16 @@ export async function deleteNotification(id: string, admin: AdminUser) {
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");
   }
-  await db.collection("notifications").doc(id).set({ deletedAt: new Date().toISOString(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  const ref = db.collection("notifications").doc(id);
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists) throw new NotificationAccessError();
+    const data = snapshot.data() ?? {};
+    if (!canAccessNotification(admin, { recipientUid: data.recipientUid ? String(data.recipientUid) : null })) {
+      throw new NotificationAccessError();
+    }
+    transaction.set(ref, { deletedAt: new Date().toISOString(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  });
   await addActivityLog({
     entityType: "notification",
     entityId: id,

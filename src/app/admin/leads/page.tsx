@@ -19,7 +19,7 @@ export default async function AdminLeadsPage() {
   const mayAssignLeads = canAssignLead(admin);
   const [leads, notifications, assignableUsers] = await Promise.all([
     listLeads(admin),
-    hasPermission(admin, "notifications:view") ? listNotifications() : Promise.resolve([]),
+    hasPermission(admin, "notifications:view") ? listNotifications(admin) : Promise.resolve([]),
     mayAssignLeads ? listAssignableSalesAgents(admin) : Promise.resolve([]),
   ]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;

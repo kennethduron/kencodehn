@@ -15,7 +15,7 @@ export default async function AdminSettingsPage() {
     return <AdminLogin missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingFirebaseClientEnv()} />;
   }
   if (!hasPermission(admin, "settings:view")) redirect("/admin/leads");
-  const [notifications, settings] = await Promise.all([listNotifications(), getAdminSettings()]);
+  const [notifications, settings] = await Promise.all([listNotifications(admin), getAdminSettings()]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
   return (
     <AdminChrome admin={admin} unreadCount={unreadCount}>

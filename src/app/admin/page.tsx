@@ -19,12 +19,12 @@ export default async function AdminPage() {
   const canViewNotifications = hasPermission(admin, "notifications:view");
   const canViewActivity = hasPermission(admin, "activity:view");
   const personalScope = leadDataScopeForAdmin(admin) === "assigned";
-  const canViewDashboardActivity = canViewActivity && !personalScope;
+  const canViewDashboardActivity = canViewActivity;
   const [leads, tasks, notifications, activity] = await Promise.all([
     listLeads(admin),
-    canViewTasks ? listTasks() : Promise.resolve([]),
-    canViewNotifications ? listNotifications() : Promise.resolve([]),
-    canViewDashboardActivity ? listActivityLogs(undefined, 8) : Promise.resolve([]),
+    canViewTasks ? listTasks(admin) : Promise.resolve([]),
+    canViewNotifications ? listNotifications(admin) : Promise.resolve([]),
+    canViewDashboardActivity ? listActivityLogs(admin, undefined, 8) : Promise.resolve([]),
   ]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 

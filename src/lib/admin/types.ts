@@ -1,7 +1,7 @@
 export type LeadStatus = "new" | "contacted" | "conversation" | "quoted" | "won" | "lost";
 export type LeadPriority = "low" | "medium" | "high";
 export type PaymentStatus = "not_started" | "pending" | "partial" | "paid" | "overdue" | "active";
-export type TaskStatus = "pending" | "in_progress" | "completed" | "overdue";
+export type TaskStatus = "pending" | "in_progress" | "completed" | "overdue" | "cancelled";
 export type TaskPriority = "low" | "medium" | "high";
 export type TaskType = "call" | "whatsapp" | "email" | "meeting" | "proposal" | "follow_up";
 export type { AdminPermission, AdminRole, AdminUser } from "@/lib/admin/authorization";
@@ -82,6 +82,10 @@ export type AssignableSalesAgent = {
   email: string;
 };
 
+export type TaskAssignee = AssignableSalesAgent & {
+  role: "owner" | "admin" | "sales_agent";
+};
+
 export type AdminNote = {
   id: string;
   leadId: string;
@@ -111,7 +115,17 @@ export type AdminTask = {
   completedAt: string | null;
   overdueEmailSentAt: string | null;
   overdueNotifiedAt: string | null;
+  assignedToUid: string | null;
+  assignedToName: string | null;
+  assignedToEmail: string | null;
+  assignedAt: string | null;
+  assignedByUid: string | null;
+  assignedByEmail: string | null;
+  createdByUid: string | null;
+  createdByEmail: string;
   createdBy: string;
+  completedByUid: string | null;
+  completedByEmail: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -125,6 +139,9 @@ export type AdminNotification = {
   leadId: string | null;
   taskId: string | null;
   actionUrl: string | null;
+  recipientUid: string | null;
+  recipientName: string | null;
+  recipientEmail: string | null;
   read: boolean;
   readAt: string | null;
   deletedAt: string | null;
@@ -150,6 +167,8 @@ export type ActivityLog = {
   performedByUid?: string;
   performedByEmail?: string;
   actorUid?: string;
+  actorEmail?: string;
   targetUid?: string;
+  recipientUid?: string;
   createdAt: string;
 };

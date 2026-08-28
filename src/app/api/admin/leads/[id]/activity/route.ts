@@ -18,6 +18,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Filtros invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  const activity = await listActivityLogs(id, parsed.data.limit);
+  const activity = await listActivityLogs(access.admin, id, parsed.data.limit);
   return NextResponse.json({ ok: true, activity });
 }

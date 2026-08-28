@@ -30,6 +30,7 @@ export const taskStatusLabels: Record<TaskStatus, string> = {
   in_progress: "En progreso",
   completed: "Completada",
   overdue: "Vencida",
+  cancelled: "Cancelada",
 };
 
 export const taskPriorityLabels: Record<TaskPriority, string> = {

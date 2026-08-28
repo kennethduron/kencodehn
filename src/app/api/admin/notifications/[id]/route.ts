@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
-import { deleteNotification, listNotifications, updateNotificationRead } from "@/lib/admin/data";
+import { deleteNotification, listNotifications, NotificationAccessError, updateNotificationRead } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
 
@@ -19,9 +19,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Datos invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  await updateNotificationRead(id, parsed.data.read, admin);
-  const notifications = await listNotifications();
-  return NextResponse.json({ ok: true, notifications });
+  try {
+    await updateNotificationRead(id, parsed.data.read, admin);
+    const notifications = await listNotifications(admin);
+    return NextResponse.json({ ok: true, notifications });
+  } catch (error) {
+    if (error instanceof NotificationAccessError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
+    throw error;
+  }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +34,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const admin = access.admin;
   const { id } = await params;
-  await deleteNotification(id, admin);
-  const notifications = await listNotifications();
-  return NextResponse.json({ ok: true, notifications });
+  try {
+    await deleteNotification(id, admin);
+    const notifications = await listNotifications(admin);
+    return NextResponse.json({ ok: true, notifications });
+  } catch (error) {
+    if (error instanceof NotificationAccessError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
+    throw error;
+  }
 }

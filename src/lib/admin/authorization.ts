@@ -56,7 +56,18 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
   ],
   manager: ["leads:view", "leads:edit", "reports:view"],
   viewer: ["leads:view"],
-  sales_agent: ["leads:view", "leads:edit", "notes:view", "notes:edit", "activity:view", "reports:view"],
+  sales_agent: [
+    "leads:view",
+    "leads:edit",
+    "notes:view",
+    "notes:edit",
+    "tasks:view",
+    "tasks:edit",
+    "activity:view",
+    "notifications:view",
+    "notifications:edit",
+    "reports:view",
+  ],
 };
 
 export type LeadDataScope = "global" | "assigned";
@@ -71,6 +82,36 @@ const ROLE_LEAD_SCOPES: Record<AdminRole, LeadDataScope> = {
 
 export type LeadOwnership = {
   assignedToUid?: string | null;
+};
+
+export type TaskDataScope = "global" | "assigned" | "none";
+
+const ROLE_TASK_SCOPES: Record<AdminRole, TaskDataScope> = {
+  owner: "global",
+  admin: "global",
+  manager: "none",
+  viewer: "none",
+  sales_agent: "assigned",
+};
+
+export type TaskOwnership = {
+  assignedToUid?: string | null;
+  leadId?: string | null;
+  leadAssignedToUid?: string | null;
+};
+
+export type NotificationDataScope = "personal_with_legacy" | "personal" | "none";
+
+const ROLE_NOTIFICATION_SCOPES: Record<AdminRole, NotificationDataScope> = {
+  owner: "personal_with_legacy",
+  admin: "personal_with_legacy",
+  manager: "none",
+  viewer: "none",
+  sales_agent: "personal",
+};
+
+export type NotificationOwnership = {
+  recipientUid?: string | null;
 };
 
 export type InvitationStatus = "pending" | "sent" | "failed" | "accepted";
@@ -103,6 +144,50 @@ export function canAccessLead(admin: AdminUser, lead: LeadOwnership) {
 
 export function canAssignLead(admin: AdminUser) {
   return hasPermission(admin, "leads:assign") && leadDataScopeForAdmin(admin) === "global";
+}
+
+export function taskDataScopeForAdmin(admin: AdminUser): TaskDataScope {
+  return ROLE_TASK_SCOPES[admin.role];
+}
+
+export function canAccessTask(admin: AdminUser, task: TaskOwnership) {
+  if (!admin.active || !hasPermission(admin, "tasks:view")) return false;
+  const scope = taskDataScopeForAdmin(admin);
+  if (scope === "global") return true;
+  if (scope !== "assigned" || task.assignedToUid !== admin.uid) return false;
+  return !task.leadId || task.leadAssignedToUid === admin.uid;
+}
+
+export function canAssignTask(admin: AdminUser) {
+  return hasPermission(admin, "tasks:edit") && taskDataScopeForAdmin(admin) === "global";
+}
+
+export function resolveTaskAssigneeForRequest(admin: AdminUser, requestedUid?: string | null) {
+  const normalized = typeof requestedUid === "string" ? requestedUid.trim() : null;
+  if (taskDataScopeForAdmin(admin) === "assigned") {
+    return normalized && normalized !== admin.uid
+      ? { ok: false as const }
+      : { ok: true as const, assignedToUid: admin.uid };
+  }
+  if (!canAssignTask(admin)) return { ok: false as const };
+  return { ok: true as const, assignedToUid: normalized || admin.uid };
+}
+
+export function isTaskAssigneeProfile(profile: AssignmentTargetProfile) {
+  return profile.active === true
+    && (profile.role === "owner" || profile.role === "admin" || profile.role === "sales_agent");
+}
+
+export function notificationDataScopeForAdmin(admin: AdminUser): NotificationDataScope {
+  return ROLE_NOTIFICATION_SCOPES[admin.role];
+}
+
+export function canAccessNotification(admin: AdminUser, notification: NotificationOwnership) {
+  if (!admin.active || !hasPermission(admin, "notifications:view")) return false;
+  const scope = notificationDataScopeForAdmin(admin);
+  if (scope === "none") return false;
+  if (notification.recipientUid === admin.uid) return true;
+  return scope === "personal_with_legacy" && !notification.recipientUid;
 }
 
 export function isAssignableSalesAgent(profile: AssignmentTargetProfile) {

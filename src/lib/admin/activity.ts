@@ -16,10 +16,15 @@ const actionTitles: Record<string, string> = {
   lead_unassigned: "Lead dejado sin asignar",
   note_added: "Nota interna agregada",
   task_created: "Tarea creada",
+  task_assigned: "Tarea asignada",
+  task_reassigned: "Tarea reasignada",
   task_updated: "Tarea actualizada",
   task_completed: "Tarea completada",
+  task_cancelled: "Tarea cancelada",
   task_deleted: "Tarea eliminada",
   task_overdue: "Tarea vencida",
+  reminder_processed: "Recordatorio procesado",
+  notification_created: "Notificacion creada",
   notification_read: "Notificacion leida",
   notification_unread: "Notificacion marcada como no leida",
   notification_deleted: "Notificacion eliminada",
@@ -100,20 +105,23 @@ export function formatActivityMessage(activity: ActivityLog) {
   if (activity.action === "task_completed") {
     return "La tarea fue marcada como completada.";
   }
+  if (activity.action === "task_assigned" || activity.action === "task_reassigned") return "Se actualizo el responsable de la tarea.";
+  if (activity.action === "task_cancelled") return "La tarea fue cancelada sin eliminar su historial.";
   if (activity.action === "task_deleted") {
     return "La tarea fue eliminada.";
   }
   if (activity.action === "task_overdue") {
     return "La tarea vencio y requiere seguimiento.";
   }
+  if (activity.action === "reminder_processed") return "El procesador programado gestiono un recordatorio de tarea.";
   return "Cambio registrado en el CRM.";
 }
 
 export function mapActivityTone(activity: ActivityLog): ActivityTone {
   if (["lead_status_changed", "task_updated", "lead_followup_updated"].includes(activity.action)) return "info";
-  if (["lead_created", "lead_assigned", "lead_reassigned", "note_added", "task_created", "task_completed", "user_invited", "user_invitation_resent", "user_activated"].includes(activity.action)) return "success";
+  if (["lead_created", "lead_assigned", "lead_reassigned", "note_added", "task_created", "task_assigned", "task_reassigned", "task_completed", "user_invited", "user_invitation_resent", "user_activated"].includes(activity.action)) return "success";
   if (["lead_priority_changed", "lead_value_updated", "lead_tags_updated"].includes(activity.action)) return "warning";
-  if (["lead_unassigned", "task_deleted", "task_overdue", "notification_deleted", "user_deactivated"].includes(activity.action)) return "danger";
+  if (["lead_unassigned", "task_deleted", "task_cancelled", "task_overdue", "notification_deleted", "user_deactivated"].includes(activity.action)) return "danger";
   return "info";
 }
 

@@ -123,12 +123,12 @@ export function AdminChrome({ children, admin, unreadCount = 0 }: { children: Re
         </section>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-flow-col auto-cols-fr border-t border-white/10 bg-kc-bg-soft/96 p-2 backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex overflow-x-auto border-t border-white/10 bg-kc-bg-soft/96 p-2 backdrop-blur-xl lg:hidden">
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
           return (
-            <Link key={item.href} href={item.href} className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl text-[0.68rem] font-bold ${active ? "bg-kc-cyan/12 text-kc-cyan" : "text-kc-muted"}`}>
+            <Link key={item.href} href={item.href} className={`relative flex min-h-12 min-w-[4.5rem] flex-1 flex-col items-center justify-center rounded-xl text-[0.68rem] font-bold ${active ? "bg-kc-cyan/12 text-kc-cyan" : "text-kc-muted"}`}>
               <Icon size={18} aria-hidden="true" />
               <span className="mt-1">{item.label}</span>
               {item.href === "/admin/notificaciones" && unreadCount > 0 ? <span className="absolute right-3 top-1 h-2.5 w-2.5 rounded-full bg-kc-lime" /> : null}
