@@ -2,6 +2,8 @@ import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
 import type { AdminSettings, AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
+import { isSupabaseDataProviderEnabled } from "@/lib/data/provider";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const adminSettingsSchema = z
   .object({
@@ -61,6 +63,26 @@ function mapSettings(data: Record<string, unknown> | undefined): AdminSettings {
 }
 
 export async function getAdminSettings() {
+  if (isSupabaseDataProviderEnabled()) {
+    const { data, error } = await createSupabaseAdminClient().from("admin_settings").select("*").eq("id", "default").maybeSingle();
+    if (error) throw new Error(`Supabase settings query failed (${error.code ?? "unknown"}).`);
+    if (!data) return defaultAdminSettings;
+    return {
+      emailNotificationsEnabled: data.email_notifications_enabled !== false,
+      pushNotificationsEnabled: data.push_notifications_enabled !== false,
+      internalNotificationsEnabled: data.internal_notifications_enabled !== false,
+      taskReminder1DayEnabled: data.task_reminder_one_day_enabled !== false,
+      taskReminder1HourEnabled: data.task_reminder_one_hour_enabled !== false,
+      taskDueEnabled: data.task_due_enabled !== false,
+      taskOverdueEnabled: data.task_overdue_enabled !== false,
+      dailySummaryEnabled: data.daily_summary_enabled === true,
+      notificationSoundEnabled: data.notification_sound_enabled !== false,
+      compactModeEnabled: data.compact_mode_enabled === true,
+      updatedAt: typeof data.updated_at === "string" ? data.updated_at : null,
+      updatedByUid: typeof data.updated_by === "string" ? data.updated_by : null,
+      updatedBy: typeof data.updated_by_email === "string" ? data.updated_by_email : null,
+    } satisfies AdminSettings;
+  }
   const db = getAdminDb();
   if (!db) return defaultAdminSettings;
   const doc = await db.collection("adminSettings").doc("default").get();

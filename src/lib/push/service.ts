@@ -1,7 +1,10 @@
 import { FieldValue } from "firebase-admin/firestore";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getAdminDb, getAdminMessaging } from "@/lib/firebase/admin";
 import { getAdminSettings } from "@/lib/admin/settings";
+import { isSupabaseDataProviderEnabled } from "@/lib/data/provider";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type PushType = "lead_new" | "task_reminder" | "task_due" | "task_overdue" | "system";
 
@@ -32,6 +35,21 @@ export async function registerDeviceToken(input: {
   userAgent?: string;
   platform?: string;
 }) {
+  if (isSupabaseDataProviderEnabled()) {
+    const client = createSupabaseAdminClient();
+    const tokenHash = createHash("sha256").update(input.token).digest("hex");
+    const { data: existing, error: findError } = await client.from("device_tokens").select("id,created_at").eq("token_hash", tokenHash).maybeSingle();
+    if (findError) throw new Error(`Supabase device lookup failed (${findError.code ?? "unknown"}).`);
+    const id = existing?.id ?? randomUUID();
+    const now = new Date().toISOString();
+    const { error } = await client.from("device_tokens").upsert({
+      id, firebase_id: `supabase:${id}`, profile_id: input.uid, token: input.token, token_hash: tokenHash,
+      user_agent: input.userAgent ?? "", platform: input.platform ?? "", active: true, disabled_by: null, disabled_at: null,
+      created_at: existing?.created_at ?? now, updated_at: now,
+    }, { onConflict: "token_hash" });
+    if (error) throw new Error(`Supabase device registration failed (${error.code ?? "unknown"}).`);
+    return id;
+  }
   const db = getAdminDb();
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");
@@ -55,6 +73,12 @@ export async function registerDeviceToken(input: {
 }
 
 export async function deactivateDeviceToken(token: string, actor: { uid: string; email: string }) {
+  if (isSupabaseDataProviderEnabled()) {
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const { error } = await createSupabaseAdminClient().from("device_tokens").update({ active: false, disabled_by: actor.uid, disabled_at: new Date().toISOString() }).eq("token_hash", tokenHash).eq("profile_id", actor.uid);
+    if (error) throw new Error(`Supabase device deactivation failed (${error.code ?? "unknown"}).`);
+    return;
+  }
   const db = getAdminDb();
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");
@@ -72,6 +96,25 @@ export async function deactivateDeviceToken(token: string, actor: { uid: string;
 }
 
 export async function listDeviceTokens(email?: string) {
+  if (isSupabaseDataProviderEnabled()) {
+    const client = createSupabaseAdminClient();
+    let profileId: string | null = null;
+    if (email) {
+      const { data: profile, error: profileError } = await client.from("profiles").select("id").eq("email", email.toLowerCase()).maybeSingle();
+      if (profileError) throw new Error(`Supabase device profile lookup failed (${profileError.code ?? "unknown"}).`);
+      if (!profile) return [];
+      profileId = profile.id;
+    }
+    let query = client.from("device_tokens").select("*,profiles(email)").limit(email ? 50 : 200);
+    query = profileId ? query.eq("profile_id", profileId) : query.eq("active", true);
+    const { data, error } = await query;
+    if (error) throw new Error(`Supabase device query failed (${error.code ?? "unknown"}).`);
+    return (data ?? []).map((row: any) => ({
+      id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? email ?? ""), token: String(row.token ?? ""),
+      userAgent: String(row.user_agent ?? ""), platform: String(row.platform ?? ""), active: row.active === true,
+      createdAt: String(row.created_at ?? ""), updatedAt: String(row.updated_at ?? ""),
+    }));
+  }
   const db = getAdminDb();
   if (!db) {
     return [];
@@ -96,6 +139,23 @@ export async function listDeviceTokens(email?: string) {
 }
 
 async function logPush(input: PushPayload, tokenId: string | null, sent: boolean, reason: string | null) {
+  if (isSupabaseDataProviderEnabled()) {
+    const client = createSupabaseAdminClient();
+    let existingId: string | null = null;
+    if (input.idempotencyKey && tokenId) {
+      const { data, error } = await client.from("push_logs").select("id").eq("idempotency_key", input.idempotencyKey).eq("device_token_id", tokenId).maybeSingle();
+      if (error) throw new Error(`Supabase push log lookup failed (${error.code ?? "unknown"}).`);
+      existingId = data?.id ?? null;
+    }
+    const id = existingId ?? randomUUID();
+    const { error } = await client.from("push_logs").upsert({
+      id, firebase_id: `supabase:${id}`, device_token_id: tokenId, type: input.type, title: input.title, message: input.message,
+      sent, reason, lead_id: input.relatedLeadId ?? null, task_id: input.relatedTaskId ?? null,
+      idempotency_key: input.idempotencyKey ?? null, created_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(`Supabase push log failed (${error.code ?? "unknown"}).`);
+    return true;
+  }
   const db = getAdminDb();
   if (!db) {
     return false;
@@ -144,9 +204,17 @@ async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType
     return { sent: 0, failed: 0, reason: "no_active_devices" };
   }
   if (parsed.data.idempotencyKey) {
-    const db = getAdminDb();
-    const priorDeliveries = await Promise.all(activeDevices.map((device) => db?.collection("pushLogs").doc(pushDeliveryId(parsed.data.idempotencyKey as string, device.id)).get()));
-    activeDevices = activeDevices.filter((_, index) => priorDeliveries[index]?.data()?.sent !== true);
+    if (isSupabaseDataProviderEnabled()) {
+      const client = createSupabaseAdminClient();
+      const { data, error } = await client.from("push_logs").select("device_token_id").eq("idempotency_key", parsed.data.idempotencyKey).eq("sent", true);
+      if (error) throw new Error(`Supabase push idempotency lookup failed (${error.code ?? "unknown"}).`);
+      const delivered = new Set((data ?? []).map((row) => row.device_token_id));
+      activeDevices = activeDevices.filter((device) => !delivered.has(device.id));
+    } else {
+      const db = getAdminDb();
+      const priorDeliveries = await Promise.all(activeDevices.map((device) => db?.collection("pushLogs").doc(pushDeliveryId(parsed.data.idempotencyKey as string, device.id)).get()));
+      activeDevices = activeDevices.filter((_, index) => priorDeliveries[index]?.data()?.sent !== true);
+    }
     if (activeDevices.length === 0) return { sent: 0, failed: 0, reason: "already_delivered" };
   }
 
@@ -177,10 +245,14 @@ async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType
         await logPush(parsed.data, device.id, true, null);
       } catch (error) {
         failed += 1;
-        await logPush(parsed.data, device.id, false, error instanceof Error ? error.message : "push_send_failed");
+        await logPush(parsed.data, device.id, false, "push_send_failed");
         if (String(error).includes("registration-token-not-registered")) {
-          const db = getAdminDb();
-          await db?.collection("deviceTokens").doc(device.id).set({ active: false, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+          if (isSupabaseDataProviderEnabled()) {
+            await createSupabaseAdminClient().from("device_tokens").update({ active: false, disabled_at: new Date().toISOString() }).eq("id", device.id);
+          } else {
+            const db = getAdminDb();
+            await db?.collection("deviceTokens").doc(device.id).set({ active: false, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+          }
         }
       }
     }),
@@ -193,6 +265,16 @@ export async function sendPushToAdmins(input: PushPayload) {
 }
 
 export async function sendPushToUser(uid: string, input: PushPayload) {
+  if (isSupabaseDataProviderEnabled()) {
+    const { data, error } = await createSupabaseAdminClient().from("device_tokens").select("*,profiles(email)").eq("profile_id", uid).eq("active", true).limit(50);
+    if (error) throw new Error(`Supabase user device query failed (${error.code ?? "unknown"}).`);
+    const devices = (data ?? []).map((row: any) => ({
+      id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? ""), token: String(row.token ?? ""),
+      userAgent: String(row.user_agent ?? ""), platform: String(row.platform ?? ""), active: true,
+      createdAt: String(row.created_at ?? ""), updatedAt: String(row.updated_at ?? ""),
+    }));
+    return sendPushToDevices(input, devices);
+  }
   const db = getAdminDb();
   if (!db) return { sent: 0, failed: 0, reason: "firebase_admin_not_configured" };
   const snapshot = await db.collection("deviceTokens").where("uid", "==", uid).where("active", "==", true).limit(50).get();

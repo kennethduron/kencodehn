@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
-import { getAccessibleLead, listActivityLogs } from "@/lib/admin/data";
+import { createCrmRepositories } from "@/lib/data/repositories";
 
 export const runtime = "nodejs";
 
@@ -17,9 +17,10 @@ export async function GET(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Filtros invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  if (parsed.data.leadId && !(await getAccessibleLead(parsed.data.leadId, access.admin))) {
+  const repositories = await createCrmRepositories();
+  if (parsed.data.leadId && !(await repositories.leads.get(parsed.data.leadId, access.admin))) {
     return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
   }
-  const activity = await listActivityLogs(access.admin, parsed.data.leadId, parsed.data.limit);
+  const activity = await repositories.activity.list(access.admin, parsed.data.leadId, parsed.data.limit);
   return NextResponse.json({ ok: true, activity });
 }

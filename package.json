@@ -13,9 +13,12 @@
     "test:m1": "node --experimental-strip-types --test tests/supabase-m1.test.mjs",
     "test:m2a": "node --experimental-strip-types --test tests/migration-m2a.test.mjs",
     "test:m2a:readiness": "node --experimental-strip-types --test tests/m2a-readiness.test.mjs",
+    "test:m2b:readiness": "node --experimental-strip-types --test tests/m2b-readiness.test.mjs",
+    "test:m2b:local": "node --experimental-strip-types scripts/m2b-local-auth-rls-e2e.mts",
     "migrate:supabase": "node --experimental-strip-types scripts/migrate-firebase-to-supabase.mts",
     "migrate:preflight": "node --experimental-strip-types scripts/m2a-firebase-preflight.mts",
     "migrate:scrypt-local": "node --experimental-strip-types scripts/m2a-scrypt-local.mts",
+    "migrate:shadow": "node --experimental-strip-types scripts/m2b-shadow-compare.mts",
     "generate:ai-knowledge": "node scripts/generate-ai-knowledge.mjs"
   },
   "dependencies": {

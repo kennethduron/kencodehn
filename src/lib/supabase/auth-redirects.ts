@@ -20,3 +20,13 @@ export function resolveSupabaseAuthRedirect(value?: string | null) {
   return parsed.toString();
 }
 
+export function resolveAdminNextPath(value: string | null | undefined, fallback = "/admin") {
+  if (!fallback.startsWith("/admin")) throw new Error("Admin redirect fallback is invalid.");
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;
+  let decoded: string;
+  try { decoded = decodeURIComponent(value); } catch { return fallback; }
+  if (!decoded.startsWith("/admin") || decoded.startsWith("//") || /^(?:javascript|data):/i.test(decoded)) return fallback;
+  const parsed = new URL(decoded, DEFAULT_SUPABASE_AUTH_REDIRECT);
+  if (parsed.origin !== new URL(DEFAULT_SUPABASE_AUTH_REDIRECT).origin || !parsed.pathname.startsWith("/admin")) return fallback;
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+}

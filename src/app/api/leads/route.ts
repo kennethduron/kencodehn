@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { isSupabaseDataProviderEnabled } from "@/lib/data/provider";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createLeadRecord } from "@/lib/leads";
 import { sendLeadClientConfirmationEmail, sendLeadNotificationEmail } from "@/lib/email/lead-notification";
 import { sendPushToAdmins } from "@/lib/push/service";
@@ -44,7 +46,7 @@ async function safeSecondary<T>(label: string, action: () => Promise<T>, fallbac
   try {
     return await action();
   } catch (error) {
-    console.warn(`[Ken Code lead secondary failed] ${label}`, error);
+    console.warn(`[Ken Code lead secondary failed] ${label}`, error instanceof Error ? error.name : "unknown_error");
     return fallback;
   }
 }
@@ -59,9 +61,10 @@ export async function POST(request: NextRequest) {
       ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown",
     });
 
-    const db = getAdminDb();
-    if (!db) {
-      console.info("[Ken Code lead pending Firebase config]", lead);
+    const useSupabase = isSupabaseDataProviderEnabled();
+    const db = useSupabase ? null : getAdminDb();
+    if (!useSupabase && !db) {
+      console.info("[Ken Code lead pending persistence]", { provider: "firebase", persisted: false });
       return NextResponse.json(
         {
           ok: true,
@@ -74,7 +77,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const doc = await db.collection("leads").add(lead);
+    let leadId: string;
+    if (useSupabase) {
+      const { data, error } = await createSupabaseAdminClient().rpc("create_public_lead", { p_payload: lead });
+      if (error || !data) throw new Error(`Supabase public lead persistence failed (${error?.code ?? "unknown"}).`);
+      leadId = String(data);
+    } else {
+      leadId = (await db!.collection("leads").add(lead)).id;
+    }
     const now = new Date().toISOString();
     const settings = await getAdminSettings();
 
@@ -82,14 +92,15 @@ export async function POST(request: NextRequest) {
       "notification",
       async () => {
         if (!settings.internalNotificationsEnabled) return null;
-        const notificationDoc = await db.collection("notifications").add({
+        if (useSupabase) return "created_transactionally";
+        const notificationDoc = await db!.collection("notifications").add({
           title: "Nueva solicitud recibida",
           message: `Nueva solicitud recibida de ${lead.name} para ${lead.project}.`,
           type: "lead_new",
           severity: "success",
-          leadId: doc.id,
+          leadId,
           taskId: null,
-          actionUrl: `/admin/leads/${doc.id}`,
+          actionUrl: `/admin/leads/${leadId}`,
           read: false,
           readAt: null,
           deletedAt: null,
@@ -102,11 +113,11 @@ export async function POST(request: NextRequest) {
 
     await safeSecondary(
       "activityLog",
-      () =>
-        db.collection("activityLogs").add({
+      () => useSupabase ? Promise.resolve(null) :
+        db!.collection("activityLogs").add({
           entityType: "lead",
-          entityId: doc.id,
-          leadId: doc.id,
+          entityId: leadId,
+          leadId,
           action: "lead_created",
           before: null,
           after: { source: "public_website", notificationId },
@@ -119,12 +130,12 @@ export async function POST(request: NextRequest) {
 
     const email = await safeSecondary(
       "email",
-      () => sendLeadNotificationEmail(lead, doc.id),
+      () => sendLeadNotificationEmail(lead, leadId),
       { sent: false as const, reason: "resend_send_failed" as const, logged: false },
     );
     const clientEmail = await safeSecondary(
       "clientEmail",
-      () => sendLeadClientConfirmationEmail(lead, doc.id),
+      () => sendLeadClientConfirmationEmail(lead, leadId),
       { sent: false as const, reason: "email_to_missing" as const, logged: false },
     );
     const push = await safeSecondary(
@@ -134,8 +145,8 @@ export async function POST(request: NextRequest) {
           type: "lead_new",
           title: "Nuevo lead recibido",
           message: `${lead.name} solicito ${lead.project}.`,
-          actionUrl: `/admin/leads/${doc.id}`,
-          relatedLeadId: doc.id,
+          actionUrl: `/admin/leads/${leadId}`,
+          relatedLeadId: leadId,
         }),
       { sent: 0, failed: 0, reason: "push_failed" },
     );
@@ -143,7 +154,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       persisted: true,
-      leadId: doc.id,
+      leadId,
       notificationCreated: Boolean(notificationId),
       email,
       clientEmail,
@@ -167,7 +178,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.error("[Ken Code lead error]", error);
+    console.error("[Ken Code lead error]", error instanceof Error ? error.name : "unknown_error");
     return NextResponse.json(
       {
         ok: false,

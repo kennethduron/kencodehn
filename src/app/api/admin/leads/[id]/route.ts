@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { canRunMaintenance, deleteLeadCascade, getLeadDeletionSummary } from "@/lib/admin/cleanup";
-import { getAccessibleLead, LeadAccessError, updateLead } from "@/lib/admin/data";
+import { createCrmRepositories } from "@/lib/data/repositories";
 
 export const runtime = "nodejs";
 
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const access = await requirePermissionsFromRequest(request, "leads:view");
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const { id } = await params;
-  const lead = await getAccessibleLead(id, access.admin);
+  const lead = await (await createCrmRepositories()).leads.get(id, access.admin);
   if (!lead) {
     return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
   }
@@ -55,7 +55,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const admin = access.admin;
   const { id } = await params;
-  const existing = await getAccessibleLead(id, admin);
+  const repositories = await createCrmRepositories();
+  const existing = await repositories.leads.get(id, admin);
   if (!existing) return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
   const parsed = leadUpdateSchema.safeParse(await request.json());
   if (!parsed.success) {
@@ -63,11 +64,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   const updates = parsed.data;
   try {
-    await updateLead(id, updates, admin);
-    const lead = await getAccessibleLead(id, admin);
+    await repositories.leads.update(id, updates, admin);
+    const lead = await repositories.leads.get(id, admin);
     return NextResponse.json({ ok: true, lead });
   } catch (error) {
-    if (error instanceof LeadAccessError) return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
+    if (error instanceof Error && "status" in error) return NextResponse.json({ ok: false, message: error.message }, { status: Number(error.status) || 400 });
     throw error;
   }
 }

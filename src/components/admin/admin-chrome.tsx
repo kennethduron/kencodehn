@@ -2,27 +2,32 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Settings, Sparkles, UserRoundCog, Users, X } from "lucide-react";
+import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Settings, ShieldCheck, Sparkles, UserRoundCog, Users, X } from "lucide-react";
 import { useState } from "react";
 import type { AdminPermission, AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
 import { NotificationDropdown } from "./notification-dropdown";
 import { Tooltip } from "./ui";
+import type { CrmAuthProvider } from "@/lib/auth/provider";
 
-const navItems = [
+const navItems: Array<{ href: string; label: string; icon: typeof BarChart3; permission?: AdminPermission }> = [
   { href: "/admin", label: "Dashboard", icon: BarChart3, permission: "reports:view" },
   { href: "/admin/leads", label: "Leads", icon: Users, permission: "leads:view" },
   { href: "/admin/tareas", label: "Tareas", icon: ClipboardList, permission: "tasks:view" },
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell, permission: "notifications:view" },
   { href: "/admin/equipo", label: "Equipo", icon: UserRoundCog, permission: "users:manage" },
   { href: "/admin/configuracion", label: "Config.", icon: Settings, permission: "settings:view" },
-] satisfies Array<{ href: string; label: string; icon: typeof BarChart3; permission: AdminPermission }>;
+  { href: "/admin/seguridad", label: "Seguridad", icon: ShieldCheck },
+];
 
-export function AdminChrome({ children, admin, unreadCount = 0 }: { children: React.ReactNode; admin: AdminUser; unreadCount?: number }) {
+export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "firebase" }: { children: React.ReactNode; admin: AdminUser; unreadCount?: number; authProvider?: CrmAuthProvider }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const visibleNavItems = navItems.filter((item) => hasPermission(admin, item.permission));
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.href === "/admin/seguridad" && authProvider !== "supabase") return false;
+    return !item.permission || hasPermission(admin, item.permission);
+  });
 
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });

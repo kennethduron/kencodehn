@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { AdminLead, AdminTask, LeadStatus } from "@/lib/admin/types";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { getAdminSettings } from "@/lib/admin/settings";
+import { isSupabaseDataProviderEnabled } from "@/lib/data/provider";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { LeadRecord } from "@/lib/leads";
 import { site } from "@/lib/site";
 import {
@@ -93,6 +95,32 @@ function isAllowedSender(from: string) {
 }
 
 async function logEmail(input: SendEmailInput, result: EmailSendResult) {
+  if (isSupabaseDataProviderEnabled()) {
+    try {
+      const id = crypto.randomUUID();
+      const { error } = await createSupabaseAdminClient().from("email_logs").insert({
+        id,
+        firebase_id: `supabase:${id}`,
+        type: input.type,
+        recipient: input.to ?? getEmailTarget(),
+        subject: input.subject,
+        sent: result.sent,
+        reason: result.reason ?? null,
+        provider_id: result.id ?? null,
+        provider_message_id: result.id ?? null,
+        lead_id: input.relatedLeadId ?? null,
+        task_id: input.relatedTaskId ?? null,
+        related_user_id: input.relatedUserUid ?? null,
+        idempotency_key: input.idempotencyKey ?? null,
+        created_at: new Date().toISOString(),
+      });
+      if (error && error.code !== "23505") throw error;
+      return true;
+    } catch (error) {
+      console.warn("[Ken Code email log failed]", error instanceof Error ? error.name : "unknown_error");
+      return false;
+    }
+  }
   const db = getAdminDb();
   if (!db) {
     return false;
@@ -114,7 +142,7 @@ async function logEmail(input: SendEmailInput, result: EmailSendResult) {
     });
     return true;
   } catch (error) {
-    console.warn("[Ken Code email log failed]", error);
+    console.warn("[Ken Code email log failed]", error instanceof Error ? error.name : "unknown_error");
     return false;
   }
 }
@@ -153,7 +181,7 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
     return withLog(parsed.data, { sent: false, reason: "resend_from_missing" });
   }
   if (!isAllowedSender(from)) {
-    console.warn("[Ken Code email sender blocked]", getSenderAddress(from));
+    console.warn("[Ken Code email sender blocked]", { allowedDomain: site.domain, blocked: true });
     return withLog(parsed.data, { sent: false, reason: "sender_domain_not_allowed" });
   }
   if (!to) {
@@ -173,12 +201,12 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
       parsed.data.idempotencyKey ? { idempotencyKey: parsed.data.idempotencyKey } : undefined,
     );
     if (error) {
-      console.warn("[Ken Code email send failed]", error);
+      console.warn("[Ken Code email send failed]", { provider: "resend", failed: true });
       return withLog(parsed.data, { sent: false, reason: "resend_send_failed" });
     }
     return withLog(parsed.data, { sent: true, id: data?.id ?? null });
   } catch (error) {
-    console.warn("[Ken Code email send exception]", error);
+    console.warn("[Ken Code email send exception]", error instanceof Error ? error.name : "unknown_error");
     return withLog(parsed.data, { sent: false, reason: "resend_send_failed" });
   }
 }

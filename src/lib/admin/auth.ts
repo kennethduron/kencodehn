@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import { getCrmAuthProvider } from "@/lib/auth/provider";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import {
   defaultPermissionsForRole,
@@ -9,11 +10,16 @@ import {
   type AdminPermission,
   type AdminUser,
 } from "@/lib/admin/authorization";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const CRM_SESSION_COOKIE = "kc_crm_session";
 const SESSION_DAYS = 5;
 
 export function getMissingAdminEnv() {
+  if (getCrmAuthProvider() === "supabase") {
+    return ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
+      .filter((key) => !process.env[key]);
+  }
   const missing: string[] = [];
   if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY && (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY)) {
     missing.push("FIREBASE_SERVICE_ACCOUNT_KEY");
@@ -22,12 +28,19 @@ export function getMissingAdminEnv() {
 }
 
 export function getMissingFirebaseClientEnv() {
+  if (getCrmAuthProvider() === "supabase") return [];
   return [
     "NEXT_PUBLIC_FIREBASE_API_KEY",
     "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
     "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
     "NEXT_PUBLIC_FIREBASE_APP_ID",
   ].filter((key) => !process.env[key]);
+}
+
+export function getMissingAuthClientEnv() {
+  return getCrmAuthProvider() === "supabase"
+    ? ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"].filter((key) => !process.env[key])
+    : getMissingFirebaseClientEnv();
 }
 
 export function getSessionMaxAge() {
@@ -170,11 +183,30 @@ export async function verifyCrmSession(sessionCookie: string | undefined | null)
 }
 
 export async function getCurrentAdmin() {
+  if (getCrmAuthProvider() === "supabase") return getSupabaseCurrentAdmin();
   const cookieStore = await cookies();
   return verifyCrmSession(cookieStore.get(CRM_SESSION_COOKIE)?.value);
 }
 
+async function getSupabaseCurrentAdmin(): Promise<AdminUser | null> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user?.email) return null;
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id,email,role,active")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+    if (profileError || !profile || profile.active !== true) return null;
+    return resolveAdminUserFromProfile({ uid: authData.user.id, email: authData.user.email, profile });
+  } catch {
+    return null;
+  }
+}
+
 export async function requireAdminFromRequest(request: NextRequest) {
+  if (getCrmAuthProvider() === "supabase") return getSupabaseCurrentAdmin();
   return verifyCrmSession(request.cookies.get(CRM_SESSION_COOKIE)?.value);
 }
 

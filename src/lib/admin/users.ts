@@ -18,6 +18,7 @@ import type { AdminMember, AdminUser, AssignableSalesAgent, TaskAssignee } from 
 import { sendEmail } from "@/lib/email/service";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { site } from "@/lib/site";
+import { getCrmAuthProvider } from "@/lib/auth/provider";
 
 export class AdminUserManagementError extends Error {
   constructor(public status: number, message: string) {
@@ -64,6 +65,7 @@ async function countAssignedLeads(uid: string) {
 }
 
 export async function listAdminMembers() {
+  if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).listSupabaseAdminMembers();
   const db = getAdminDb();
   if (!db) return [];
   const snapshot = await db.collection("adminUsers").limit(200).get();
@@ -74,6 +76,7 @@ export async function listAdminMembers() {
 }
 
 export async function listAssignableSalesAgents(actor: AdminUser): Promise<AssignableSalesAgent[]> {
+  if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).listSupabaseAssignableSalesAgents(actor);
   if (!canAssignLead(actor)) throw new AdminUserManagementError(403, "No tienes permiso para consultar vendedores asignables.");
   const db = getAdminDb();
   if (!db) return [];
@@ -89,6 +92,7 @@ export async function listAssignableSalesAgents(actor: AdminUser): Promise<Assig
 }
 
 export async function listTaskAssignees(actor: AdminUser): Promise<TaskAssignee[]> {
+  if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).listSupabaseTaskAssignees(actor);
   const db = getAdminDb();
   if (!db) return [];
   if (!canAssignTask(actor)) {
@@ -115,6 +119,7 @@ export async function listTaskAssignees(actor: AdminUser): Promise<TaskAssignee[
 }
 
 export async function getAdminMember(uid: string) {
+  if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).getSupabaseAdminMember(uid);
   const db = getAdminDb();
   if (!db) return null;
   const snapshot = await db.collection("adminUsers").doc(uid).get();
@@ -138,6 +143,7 @@ export async function updateAdminMember(
   input: { name?: string; role?: ManageableAdminRole; active?: boolean },
   actor: AdminUser,
 ) {
+  if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).updateSupabaseAdminMember(uid, input, actor);
   ensureUsersManager(actor);
   const db = getAdminDb();
   if (!db) throw new AdminUserManagementError(500, "Firebase Admin no esta configurado.");
@@ -253,6 +259,7 @@ export async function inviteAdminMember(
   input: { name: string; email: string; role: ManageableAdminRole },
   actor: AdminUser,
 ) {
+  if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).inviteSupabaseAdminMember(input, actor);
   ensureUsersManager(actor);
   if (!isManageableRole(input.role)) throw new AdminUserManagementError(400, "Rol no permitido.");
   const db = getAdminDb();
@@ -324,6 +331,7 @@ export async function inviteAdminMember(
 }
 
 export async function resendAdminInvitation(uid: string, actor: AdminUser) {
+  if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).resendSupabaseAdminInvitation(uid, actor);
   ensureUsersManager(actor);
   const db = getAdminDb();
   const auth = getAdminAuth();

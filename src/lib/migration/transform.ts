@@ -225,8 +225,10 @@ export function transformFirestoreDocument(
   if (!sourceId.trim()) throw new Error("Source ID is required.");
   const data = record(input);
   const id = targetUuidForFirebase(collection, sourceId);
-  const createdAt = firestoreTimestampToIso(data.createdAt);
-  const updatedAt = firestoreTimestampToIso(data.updatedAt) ?? createdAt;
+  const sourceCreatedAt = firestoreTimestampToIso(data.createdAt);
+  const sourceUpdatedAt = firestoreTimestampToIso(data.updatedAt);
+  const createdAt = sourceCreatedAt ?? sourceUpdatedAt;
+  const updatedAt = sourceUpdatedAt ?? sourceCreatedAt;
 
   if (collection === "adminUsers") {
     const profileId = resolveProfileId(sourceId, profileIds) ?? resolveProfileId(data.uid, profileIds);
@@ -443,7 +445,7 @@ export function transformFirestoreDocument(
       lead_id: leadId ? targetUuidForFirebase("leads", leadId) : null,
       task_id: taskId ? targetUuidForFirebase("tasks", taskId) : null,
       idempotency_key: optionalString(data.idempotencyKey),
-      metadata: json(data),
+      metadata: legacyData(data, options),
       created_at: createdAt,
     };
     if (collection === "emailLogs") {

@@ -13,12 +13,12 @@ export type MigrationCheckpoint = {
 };
 
 export type StoredMapping = ReturnType<typeof migrationMapRow>;
-export type CommitResult = "inserted" | "idempotent" | "conflict";
+export type CommitResult = "inserted" | "updated" | "idempotent" | "conflict";
 
 export interface MigrationStore {
-  commit(row: MigrationRow, mapping: StoredMapping): Promise<CommitResult>;
+  commit(row: MigrationRow, mapping: StoredMapping, allowMappedUpdate?: boolean): Promise<CommitResult>;
   getCheckpoint(sourceCollection: string, batch: number): Promise<MigrationCheckpoint | null>;
-  saveCheckpoint(checkpoint: MigrationCheckpoint): Promise<void>;
+  saveCheckpoint(checkpoint: MigrationCheckpoint, allowChecksumUpdate?: boolean): Promise<void>;
 }
 
 export type AuthMigrationUser = {
@@ -66,6 +66,7 @@ export type StructuredMigrationLog = {
   batch?: number;
   processed?: number;
   inserted?: number;
+  updated?: number;
   idempotent?: number;
   conflicts?: number;
   checksum?: string;
@@ -78,6 +79,7 @@ export type MigrationWriterOptions = {
   now?: () => string;
   logger?: (entry: StructuredMigrationLog) => void;
   interruptAfterBatches?: number;
+  allowMappedUpdates?: boolean;
 };
 
 export class MigrationInterruptedError extends Error {
@@ -123,6 +125,7 @@ export async function runMigrationWriter(
   }
 
   let inserted = 0;
+  let updated = 0;
   let idempotent = 0;
   let conflicts = 0;
   let completedBatches = 0;
@@ -133,12 +136,13 @@ export async function runMigrationWriter(
       const batch = Math.floor(offset / batchSize) + 1;
       const batchChecksum = deterministicChecksum(batchRows.map((row) => row.checksum));
       const existingCheckpoint = await store.getCheckpoint(collection, batch);
-      if (existingCheckpoint && existingCheckpoint.checksum !== batchChecksum) {
+      if (existingCheckpoint && existingCheckpoint.checksum !== batchChecksum && options.allowMappedUpdates !== true) {
         throw new Error("Checkpoint checksum mismatch; source snapshot changed and resume was aborted.");
       }
       for (const row of batchRows) {
-        const outcome = await store.commit(row, migrationMapRow(row));
+        const outcome = await store.commit(row, migrationMapRow(row), options.allowMappedUpdates === true);
         if (outcome === "inserted") inserted += 1;
+        else if (outcome === "updated") updated += 1;
         else if (outcome === "idempotent") idempotent += 1;
         else {
           conflicts += 1;
@@ -155,14 +159,14 @@ export async function runMigrationWriter(
         status: "completed",
         timestamp: options.now?.() ?? new Date().toISOString(),
       };
-      await store.saveCheckpoint(checkpoint);
+      await store.saveCheckpoint(checkpoint, options.allowMappedUpdates === true);
       completedBatches += 1;
       options.logger?.({ event: "batch_completed", collection, batch, processed: batchRows.length, checksum: batchChecksum });
       if (options.interruptAfterBatches === completedBatches) throw new MigrationInterruptedError();
     }
   }
-  options.logger?.({ event: "migration_completed", processed: sorted.length, inserted, idempotent, conflicts: 0, checksum: planChecksum });
-  return { mode: "write" as const, processed: sorted.length, inserted, idempotent, conflicts: 0, batches: completedBatches, checksum: planChecksum };
+  options.logger?.({ event: "migration_completed", processed: sorted.length, inserted, updated, idempotent, conflicts: 0, checksum: planChecksum });
+  return { mode: "write" as const, processed: sorted.length, inserted, updated, idempotent, conflicts: 0, batches: completedBatches, checksum: planChecksum };
 }
 
 export class MemoryMigrationStore implements MigrationStore {
@@ -178,7 +182,7 @@ export class MemoryMigrationStore implements MigrationStore {
     return `${mapping.source_system}\u0000${mapping.source_collection}\u0000${mapping.source_id}\u0000${mapping.target_table}`;
   }
 
-  async commit(row: MigrationRow, mapping: StoredMapping): Promise<CommitResult> {
+  async commit(row: MigrationRow, mapping: StoredMapping, allowMappedUpdate = false): Promise<CommitResult> {
     const mappingKey = this.mappingKey(mapping);
     const targetKey = this.targetKey(row.targetTable, row.targetId);
     const existingMapping = this.mappings.get(mappingKey);
@@ -187,9 +191,14 @@ export class MemoryMigrationStore implements MigrationStore {
       if (
         existingMapping.target_id !== mapping.target_id
         || existingMapping.target_table !== mapping.target_table
-        || existingMapping.checksum !== mapping.checksum
         || !existingTarget
       ) return "conflict";
+      if (existingMapping.checksum !== mapping.checksum) {
+        if (!allowMappedUpdate || deterministicChecksum(existingTarget) !== existingMapping.checksum) return "conflict";
+        this.targets.set(targetKey, structuredClone(row.row));
+        this.mappings.set(mappingKey, { ...mapping });
+        return "updated";
+      }
       return "idempotent";
     }
     if (existingTarget) return "conflict";
@@ -202,10 +211,10 @@ export class MemoryMigrationStore implements MigrationStore {
     return this.checkpoints.get(`${sourceCollection}\u0000${batch}`) ?? null;
   }
 
-  async saveCheckpoint(checkpoint: MigrationCheckpoint) {
+  async saveCheckpoint(checkpoint: MigrationCheckpoint, allowChecksumUpdate = false) {
     const key = `${checkpoint.sourceCollection}\u0000${checkpoint.batch}`;
     const existing = this.checkpoints.get(key);
-    if (existing && existing.checksum !== checkpoint.checksum) {
+    if (existing && existing.checksum !== checkpoint.checksum && !allowChecksumUpdate) {
       throw new Error("Checkpoint consistency violation.");
     }
     this.checkpoints.set(key, { ...checkpoint });
@@ -237,17 +246,44 @@ export class SupabaseMigrationStore implements MigrationStore {
     this.client = client;
   }
 
-  async commit(row: MigrationRow): Promise<CommitResult> {
-    const { data, error } = await this.client.rpc("migration_commit_row", {
+  async commit(row: MigrationRow, _mapping: StoredMapping, allowMappedUpdate = false): Promise<CommitResult> {
+    let previousChecksum: string | null = null;
+    let expectedRow: Record<string, unknown> | null = null;
+    if (allowMappedUpdate) {
+      const { data: mapping, error: mappingError } = await this.client
+        .from("migration_id_map")
+        .select("target_id,checksum")
+        .eq("source_system", "firebase")
+        .eq("source_collection", row.sourceCollection)
+        .eq("source_id", row.sourceId)
+        .eq("target_table", row.targetTable)
+        .maybeSingle();
+      if (mappingError) throw new Error(`Migration mapping read failed (${mappingError.code ?? "unknown"}).`);
+      if (mapping && mapping.checksum !== row.checksum) {
+        if (mapping.target_id !== row.targetId) return "conflict";
+        previousChecksum = String(mapping.checksum);
+        const { data: current, error: currentError } = await this.client.from(row.targetTable).select("*").eq("id", row.targetId).maybeSingle();
+        if (currentError) throw new Error(`Migration target read failed (${currentError.code ?? "unknown"}).`);
+        expectedRow = current as Record<string, unknown> | null;
+      }
+    }
+    const { data, error } = await this.client.rpc("migration_commit_row_v2", {
       p_source_collection: row.sourceCollection,
       p_source_id: row.sourceId,
       p_target_table: row.targetTable,
       p_target_id: row.targetId,
       p_checksum: row.checksum,
       p_row: row.row,
+      p_allow_mapped_update: allowMappedUpdate,
+      p_previous_checksum: previousChecksum,
+      p_expected_row: expectedRow,
     });
-    if (error) throw new Error(`Atomic migration commit failed (${error.code ?? "unknown"}).`);
-    if (data !== "inserted" && data !== "idempotent" && data !== "conflict") {
+    if (error) {
+      const notNull = error.message?.match(/null value in column "([^"]+)" of relation "([^"]+)"/i);
+      const safeContext = notNull ? `; ${notNull[2]}.${notNull[1]} is null` : "";
+      throw new Error(`Atomic migration commit failed (${error.code ?? "unknown"}${safeContext}).`);
+    }
+    if (data !== "inserted" && data !== "updated" && data !== "idempotent" && data !== "conflict") {
       throw new Error("Atomic migration commit returned an invalid status.");
     }
     return data;
@@ -274,7 +310,7 @@ export class SupabaseMigrationStore implements MigrationStore {
     };
   }
 
-  async saveCheckpoint(checkpoint: MigrationCheckpoint) {
+  async saveCheckpoint(checkpoint: MigrationCheckpoint, _allowChecksumUpdate = false) {
     const { error } = await this.client.from("migration_checkpoints").upsert({
       source_system: "firebase",
       source_collection: checkpoint.sourceCollection,

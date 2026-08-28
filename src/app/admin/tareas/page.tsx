@@ -1,11 +1,11 @@
 import { AdminChrome } from "@/components/admin/admin-chrome";
 import { AdminLogin } from "@/components/admin/admin-login";
 import { TasksPanel } from "@/components/admin/tasks-panel";
-import { getCurrentAdmin, getMissingAdminEnv, getMissingFirebaseClientEnv } from "@/lib/admin/auth";
-import { listLeads, listNotifications, listTasks } from "@/lib/admin/data";
+import { getCurrentAdmin, getMissingAdminEnv, getMissingAuthClientEnv } from "@/lib/admin/auth";
+import { getCrmAuthProvider } from "@/lib/auth/provider";
+import { createCrmRepositories } from "@/lib/data/repositories";
 import { hasPermission } from "@/lib/admin/authorization";
 import { canAssignTask } from "@/lib/admin/authorization";
-import { listTaskAssignees } from "@/lib/admin/users";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -13,15 +13,20 @@ export const dynamic = "force-dynamic";
 export default async function AdminTasksPage() {
   const admin = await getCurrentAdmin();
   if (!admin) {
-    return <AdminLogin missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingFirebaseClientEnv()} />;
+    return <AdminLogin authProvider={getCrmAuthProvider()} missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingAuthClientEnv()} />;
   }
   if (!hasPermission(admin, "tasks:view")) redirect("/admin/leads");
 
-  const [tasks, leads, notifications, assignees] = await Promise.all([listTasks(admin), listLeads(admin), listNotifications(admin), listTaskAssignees(admin)]);
+  const repositories = await createCrmRepositories();
+  const [tasks, leads, notifications, members] = await Promise.all([repositories.tasks.list(admin), repositories.leads.list(admin), repositories.notifications.list(admin), repositories.users.list()]);
+  const assignees = members
+    .filter((member) => member.active && (member.role === "owner" || member.role === "admin" || member.role === "sales_agent"))
+    .filter((member) => canAssignTask(admin) || member.uid === admin.uid)
+    .map(({ uid, name, email, role }) => ({ uid, name, email, role: role as "owner" | "admin" | "sales_agent" }));
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (
-    <AdminChrome admin={admin} unreadCount={unreadCount}>
+    <AdminChrome admin={admin} unreadCount={unreadCount} authProvider={getCrmAuthProvider()}>
       <TasksPanel
         initialTasks={tasks}
         leads={leads}

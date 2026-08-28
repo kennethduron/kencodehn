@@ -18,6 +18,7 @@ import {
   analyzeMigrationDryRun,
   assertOwnerInvariant,
   createFirebaseScryptHash,
+  deterministicChecksum,
   formatFirebaseScryptHash,
   prepareMigrationRows,
 } from "../src/lib/migration/preflight.ts";
@@ -116,6 +117,18 @@ test("null without a source relation remains distinguishable from an orphan", ()
   assert.equal("orphaned_references" in row.row.legacy_data, false);
 });
 
+test("delivery-log optional orphan is preserved in metadata", () => {
+  const fixture = structuredClone(SANITIZED_FIRESTORE);
+  fixture.emailLogs.push({
+    id: "fixture-email-orphan",
+    data: { relatedLeadId: "missing-delivery-lead", type: "follow_up", sent: false, createdAt: "2025-03-10T14:00:00.000Z" },
+  });
+  const prepared = prepareMigrationRows(fixture, SANITIZED_AUTH_USERS);
+  const row = prepared.rows.find((candidate) => candidate.sourceId === "fixture-email-orphan");
+  assert.equal(row.row.lead_id, null);
+  assert.equal(row.row.metadata.orphaned_references.lead_id, "missing-delivery-lead");
+});
+
 test("mandatory orphan aborts readiness", () => {
   const fixture = structuredClone(SANITIZED_FIRESTORE);
   fixture.notes[0].data.leadId = "missing-required-lead";
@@ -200,6 +213,35 @@ test("unexpected target conflict is visible and never overwritten", async () => 
   await assert.rejects(() => runMigrationWriter([row], store, { write: true, authorized: true }), MigrationConflictError);
   assert.equal(store.targets.values().next().value.unexpected, true);
   assert.equal(store.mappings.size, 0);
+});
+
+test("mapped delta updates only a migration-owned unchanged target and keeps UUID immutable", async () => {
+  const original = prepareMigrationRows(SANITIZED_FIRESTORE, SANITIZED_AUTH_USERS).rows.find((row) => row.sourceCollection === "notifications");
+  const store = new MemoryMigrationStore();
+  await runMigrationWriter([original], store, { write: true, authorized: true });
+  const originalTargetId = original.targetId;
+  const changed = structuredClone(original);
+  changed.row.title = "Sanitized delta";
+  changed.checksum = deterministicChecksum(changed.row);
+  const result = await runMigrationWriter([changed], store, { write: true, authorized: true, allowMappedUpdates: true });
+  assert.equal(result.updated, 1);
+  assert.equal(store.mappings.values().next().value.target_id, originalTargetId);
+  assert.equal(store.targets.values().next().value.title, "Sanitized delta");
+});
+
+test("mapped delta refuses to overwrite a target changed outside the migration", async () => {
+  const original = prepareMigrationRows(SANITIZED_FIRESTORE, SANITIZED_AUTH_USERS).rows.find((row) => row.sourceCollection === "notifications");
+  const store = new MemoryMigrationStore();
+  await runMigrationWriter([original], store, { write: true, authorized: true });
+  store.targets.values().next().value.title = "Unexpected target edit";
+  const changed = structuredClone(original);
+  changed.row.title = "Source delta";
+  changed.checksum = deterministicChecksum(changed.row);
+  await assert.rejects(
+    () => runMigrationWriter([changed], store, { write: true, authorized: true, allowMappedUpdates: true }),
+    MigrationConflictError,
+  );
+  assert.equal(store.targets.values().next().value.title, "Unexpected target edit");
 });
 
 test("UUID mappings are immutable once committed", async () => {

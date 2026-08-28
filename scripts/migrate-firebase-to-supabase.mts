@@ -1,14 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { getAdminAuth, getAdminDb } from "../src/lib/firebase/admin.ts";
 import { assertFirebaseSourceProject, parseMigrationMode } from "../src/lib/migration/guards.ts";
+import { readFirebaseSourceSnapshot } from "../src/lib/migration/firebase-source.ts";
 import {
-  MIGRATION_COLLECTION_ORDER,
   analyzeMigrationDryRun,
+  deterministicChecksum,
   prepareMigrationRows,
   summarizeAuthUsers,
-  type AuthUserSummaryInput,
-  type SourceCollections,
 } from "../src/lib/migration/preflight.ts";
 import {
   SupabaseAuthMigrationStore,
@@ -17,9 +15,11 @@ import {
   runMigrationWriter,
   type AuthMigrationUser,
 } from "../src/lib/migration/writer.ts";
+import { targetUuidForFirebase } from "../src/lib/migration/transform.ts";
 
 const args = process.argv.slice(2);
 const mode = parseMigrationMode(args);
+const allowMappedUpdates = args.includes("--allow-mapped-updates");
 if (!mode.sourceRead) {
   console.log(JSON.stringify({
     mode: "dry-run",
@@ -35,39 +35,11 @@ if (!mode.sourceRead) {
 const requestedSource = args.find((argument) => argument.startsWith("--project-id="))?.slice("--project-id=".length)
   ?? process.env.FIREBASE_PROJECT_ID;
 assertFirebaseSourceProject(requestedSource);
-const db = getAdminDb();
-const auth = getAdminAuth();
-if (!db || !auth) throw new Error("Firebase Admin source credentials are unavailable.");
-assertFirebaseSourceProject(db.projectId);
-assertFirebaseSourceProject(auth.app.options.projectId);
-
-const collections: SourceCollections = {};
-for (const collection of MIGRATION_COLLECTION_ORDER) {
-  const snapshot = await db.collection(collection).get();
-  collections[collection] = snapshot.docs.map((document) => ({ id: document.id, data: document.data() }));
-}
-
-const authRecords = [];
-let pageToken: string | undefined;
-do {
-  const page = await auth.listUsers(500, pageToken);
-  authRecords.push(...page.users);
-  pageToken = page.pageToken;
-} while (pageToken);
-
-const authSummaryInputs: AuthUserSummaryInput[] = authRecords.map((user) => ({
-  uid: user.uid,
-  email: user.email,
-  emailVerified: user.emailVerified,
-  disabled: user.disabled,
-  displayName: user.displayName,
-  providerIds: user.providerData.map((provider) => provider.providerId),
-  hasPasswordHash: Boolean(user.passwordHash),
-}));
-const dryRun = analyzeMigrationDryRun(collections, authSummaryInputs);
-const prepared = prepareMigrationRows(collections, authSummaryInputs);
+const snapshot = await readFirebaseSourceSnapshot(requestedSource);
+const dryRun = analyzeMigrationDryRun(snapshot.collections, snapshot.authUsers);
+const prepared = prepareMigrationRows(snapshot.collections, snapshot.authUsers);
 if (!mode.write) {
-  const authSummary = summarizeAuthUsers(authSummaryInputs);
+  const authSummary = summarizeAuthUsers(snapshot.authUsers);
   console.log(JSON.stringify({
     mode: "dry-run",
     remoteRead: true,
@@ -84,7 +56,7 @@ if (!mode.write) {
   process.exit(0);
 }
 
-const passwordUsers: AuthMigrationUser[] = authRecords.map((user) => {
+const passwordUsers: AuthMigrationUser[] = snapshot.authUsers.map((user) => {
   if (!user.email || !user.passwordHash || !user.passwordSalt) {
     throw new Error("Every source Auth user must have an email and exportable password material.");
   }
@@ -98,10 +70,10 @@ const passwordUsers: AuthMigrationUser[] = authRecords.map((user) => {
   };
 });
 const scryptParameters = {
-  memoryCost: Number(process.env.FIREBASE_SCRYPT_MEMORY_COST),
-  rounds: Number(process.env.FIREBASE_SCRYPT_ROUNDS),
-  saltSeparator: process.env.FIREBASE_SCRYPT_SALT_SEPARATOR ?? "",
-  signerKey: process.env.FIREBASE_SCRYPT_SIGNER_KEY ?? "",
+  memoryCost: snapshot.scrypt.memoryCost,
+  rounds: snapshot.scrypt.rounds,
+  saltSeparator: snapshot.scrypt.saltSeparator,
+  signerKey: snapshot.scrypt.signerKey,
   parallelization: 1,
 };
 if (scryptParameters.memoryCost !== 14 || scryptParameters.rounds !== 8) {
@@ -111,19 +83,71 @@ if (scryptParameters.memoryCost !== 14 || scryptParameters.rounds !== 8) {
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 });
+
+const businessTables = [...new Set(prepared.rows.map((row) => row.targetTable))];
+const preflightCounts: Record<string, number> = {};
+for (const table of businessTables) {
+  const { count, error } = await supabase.from(table).select("id", { count: "exact" }).limit(1);
+  if (error) throw new Error(`Supabase target preflight failed for ${table} (${error.code ?? error.name ?? "unknown"}; ${error.message}).`);
+  preflightCounts[table] = count ?? 0;
+}
+const { data: existingAuth, error: authPreflightError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 50 });
+if (authPreflightError) throw new Error(`Supabase Auth preflight failed (${authPreflightError.status ?? "unknown"}).`);
+const { count: mappingCount, error: mappingCountError } = await supabase.from("migration_id_map").select("id", { count: "exact" }).limit(1);
+if (mappingCountError) throw new Error(`Migration mapping preflight failed (${mappingCountError.code ?? "unknown"}).`);
+const remoteIsEmpty = Object.values(preflightCounts).every((count) => count === 0) && existingAuth.users.length === 0 && (mappingCount ?? 0) === 0;
+const remoteIsMigrationOwned = (mappingCount ?? 0) === prepared.rows.length && existingAuth.users.length === passwordUsers.length;
+const expectedAuth = new Map(passwordUsers.map((user) => [targetUuidForFirebase("authUsers", user.uid), user.email.trim().toLowerCase()]));
+const remoteIsRecoverableAuthOnly = Object.values(preflightCounts).every((count) => count === 0)
+  && (mappingCount ?? 0) === 0
+  && existingAuth.users.length === passwordUsers.length
+  && existingAuth.users.every((user) => expectedAuth.get(user.id) === user.email?.trim().toLowerCase());
+if (!remoteIsEmpty && !remoteIsMigrationOwned && !remoteIsRecoverableAuthOnly) {
+  throw new Error("Supabase target contains unexpected rows; migration aborted without overwrite.");
+}
+
 const authResult = await migrateAuthUsers(passwordUsers, new SupabaseAuthMigrationStore(supabase), scryptParameters);
 const batchSizeArgument = args.find((argument) => argument.startsWith("--batch-size="))?.slice("--batch-size=".length);
 const writerResult = await runMigrationWriter(prepared.rows, new SupabaseMigrationStore(supabase), {
   write: true,
   authorized: true,
+  allowMappedUpdates,
   batchSize: batchSizeArgument ? Number(batchSizeArgument) : 100,
   logger: (entry) => console.log(JSON.stringify(entry)),
 });
+
+const { data: mappings, error: mappingError } = await supabase
+  .from("migration_id_map")
+  .select("source_collection,source_id,target_table,target_id,checksum")
+  .eq("source_system", "firebase");
+if (mappingError) throw new Error(`Migration reconciliation failed (${mappingError.code ?? "unknown"}).`);
+const mappingChecksum = deterministicChecksum((mappings ?? []).map((mapping) => ({
+  sourceCollection: mapping.source_collection,
+  sourceId: mapping.source_id,
+  targetTable: mapping.target_table,
+  targetId: mapping.target_id,
+  checksum: mapping.checksum,
+})).sort((left, right) => `${left.sourceCollection}:${left.sourceId}`.localeCompare(`${right.sourceCollection}:${right.sourceId}`)));
+const expectedMappingChecksum = deterministicChecksum(prepared.rows.map((row) => ({
+  sourceCollection: row.sourceCollection,
+  sourceId: row.sourceId,
+  targetTable: row.targetTable,
+  targetId: row.targetId,
+  checksum: row.checksum,
+})).sort((left, right) => `${left.sourceCollection}:${left.sourceId}`.localeCompare(`${right.sourceCollection}:${right.sourceId}`)));
+if ((mappings?.length ?? 0) !== prepared.rows.length || mappingChecksum !== expectedMappingChecksum) {
+  throw new Error("Migration reconciliation checksum mismatch.");
+}
 console.log(JSON.stringify({
   mode: "write",
   sourceProject: requestedSource,
   auth: authResult,
   rows: writerResult,
+  reconciliation: {
+    sourceRows: prepared.rows.length,
+    mappingRows: mappings?.length ?? 0,
+    checksumMatch: true,
+  },
   secretsLogged: false,
   piiLogged: false,
 }, null, 2));

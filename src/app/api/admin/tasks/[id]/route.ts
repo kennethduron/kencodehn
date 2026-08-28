@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
-import { deleteTask, listTasks, TaskAccessError, updateTask } from "@/lib/admin/data";
+import { createCrmRepositories } from "@/lib/data/repositories";
 
 export const runtime = "nodejs";
 
@@ -28,11 +28,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   const updates = parsed.data;
   try {
-    await updateTask(id, updates, admin);
-    const tasks = await listTasks(admin);
+    const repositories = await createCrmRepositories();
+    await repositories.tasks.update(id, updates, admin);
+    const tasks = await repositories.tasks.list(admin);
     return NextResponse.json({ ok: true, tasks });
   } catch (error) {
-    if (error instanceof TaskAccessError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
+    if (error instanceof Error && "status" in error) return NextResponse.json({ ok: false, message: error.message }, { status: Number(error.status) || 400 });
     throw error;
   }
 }
@@ -43,11 +44,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const admin = access.admin;
   const { id } = await params;
   try {
-    await deleteTask(id, admin);
-    const tasks = await listTasks(admin);
+    const repositories = await createCrmRepositories();
+    await repositories.tasks.remove(id, admin);
+    const tasks = await repositories.tasks.list(admin);
     return NextResponse.json({ ok: true, tasks });
   } catch (error) {
-    if (error instanceof TaskAccessError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
+    if (error instanceof Error && "status" in error) return NextResponse.json({ ok: false, message: error.message }, { status: Number(error.status) || 400 });
     throw error;
   }
 }

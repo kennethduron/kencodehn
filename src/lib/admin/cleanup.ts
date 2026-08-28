@@ -1,5 +1,7 @@
 import type { Query } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { isSupabaseDataProviderEnabled } from "@/lib/data/provider";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
 
@@ -60,6 +62,15 @@ async function deleteQuery(query: Query) {
 }
 
 export async function getCleanupSummary(): Promise<CleanupCounts> {
+  if (isSupabaseDataProviderEnabled()) {
+    const client = await createSupabaseServerClient();
+    const count = async (table: string) => {
+      const { count: value, error } = await client.from(table).select("id", { count: "exact", head: true });
+      if (error) throw new Error(`Supabase cleanup count failed (${error.code ?? "unknown"}).`);
+      return value ?? 0;
+    };
+    return { leads: await count("leads"), notes: await count("lead_notes"), tasks: await count("tasks"), notifications: await count("notifications"), activityLogs: await count("activity_logs"), emailLogs: await count("email_logs"), pushLogs: await count("push_logs") };
+  }
   return {
     leads: await countCollection("leads"),
     notes: await countCollection("notes"),
@@ -72,6 +83,19 @@ export async function getCleanupSummary(): Promise<CleanupCounts> {
 }
 
 export async function getLeadDeletionSummary(leadId: string): Promise<CleanupCounts> {
+  if (isSupabaseDataProviderEnabled()) {
+    const client = await createSupabaseServerClient();
+    const count = async (table: string, column: string, value: string) => {
+      const { count: result, error } = await client.from(table).select("id", { count: "exact", head: true }).eq(column, value);
+      if (error) throw new Error(`Supabase lead cleanup count failed (${error.code ?? "unknown"}).`);
+      return result ?? 0;
+    };
+    return {
+      leads: await count("leads", "id", leadId), notes: await count("lead_notes", "lead_id", leadId), tasks: await count("tasks", "lead_id", leadId),
+      notifications: await count("notifications", "lead_id", leadId), activityLogs: await count("activity_logs", "lead_id", leadId),
+      emailLogs: await count("email_logs", "lead_id", leadId), pushLogs: await count("push_logs", "lead_id", leadId),
+    };
+  }
   const db = getAdminDb();
   if (!db) return emptyCleanupCounts;
   const lead = await db.collection("leads").doc(leadId).get();
@@ -87,6 +111,12 @@ export async function getLeadDeletionSummary(leadId: string): Promise<CleanupCou
 }
 
 export async function deleteLeadCascade(leadId: string): Promise<CleanupCounts> {
+  if (isSupabaseDataProviderEnabled()) {
+    const client = await createSupabaseServerClient();
+    const { data, error } = await client.rpc("delete_lead_cascade", { p_lead: leadId });
+    if (error) throw new Error(`Supabase lead cleanup failed (${error.code ?? "unknown"}).`);
+    return data as CleanupCounts;
+  }
   const db = getAdminDb();
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");
@@ -111,6 +141,12 @@ export async function deleteLeadCascade(leadId: string): Promise<CleanupCounts> 
 }
 
 export async function cleanupOperationalData(): Promise<CleanupCounts> {
+  if (isSupabaseDataProviderEnabled()) {
+    const client = await createSupabaseServerClient();
+    const { data, error } = await client.rpc("cleanup_operational_data");
+    if (error) throw new Error(`Supabase operational cleanup failed (${error.code ?? "unknown"}).`);
+    return data as CleanupCounts;
+  }
   const db = getAdminDb();
   if (!db) {
     throw new Error("Firebase Admin no esta configurado.");

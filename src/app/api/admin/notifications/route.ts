@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
-import { listNotifications, markAllNotificationsRead } from "@/lib/admin/data";
+import { createCrmRepositories } from "@/lib/data/repositories";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const access = await requirePermissionsFromRequest(request, "notifications:view");
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
-  const notifications = await listNotifications(access.admin);
+  const notifications = await (await createCrmRepositories()).notifications.list(access.admin);
   return NextResponse.json({ ok: true, notifications });
 }
 
@@ -24,7 +24,8 @@ export async function PATCH(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Accion invalida.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  await markAllNotificationsRead(admin);
-  const notifications = await listNotifications(admin);
+  const repositories = await createCrmRepositories();
+  await repositories.notifications.markAllRead(admin);
+  const notifications = await repositories.notifications.list(admin);
   return NextResponse.json({ ok: true, notifications });
 }

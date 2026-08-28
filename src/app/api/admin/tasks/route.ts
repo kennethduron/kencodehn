@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
-import { createTask, listTasks, TaskAccessError } from "@/lib/admin/data";
+import { createCrmRepositories } from "@/lib/data/repositories";
 
 export const runtime = "nodejs";
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const admin = access.admin;
   const leadId = request.nextUrl.searchParams.get("leadId") ?? undefined;
-  const tasks = await listTasks(admin, leadId);
+  const tasks = await (await createCrmRepositories()).tasks.list(admin, leadId);
   return NextResponse.json({ ok: true, tasks });
 }
 
@@ -36,11 +36,12 @@ export async function POST(request: NextRequest) {
   }
   const input = parsed.data;
   try {
-    await createTask(input, admin);
-    const tasks = await listTasks(admin);
+    const repositories = await createCrmRepositories();
+    await repositories.tasks.create(input, admin);
+    const tasks = await repositories.tasks.list(admin);
     return NextResponse.json({ ok: true, tasks });
   } catch (error) {
-    if (error instanceof TaskAccessError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
+    if (error instanceof Error && "status" in error) return NextResponse.json({ ok: false, message: error.message }, { status: Number(error.status) || 400 });
     throw error;
   }
 }

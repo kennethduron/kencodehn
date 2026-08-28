@@ -574,8 +574,8 @@ export async function listNotifications(admin: AdminUser) {
   if (!db || notificationDataScopeForAdmin(admin) === "none") return [];
   const personalSnapshot = await db.collection("notifications")
     .where("recipientUid", "==", admin.uid)
-    .orderBy("createdAt", "desc")
-    .limit(100)
+    // Equality stays server-scoped without requiring a composite index during the Firebase shadow window.
+    .limit(200)
     .get();
   const notifications = personalSnapshot.docs.map(mapNotification);
   if (notificationDataScopeForAdmin(admin) === "personal_with_legacy") {

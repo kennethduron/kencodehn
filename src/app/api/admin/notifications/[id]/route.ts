@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
-import { deleteNotification, listNotifications, NotificationAccessError, updateNotificationRead } from "@/lib/admin/data";
+import { createCrmRepositories } from "@/lib/data/repositories";
 
 export const runtime = "nodejs";
 
@@ -20,11 +20,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ ok: false, message: "Datos invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
   try {
-    await updateNotificationRead(id, parsed.data.read, admin);
-    const notifications = await listNotifications(admin);
+    const repositories = await createCrmRepositories();
+    await repositories.notifications.setRead(id, parsed.data.read, admin);
+    const notifications = await repositories.notifications.list(admin);
     return NextResponse.json({ ok: true, notifications });
   } catch (error) {
-    if (error instanceof NotificationAccessError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
+    if (error instanceof Error && "status" in error) return NextResponse.json({ ok: false, message: error.message }, { status: Number(error.status) || 400 });
     throw error;
   }
 }
@@ -35,11 +36,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const admin = access.admin;
   const { id } = await params;
   try {
-    await deleteNotification(id, admin);
-    const notifications = await listNotifications(admin);
+    const repositories = await createCrmRepositories();
+    await repositories.notifications.remove(id, admin);
+    const notifications = await repositories.notifications.list(admin);
     return NextResponse.json({ ok: true, notifications });
   } catch (error) {
-    if (error instanceof NotificationAccessError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
+    if (error instanceof Error && "status" in error) return NextResponse.json({ ok: false, message: error.message }, { status: Number(error.status) || 400 });
     throw error;
   }
 }

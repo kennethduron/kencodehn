@@ -3,15 +3,19 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { LockKeyhole } from "lucide-react";
+import Link from "next/link";
+import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { getFirebaseClient } from "@/lib/firebase/client";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { CrmAuthProvider } from "@/lib/auth/provider";
 
-export function AdminLogin({ missingServerEnv = [], missingClientEnv = [] }: { missingServerEnv?: string[]; missingClientEnv?: string[] }) {
+export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], missingClientEnv = [] }: { authProvider?: CrmAuthProvider; missingServerEnv?: string[]; missingClientEnv?: string[] }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const missing = [...missingServerEnv, ...missingClientEnv];
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -19,14 +23,27 @@ export function AdminLogin({ missingServerEnv = [], missingClientEnv = [] }: { m
     setMessage("");
     setIsSubmitting(true);
 
-    const firebase = getFirebaseClient();
-    if (!firebase.ok) {
-      setMessage(`Faltan variables publicas de Firebase: ${firebase.missing.join(", ")}`);
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
+      if (authProvider === "supabase") {
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+        if (error) throw error;
+        const profileResponse = await fetch("/api/admin/me", { cache: "no-store" });
+        if (!profileResponse.ok) {
+          await supabase.auth.signOut();
+          setMessage("La cuenta no tiene un perfil activo autorizado.");
+          setIsSubmitting(false);
+          return;
+        }
+        router.refresh();
+        return;
+      }
+      const firebase = getFirebaseClient();
+      if (!firebase.ok) {
+        setMessage(`Faltan variables publicas de Firebase: ${firebase.missing.join(", ")}`);
+        setIsSubmitting(false);
+        return;
+      }
       const credential = await signInWithEmailAndPassword(firebase.auth, email, password);
       const idToken = await credential.user.getIdToken();
       const response = await fetch("/api/admin/session", {
@@ -42,7 +59,7 @@ export function AdminLogin({ missingServerEnv = [], missingClientEnv = [] }: { m
       }
       router.refresh();
     } catch {
-      setMessage("Correo o contrasena incorrectos, o Firebase Auth no esta configurado.");
+      setMessage("Correo o contraseña incorrectos, o la cuenta no está disponible.");
       setIsSubmitting(false);
     }
   }
@@ -75,16 +92,22 @@ export function AdminLogin({ missingServerEnv = [], missingClientEnv = [] }: { m
             />
           </label>
           <label className="grid gap-2 text-sm font-bold text-kc-text">
-            Contrasena
-            <input
-              type="password"
+            Contraseña
+            <span className="relative block">
+              <input
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
-              className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-kc-text outline-none transition focus:border-kc-cyan"
+              className="min-h-12 w-full rounded-xl border border-white/10 bg-kc-bg px-4 pr-14 text-kc-text outline-none transition focus:border-kc-cyan"
               required
-            />
+              />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute inset-y-0 right-0 grid min-w-12 place-items-center rounded-r-xl text-kc-muted hover:text-kc-cyan" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
+                {showPassword ? <EyeOff size={19} aria-hidden="true" /> : <Eye size={19} aria-hidden="true" />}
+              </button>
+            </span>
           </label>
+          {authProvider === "supabase" ? <Link href="/admin/forgot-password" className="w-fit text-sm font-bold text-kc-cyan hover:underline">¿Olvidó su contraseña?</Link> : null}
           {message ? <p className="rounded-xl border border-rose-300/25 bg-rose-300/10 p-3 text-sm text-rose-100">{message}</p> : null}
           <button
             type="submit"
