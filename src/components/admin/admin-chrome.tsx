@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Settings, Sparkles, Users, X } from "lucide-react";
+import { BarChart3, Bell, ClipboardList, LogOut, Menu, Search, Settings, Sparkles, UserRoundCog, Users, X } from "lucide-react";
 import { useState } from "react";
 import type { AdminPermission, AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/admin/leads", label: "Leads", icon: Users, permission: "leads:view" },
   { href: "/admin/tareas", label: "Tareas", icon: ClipboardList, permission: "tasks:view" },
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell, permission: "notifications:view" },
+  { href: "/admin/equipo", label: "Equipo", icon: UserRoundCog, permission: "users:manage" },
   { href: "/admin/configuracion", label: "Config.", icon: Settings, permission: "settings:view" },
 ] satisfies Array<{ href: string; label: string; icon: typeof BarChart3; permission: AdminPermission }>;
 

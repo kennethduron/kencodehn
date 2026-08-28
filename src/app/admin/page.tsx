@@ -3,7 +3,7 @@ import { AdminDashboard } from "@/components/admin/dashboard";
 import { AdminLogin } from "@/components/admin/admin-login";
 import { getCurrentAdmin, getMissingAdminEnv, getMissingFirebaseClientEnv } from "@/lib/admin/auth";
 import { listActivityLogs, listLeads, listNotifications, listTasks } from "@/lib/admin/data";
-import { hasPermission } from "@/lib/admin/authorization";
+import { hasPermission, leadDataScopeForAdmin } from "@/lib/admin/authorization";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +18,13 @@ export default async function AdminPage() {
   const canViewTasks = hasPermission(admin, "tasks:view");
   const canViewNotifications = hasPermission(admin, "notifications:view");
   const canViewActivity = hasPermission(admin, "activity:view");
+  const personalScope = leadDataScopeForAdmin(admin) === "assigned";
+  const canViewDashboardActivity = canViewActivity && !personalScope;
   const [leads, tasks, notifications, activity] = await Promise.all([
-    listLeads(),
+    listLeads(admin),
     canViewTasks ? listTasks() : Promise.resolve([]),
     canViewNotifications ? listNotifications() : Promise.resolve([]),
-    canViewActivity ? listActivityLogs(undefined, 8) : Promise.resolve([]),
+    canViewDashboardActivity ? listActivityLogs(undefined, 8) : Promise.resolve([]),
   ]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
@@ -37,7 +39,8 @@ export default async function AdminPage() {
         canCreateTasks={hasPermission(admin, "tasks:edit")}
         canViewTasks={canViewTasks}
         canViewNotifications={canViewNotifications}
-        canViewActivity={canViewActivity}
+        canViewActivity={canViewDashboardActivity}
+        personalScope={personalScope}
       />
     </AdminChrome>
   );

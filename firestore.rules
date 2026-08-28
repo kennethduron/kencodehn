@@ -8,7 +8,44 @@ service cloud.firestore {
     function adminUser() {
       return signedIn()
         && exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid))
-        && get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.active == true;
+        && get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.active == true
+        && validAdminRole(get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role);
+    }
+
+    function validAdminRole(role) {
+      return role == 'owner'
+        || role == 'admin'
+        || role == 'manager'
+        || role == 'viewer'
+        || role == 'sales_agent';
+    }
+
+    function adminRole() {
+      return get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role;
+    }
+
+    function globalLeadScope() {
+      return adminRole() == 'owner'
+        || adminRole() == 'admin'
+        || adminRole() == 'manager'
+        || adminRole() == 'viewer';
+    }
+
+    function assignedLead(leadId) {
+      return exists(/databases/$(database)/documents/leads/$(leadId))
+        && get(/databases/$(database)/documents/leads/$(leadId)).data.assignedToUid == request.auth.uid;
+    }
+
+    function canReadNotes() {
+      return adminRole() == 'owner' || adminRole() == 'admin' || adminRole() == 'sales_agent';
+    }
+
+    function canReadTasksOrNotifications() {
+      return adminRole() == 'owner' || adminRole() == 'admin';
+    }
+
+    function canReadActivity() {
+      return adminRole() == 'owner' || adminRole() == 'admin' || adminRole() == 'sales_agent';
     }
 
     match /adminUsers/{userId} {
@@ -17,27 +54,30 @@ service cloud.firestore {
     }
 
     match /leads/{leadId} {
-      allow read: if adminUser();
+      allow read: if adminUser()
+        && (globalLeadScope() || resource.data.assignedToUid == request.auth.uid);
       allow write: if false;
     }
 
     match /notes/{noteId} {
-      allow read: if adminUser();
+      allow read: if adminUser() && canReadNotes()
+        && (globalLeadScope() || assignedLead(resource.data.leadId));
       allow write: if false;
     }
 
     match /tasks/{taskId} {
-      allow read: if adminUser();
+      allow read: if adminUser() && canReadTasksOrNotifications();
       allow write: if false;
     }
 
     match /notifications/{notificationId} {
-      allow read: if adminUser();
+      allow read: if adminUser() && canReadTasksOrNotifications();
       allow write: if false;
     }
 
     match /activityLogs/{logId} {
-      allow read: if adminUser();
+      allow read: if adminUser() && canReadActivity()
+        && (globalLeadScope() || (resource.data.leadId != null && assignedLead(resource.data.leadId)));
       allow write: if false;
     }
 

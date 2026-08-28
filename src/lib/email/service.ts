@@ -21,7 +21,8 @@ export type EmailType =
   | "task_reminder"
   | "task_overdue"
   | "status_update"
-  | "daily_summary";
+  | "daily_summary"
+  | "user_invitation";
 
 export type EmailSendResult = {
   sent: boolean;
@@ -37,23 +38,25 @@ export type EmailSendResult = {
   logged?: boolean;
 };
 
-type SendEmailInput = EmailTemplate & {
+export type SendEmailInput = EmailTemplate & {
   type: EmailType;
   to?: string | null;
   relatedLeadId?: string | null;
   relatedTaskId?: string | null;
+  relatedUserUid?: string | null;
 };
 
 let resend: Resend | null = null;
 
 const sendEmailSchema = z.object({
-  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary"]),
+  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary", "user_invitation"]),
   to: z.string().email().optional().nullable(),
   subject: z.string().trim().min(3).max(180),
   text: z.string().trim().min(10).max(10000),
   html: z.string().trim().min(20).max(30000),
   relatedLeadId: z.string().trim().max(160).optional().nullable(),
   relatedTaskId: z.string().trim().max(160).optional().nullable(),
+  relatedUserUid: z.string().trim().max(160).optional().nullable(),
 });
 
 function getEmailTarget() {
@@ -103,6 +106,7 @@ async function logEmail(input: SendEmailInput, result: EmailSendResult) {
       providerMessageId: result.id ?? null,
       relatedLeadId: input.relatedLeadId ?? null,
       relatedTaskId: input.relatedTaskId ?? null,
+      relatedUserUid: input.relatedUserUid ?? null,
       createdAt: new Date().toISOString(),
     });
     return true;
@@ -131,7 +135,7 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
   const client = getResendClient();
   const settings = await getAdminSettings();
 
-  if (!settings.emailNotificationsEnabled && parsed.data.type !== "client_lead_confirmation") {
+  if (!settings.emailNotificationsEnabled && parsed.data.type !== "client_lead_confirmation" && parsed.data.type !== "user_invitation") {
     return withLog(parsed.data, { sent: false, reason: "email_notifications_disabled" });
   }
 

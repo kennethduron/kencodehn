@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CalendarPlus, Copy, ExternalLink, Mail, Search, SlidersHorizontal } from "lucide-react";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
-import type { AdminLead, LeadPriority, LeadStatus } from "@/lib/admin/types";
+import type { AdminLead, AssignableSalesAgent, LeadPriority, LeadStatus } from "@/lib/admin/types";
 import { whatsappLink } from "@/lib/site";
 import { leadPriorityLabels, leadStatusLabels, money, shortDate } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge } from "./status-badge";
@@ -20,7 +20,7 @@ function uniqueValues(leads: AdminLead[], key: keyof Pick<AdminLead, "project" |
   return Array.from(new Set(leads.map((lead) => String(lead[key] || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
-export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLeads: AdminLead[]; canEdit: boolean; canCreateTasks: boolean }) {
+export function LeadList({ initialLeads, canEdit, canCreateTasks, canAssign = false, assignableUsers = [] }: { initialLeads: AdminLead[]; canEdit: boolean; canCreateTasks: boolean; canAssign?: boolean; assignableUsers?: AssignableSalesAgent[] }) {
   const [leads, setLeads] = useState(initialLeads);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -28,12 +28,22 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLea
   const [project, setProject] = useState("all");
   const [locale, setLocale] = useState("all");
   const [source, setSource] = useState("all");
+  const [assignee, setAssignee] = useState("all");
   const [sort, setSort] = useState<SortKey>("recent");
   const [toast, setToast] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
 
   const projects = useMemo(() => uniqueValues(leads, "project"), [leads]);
   const sources = useMemo(() => uniqueValues(leads, "sourcePath"), [leads]);
+  const assigneeOptions = useMemo(() => {
+    const options = new Map(assignableUsers.map((member) => [member.uid, member.name || member.email]));
+    leads.forEach((lead) => {
+      if (lead.assignedToUid && !options.has(lead.assignedToUid)) {
+        options.set(lead.assignedToUid, lead.assignedToName || lead.assignedToEmail || "Vendedor no disponible");
+      }
+    });
+    return Array.from(options, ([uid, label]) => ({ uid, label })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [assignableUsers, leads]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -47,7 +57,8 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLea
         const matchesProject = project === "all" || lead.project === project;
         const matchesLocale = locale === "all" || lead.locale === locale;
         const matchesSource = source === "all" || lead.sourcePath === source;
-        return matchesQuery && matchesStatus && matchesPriority && matchesProject && matchesLocale && matchesSource;
+        const matchesAssignee = assignee === "all" || (assignee === "unassigned" ? !lead.assignedToUid : lead.assignedToUid === assignee);
+        return matchesQuery && matchesStatus && matchesPriority && matchesProject && matchesLocale && matchesSource && matchesAssignee;
       })
       .sort((a, b) => {
         if (sort === "oldest") return a.createdAt.localeCompare(b.createdAt);
@@ -56,7 +67,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLea
         if (sort === "next_followup") return (a.followUpAt || "9999").localeCompare(b.followUpAt || "9999");
         return b.createdAt.localeCompare(a.createdAt);
       });
-  }, [leads, locale, priority, project, query, sort, source, status]);
+  }, [assignee, leads, locale, priority, project, query, sort, source, status]);
 
   async function updateLead(id: string, updates: Partial<AdminLead>) {
     if (!canEdit) return;
@@ -107,14 +118,14 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLea
     showToast(`${label} copiado al portapapeles.`);
   }
 
-  const filtersActive = [status, priority, project, locale, source].some((value) => value !== "all") || query.trim() !== "";
+  const filtersActive = [status, priority, project, locale, source, assignee].some((value) => value !== "all") || query.trim() !== "";
 
   return (
     <section className="grid gap-5">
       <Toast message={toast} variant={toastVariant} />
 
       <div className="kc-admin-card p-4">
-        <div className="grid gap-3 lg:grid-cols-[1fr_repeat(6,minmax(0,170px))]">
+        <div className={`grid gap-3 ${canAssign ? "lg:grid-cols-[1fr_repeat(7,minmax(0,170px))]" : "lg:grid-cols-[1fr_repeat(6,minmax(0,170px))]"}`}>
           <label className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-kc-muted" size={18} />
             <input
@@ -145,6 +156,11 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLea
             <option value="all">Origen</option>
             {sources.map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
+          {canAssign ? <select value={assignee} onChange={(event) => setAssignee(event.target.value)} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text outline-none">
+            <option value="all">Todos los vendedores</option>
+            <option value="unassigned">Sin asignar</option>
+            {assigneeOptions.map((member) => <option key={member.uid} value={member.uid}>{member.label}</option>)}
+          </select> : null}
           <select value={sort} onChange={(event) => setSort(event.target.value as SortKey)} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text outline-none">
             <option value="recent">Mas reciente</option>
             <option value="oldest">Mas antiguo</option>
@@ -156,7 +172,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLea
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-kc-muted">
           <span className="inline-flex items-center gap-2 font-bold"><SlidersHorizontal size={16} aria-hidden="true" /> {filtered.length} de {leads.length} leads</span>
           {filtersActive ? (
-            <button type="button" onClick={() => { setQuery(""); setStatus("all"); setPriority("all"); setProject("all"); setLocale("all"); setSource("all"); setSort("recent"); }} className="font-black text-kc-cyan">
+            <button type="button" onClick={() => { setQuery(""); setStatus("all"); setPriority("all"); setProject("all"); setLocale("all"); setSource("all"); setAssignee("all"); setSort("recent"); }} className="font-black text-kc-cyan">
               Limpiar filtros
             </button>
           ) : null}
@@ -190,6 +206,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLea
                     <span className="block truncate font-black text-kc-text">{lead.name}</span>
                     <span className="mt-1 block truncate text-sm text-kc-muted">{lead.business} - {lead.project}</span>
                     <span className="mt-2 block truncate text-xs font-bold text-kc-muted">{lead.email || lead.phone}</span>
+                    <span className="mt-1 block truncate text-xs font-bold text-kc-cyan">{lead.assignedToName || lead.assignedToEmail || "Sin asignar"}</span>
                   </Link>
                 </td>
                 <td className="px-4 py-4">
@@ -239,6 +256,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks }: { initialLea
               <LeadStatusBadge status={lead.status} />
               <LeadPriorityBadge priority={lead.priority} />
               <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-kc-muted">{shortDate(lead.createdAt)}</span>
+              <span className="rounded-full border border-kc-cyan/20 bg-kc-cyan/10 px-3 py-1 text-xs font-bold text-kc-cyan">{lead.assignedToName || lead.assignedToEmail || "Sin asignar"}</span>
             </div>
             <h2 className="mt-4 font-display text-2xl font-black text-kc-text">{lead.name}</h2>
             <p className="mt-1 text-sm font-semibold text-kc-cyan">{lead.business}</p>

@@ -3,8 +3,9 @@ import { AdminChrome } from "@/components/admin/admin-chrome";
 import { AdminLogin } from "@/components/admin/admin-login";
 import { LeadDetail } from "@/components/admin/lead-detail";
 import { getCurrentAdmin, getMissingAdminEnv, getMissingFirebaseClientEnv } from "@/lib/admin/auth";
-import { hasPermission } from "@/lib/admin/authorization";
-import { getLead, listActivityLogs, listNotes, listNotifications, listTasks } from "@/lib/admin/data";
+import { canAssignLead, hasPermission } from "@/lib/admin/authorization";
+import { getAccessibleLead, listActivityLogs, listNotes, listNotifications, listTasks } from "@/lib/admin/data";
+import { listAssignableSalesAgents } from "@/lib/admin/users";
 
 export const dynamic = "force-dynamic";
 
@@ -21,16 +22,18 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
   const canViewNotes = hasPermission(admin, "notes:view");
   const canViewTasks = hasPermission(admin, "tasks:view");
   const canViewActivity = hasPermission(admin, "activity:view");
-  const [lead, notes, tasks, activity, notifications] = await Promise.all([
-    getLead(id),
+  const mayAssignLead = canAssignLead(admin);
+  const lead = await getAccessibleLead(id, admin);
+  if (!lead) {
+    notFound();
+  }
+  const [notes, tasks, activity, notifications, assignableUsers] = await Promise.all([
     canViewNotes ? listNotes(id) : Promise.resolve([]),
     canViewTasks ? listTasks(id) : Promise.resolve([]),
     canViewActivity ? listActivityLogs(id) : Promise.resolve([]),
     hasPermission(admin, "notifications:view") ? listNotifications() : Promise.resolve([]),
+    mayAssignLead ? listAssignableSalesAgents(admin) : Promise.resolve([]),
   ]);
-  if (!lead) {
-    notFound();
-  }
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (
@@ -47,6 +50,8 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
         canEditTasks={hasPermission(admin, "tasks:edit")}
         canViewActivity={canViewActivity}
         canDeleteLead={hasPermission(admin, "maintenance:run")}
+        canAssignLead={mayAssignLead}
+        assignableUsers={assignableUsers}
       />
     </AdminChrome>
   );

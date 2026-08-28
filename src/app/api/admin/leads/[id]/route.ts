@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { canRunMaintenance, deleteLeadCascade, getLeadDeletionSummary } from "@/lib/admin/cleanup";
-import { getLead, updateLead } from "@/lib/admin/data";
+import { getAccessibleLead, LeadAccessError, updateLead } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
 
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const access = await requirePermissionsFromRequest(request, "leads:view");
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const { id } = await params;
-  const lead = await getLead(id);
+  const lead = await getAccessibleLead(id, access.admin);
   if (!lead) {
     return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
   }
@@ -55,12 +55,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const admin = access.admin;
   const { id } = await params;
+  const existing = await getAccessibleLead(id, admin);
+  if (!existing) return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
   const parsed = leadUpdateSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Datos invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
   const updates = parsed.data;
-  await updateLead(id, updates, admin);
-  const lead = await getLead(id);
-  return NextResponse.json({ ok: true, lead });
+  try {
+    await updateLead(id, updates, admin);
+    const lead = await getAccessibleLead(id, admin);
+    return NextResponse.json({ ok: true, lead });
+  } catch (error) {
+    if (error instanceof LeadAccessError) return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
+    throw error;
+  }
 }

@@ -11,6 +11,9 @@ const actionTitles: Record<string, string> = {
   lead_value_updated: "Informacion comercial actualizada",
   lead_tags_updated: "Tags actualizados",
   lead_followup_updated: "Fecha de seguimiento actualizada",
+  lead_assigned: "Lead asignado",
+  lead_reassigned: "Lead reasignado",
+  lead_unassigned: "Lead dejado sin asignar",
   note_added: "Nota interna agregada",
   task_created: "Tarea creada",
   task_updated: "Tarea actualizada",
@@ -21,6 +24,11 @@ const actionTitles: Record<string, string> = {
   notification_unread: "Notificacion marcada como no leida",
   notification_deleted: "Notificacion eliminada",
   notifications_read_all: "Notificaciones leidas",
+  user_invited: "Usuario invitado",
+  user_invitation_resent: "Invitacion reenviada",
+  user_role_changed: "Rol de usuario actualizado",
+  user_activated: "Usuario activado",
+  user_deactivated: "Usuario desactivado",
 };
 
 export function formatActivityTitle(action: string) {
@@ -63,6 +71,26 @@ export function formatActivityMessage(activity: ActivityLog) {
   if (activity.action === "lead_tags_updated") {
     return "Tags del lead actualizados.";
   }
+  if (activity.action === "lead_assigned") {
+    return `Lead asignado a ${String(after.assignedToName || after.assignedToEmail || "un vendedor")}.`;
+  }
+  if (activity.action === "lead_reassigned") {
+    return `Lead reasignado de ${String(after.previousAssignedToName || after.previousAssignedToEmail || "otro vendedor")} a ${String(after.assignedToName || after.assignedToEmail || "un vendedor")}.`;
+  }
+  if (activity.action === "lead_unassigned") {
+    return "Lead dejado sin asignar.";
+  }
+  if (activity.action === "user_invited") {
+    return "Se preparo el acceso de un nuevo miembro del equipo.";
+  }
+  if (activity.action === "user_invitation_resent") {
+    return "Se genero un nuevo enlace de acceso para el miembro del equipo.";
+  }
+  if (activity.action === "user_role_changed") {
+    return `Rol cambiado de ${String(after.previousRole || "sin rol")} a ${String(after.newRole || "sin rol")}.`;
+  }
+  if (activity.action === "user_activated") return "El acceso del usuario fue activado.";
+  if (activity.action === "user_deactivated") return "El acceso del usuario fue desactivado.";
   if (activity.action === "note_added") {
     return "Se agrego una nota interna al lead.";
   }
@@ -83,9 +111,9 @@ export function formatActivityMessage(activity: ActivityLog) {
 
 export function mapActivityTone(activity: ActivityLog): ActivityTone {
   if (["lead_status_changed", "task_updated", "lead_followup_updated"].includes(activity.action)) return "info";
-  if (["lead_created", "note_added", "task_created", "task_completed"].includes(activity.action)) return "success";
+  if (["lead_created", "lead_assigned", "lead_reassigned", "note_added", "task_created", "task_completed", "user_invited", "user_invitation_resent", "user_activated"].includes(activity.action)) return "success";
   if (["lead_priority_changed", "lead_value_updated", "lead_tags_updated"].includes(activity.action)) return "warning";
-  if (["task_deleted", "task_overdue", "notification_deleted"].includes(activity.action)) return "danger";
+  if (["lead_unassigned", "task_deleted", "task_overdue", "notification_deleted", "user_deactivated"].includes(activity.action)) return "danger";
   return "info";
 }
 
@@ -98,6 +126,9 @@ export function activityHref(activity: ActivityLog) {
   }
   if (activity.entityType === "notification") {
     return "/admin/notificaciones";
+  }
+  if (activity.entityType === "user") {
+    return "/admin/equipo";
   }
   return "/admin";
 }

@@ -4,8 +4,7 @@ import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import {
   defaultPermissionsForRole,
   hasEveryPermission,
-  isEmailInList,
-  parseEmailList,
+  isBootstrapOwnerEmail,
   resolveAdminUserFromProfile,
   type AdminPermission,
   type AdminUser,
@@ -19,9 +18,6 @@ export function getMissingAdminEnv() {
   if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY && (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY)) {
     missing.push("FIREBASE_SERVICE_ACCOUNT_KEY");
   }
-  if (!process.env.ADMIN_EMAILS) {
-    missing.push("ADMIN_EMAILS");
-  }
   return missing;
 }
 
@@ -34,21 +30,13 @@ export function getMissingFirebaseClientEnv() {
   ].filter((key) => !process.env[key]);
 }
 
-export function isEmailAllowed(email?: string | null) {
-  return isEmailInList(email, process.env.ADMIN_EMAILS);
-}
-
 export function getSessionMaxAge() {
   return SESSION_DAYS * 24 * 60 * 60;
 }
 
 type AdminProfileResult =
-  | { ok: true; admin: AdminUser; created: boolean }
+  | { ok: true; admin: AdminUser; created: boolean; invitationPending: boolean }
   | { ok: false; reason: "firebase_not_configured" | "profile_missing" | "profile_inactive" | "profile_invalid" };
-
-function isBootstrapOwnerEmail(email: string) {
-  return parseEmailList(process.env.CRM_OWNER_EMAILS).includes(email.toLowerCase());
-}
 
 async function loadAdminProfile(uid: string, email: string, allowBootstrap: boolean): Promise<AdminProfileResult> {
   const db = getAdminDb();
@@ -59,7 +47,11 @@ async function loadAdminProfile(uid: string, email: string, allowBootstrap: bool
   const ref = db.collection("adminUsers").doc(uid);
   let snapshot = await ref.get();
 
-  if (!snapshot.exists && allowBootstrap && isBootstrapOwnerEmail(email)) {
+  if (
+    !snapshot.exists
+    && allowBootstrap
+    && isBootstrapOwnerEmail(email, process.env.ADMIN_EMAILS, process.env.CRM_OWNER_EMAILS)
+  ) {
     const now = new Date().toISOString();
     try {
       await ref.create({
@@ -94,7 +86,12 @@ async function loadAdminProfile(uid: string, email: string, allowBootstrap: bool
     return { ok: false, reason: "profile_invalid" };
   }
 
-  return { ok: true, admin, created: Boolean(profile.bootstrapCreatedAt) };
+  return {
+    ok: true,
+    admin,
+    created: Boolean(profile.bootstrapCreatedAt),
+    invitationPending: profile.invitationStatus === "pending" || profile.invitationStatus === "sent" || profile.invitationStatus === "failed" || profile.invitationStatus === "email_failed",
+  };
 }
 
 function profileFailure(reason: Exclude<AdminProfileResult, { ok: true }>["reason"]) {
@@ -117,10 +114,6 @@ export async function createCrmSession(idToken: string) {
   }
 
   const decodedToken = await auth.verifyIdToken(idToken);
-  if (!isEmailAllowed(decodedToken.email)) {
-    return { ok: false as const, status: 403, message: "Este correo no esta autorizado para entrar al CRM." };
-  }
-
   const email = (decodedToken.email ?? "").toLowerCase();
   const profile = await loadAdminProfile(decodedToken.uid, email, true);
   if (!profile.ok) {
@@ -134,11 +127,13 @@ export async function createCrmSession(idToken: string) {
   const db = getAdminDb();
   if (db) {
     try {
+      const lastLoginAt = new Date().toISOString();
       await db.collection("adminUsers").doc(decodedToken.uid).set(
         {
           uid: decodedToken.uid,
           email,
-          lastLoginAt: new Date().toISOString(),
+          lastLoginAt,
+          ...(profile.invitationPending ? { invitationStatus: "accepted", invitationAcceptedAt: lastLoginAt, invitationError: null } : {}),
         },
         { merge: true },
       );
@@ -167,9 +162,6 @@ export async function verifyCrmSession(sessionCookie: string | undefined | null)
 
   try {
     const decoded = await auth.verifySessionCookie(sessionCookie, true);
-    if (!isEmailAllowed(decoded.email)) {
-      return null;
-    }
     const profile = await loadAdminProfile(decoded.uid, (decoded.email ?? "").toLowerCase(), false);
     return profile.ok ? profile.admin : null;
   } catch {

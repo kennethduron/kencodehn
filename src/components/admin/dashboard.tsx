@@ -8,7 +8,7 @@ import { AdminBarChart, AdminDonutMetric } from "./admin-chart";
 import { KpiCard } from "./kpi-card";
 import { LeadList } from "./lead-list";
 
-export function AdminDashboard({ leads, tasks, notifications, activity, canEditLeads, canCreateTasks, canViewTasks, canViewNotifications, canViewActivity }: { leads: AdminLead[]; tasks: AdminTask[]; notifications: AdminNotification[]; activity: ActivityLog[]; canEditLeads: boolean; canCreateTasks: boolean; canViewTasks: boolean; canViewNotifications: boolean; canViewActivity: boolean }) {
+export function AdminDashboard({ leads, tasks, notifications, activity, canEditLeads, canCreateTasks, canViewTasks, canViewNotifications, canViewActivity, personalScope = false }: { leads: AdminLead[]; tasks: AdminTask[]; notifications: AdminNotification[]; activity: ActivityLog[]; canEditLeads: boolean; canCreateTasks: boolean; canViewTasks: boolean; canViewNotifications: boolean; canViewActivity: boolean; personalScope?: boolean }) {
   const total = leads.length;
   const newLeads = leads.filter((lead) => lead.status === "new").length;
   const contacted = leads.filter((lead) => lead.status === "contacted").length;
@@ -32,7 +32,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
   const todayTasks = tasks.filter((task) => task.date === today && task.status !== "completed").length;
 
   const cards = [
-    { label: "Total de leads", value: total, detail: `${newLeads} nuevos en pipeline`, icon: Users, accent: "cyan" as const },
+    { label: personalScope ? "Mis leads" : "Total de leads", value: total, detail: `${newLeads} nuevos en pipeline`, icon: Users, accent: "cyan" as const },
     { label: "Leads ganados", value: won, detail: `${money(wonValue)} cerrados`, icon: TrendingUp, accent: "green" as const },
     { label: "Leads perdidos", value: lost, detail: "Oportunidades para revisar", icon: TrendingDown, accent: "rose" as const },
     ...(canViewTasks ? [{ label: "Tareas pendientes", value: pendingTasks, detail: `${todayTasks} para hoy`, icon: CalendarClock, accent: overdueTasks ? "rose" as const : "blue" as const }] : []),
@@ -60,8 +60,8 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-kc-cyan">Dashboard</p>
-          <h1 className="mt-2 font-display text-3xl font-black text-kc-text sm:text-4xl">Centro de operaciones</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-kc-muted">Pipeline, tareas y alertas internas en una vista rapida para operar Ken Code con claridad.</p>
+          <h1 className="mt-2 font-display text-3xl font-black text-kc-text sm:text-4xl">{personalScope ? "Mi cartera comercial" : "Centro de operaciones"}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-kc-muted">{personalScope ? "Metricas calculadas unicamente con los leads asignados a tu cuenta." : "Pipeline, tareas y alertas internas en una vista rapida para operar Ken Code con claridad."}</p>
         </div>
         {canViewNotifications ? <Link href="/admin/notificaciones" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-kc-cyan/30 bg-kc-cyan/10 px-4 text-sm font-black text-kc-cyan transition hover:border-kc-cyan/60 hover:bg-kc-cyan/15">
           <Bell size={17} aria-hidden="true" />

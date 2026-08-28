@@ -4,8 +4,23 @@ import { formatActivityMessage, formatActivityTitle } from "@/lib/admin/activity
 import { sendLeadStatusEmail, sendTaskOverdueEmail } from "@/lib/email/service";
 import { sendPushToAdmins } from "@/lib/push/service";
 import { getAdminSettings } from "@/lib/admin/settings";
+import { canAccessLead, canAssignLead, isAssignableSalesAgent, leadDataScopeForAdmin, resolveLeadAssignmentAction } from "@/lib/admin/authorization";
 import { HONDURAS_TIME_ZONE, getHondurasDatePart, getHondurasTimePart, hondurasDateTimeToIso } from "@/lib/time";
 import type { ActivityLog, AdminLead, AdminNote, AdminNotification, AdminTask, AdminUser, LeadPriority, LeadStatus, PaymentStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
+
+export class LeadAccessError extends Error {
+  constructor(message = "Lead no encontrado.") {
+    super(message);
+    this.name = "LeadAccessError";
+  }
+}
+
+export class LeadAssignmentError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = "LeadAssignmentError";
+  }
+}
 
 function toIso(value: unknown): string | null {
   if (!value) {
@@ -128,6 +143,12 @@ export function mapLead(doc: QueryDocumentSnapshot<DocumentData>): AdminLead {
     followUpTimezone: String(data.followUpTimezone ?? HONDURAS_TIME_ZONE),
     followUpAt,
     tags: toStringArray(data.tags).length ? toStringArray(data.tags) : toStringArray(data.crm?.tags),
+    assignedToUid: data.assignedToUid ? String(data.assignedToUid) : null,
+    assignedToName: data.assignedToName ? String(data.assignedToName) : null,
+    assignedToEmail: data.assignedToEmail ? String(data.assignedToEmail) : null,
+    assignedAt: toIso(data.assignedAt),
+    assignedByUid: data.assignedByUid ? String(data.assignedByUid) : null,
+    assignedByEmail: data.assignedByEmail ? String(data.assignedByEmail) : null,
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(data.updatedAt) ?? toIso(data.createdAt) ?? new Date(0).toISOString(),
   };
@@ -195,7 +216,7 @@ export function mapActivityLog(doc: QueryDocumentSnapshot<DocumentData>): Activi
   const data = doc.data();
   const draft = {
     id: doc.id,
-    entityType: data.entityType === "note" || data.entityType === "task" || data.entityType === "notification" || data.entityType === "system" ? data.entityType : "lead",
+    entityType: data.entityType === "note" || data.entityType === "task" || data.entityType === "notification" || data.entityType === "user" || data.entityType === "system" ? data.entityType : "lead",
     entityId: String(data.entityId ?? ""),
     leadId: data.leadId ? String(data.leadId) : data.entityType === "lead" ? String(data.entityId ?? "") : null,
     taskId: data.taskId ? String(data.taskId) : null,
@@ -207,6 +228,12 @@ export function mapActivityLog(doc: QueryDocumentSnapshot<DocumentData>): Activi
     after: data.after ?? null,
     userUid: data.userUid ? String(data.userUid) : undefined,
     userEmail: String(data.userEmail ?? ""),
+    previousAssignedToUid: data.previousAssignedToUid ? String(data.previousAssignedToUid) : data.previousAssignedToUid === null ? null : undefined,
+    newAssignedToUid: data.newAssignedToUid ? String(data.newAssignedToUid) : data.newAssignedToUid === null ? null : undefined,
+    performedByUid: data.performedByUid ? String(data.performedByUid) : undefined,
+    performedByEmail: data.performedByEmail ? String(data.performedByEmail) : undefined,
+    actorUid: data.actorUid ? String(data.actorUid) : undefined,
+    targetUid: data.targetUid ? String(data.targetUid) : undefined,
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
   } satisfies ActivityLog;
   return {
@@ -247,13 +274,17 @@ export async function listActivityLogs(leadId?: string, limit = 100) {
   return snapshot.docs.map(mapActivityLog).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function listLeads() {
+export async function listLeads(admin: AdminUser) {
   const db = getAdminDb();
   if (!db) {
     return [];
   }
 
-  const snapshot = await db.collection("leads").orderBy("createdAt", "desc").limit(200).get();
+  const base = db.collection("leads");
+  const query = leadDataScopeForAdmin(admin) === "assigned"
+    ? base.where("assignedToUid", "==", admin.uid).orderBy("createdAt", "desc").limit(200)
+    : base.orderBy("createdAt", "desc").limit(200);
+  const snapshot = await query.get();
   return snapshot.docs.map(mapLead);
 }
 
@@ -267,6 +298,88 @@ export async function getLead(id: string) {
     return null;
   }
   return mapLead(doc as QueryDocumentSnapshot<DocumentData>);
+}
+
+export async function getAccessibleLead(id: string, admin: AdminUser) {
+  const lead = await getLead(id);
+  return lead && canAccessLead(admin, lead) ? lead : null;
+}
+
+export async function assignLead(id: string, assignedToUid: string | null, admin: AdminUser) {
+  if (!canAssignLead(admin)) throw new LeadAssignmentError(403, "No tienes permiso para asignar leads.");
+  const db = getAdminDb();
+  if (!db) throw new LeadAssignmentError(500, "Firebase Admin no esta configurado.");
+  const leadRef = db.collection("leads").doc(id);
+  const targetRef = assignedToUid ? db.collection("adminUsers").doc(assignedToUid) : null;
+  const activityRef = db.collection("activityLogs").doc();
+  const now = new Date().toISOString();
+
+  const changed = await db.runTransaction(async (transaction) => {
+    const leadSnapshot = await transaction.get(leadRef);
+    if (!leadSnapshot.exists) throw new LeadAssignmentError(404, "Lead no encontrado.");
+    const leadData = leadSnapshot.data() ?? {};
+    let targetData: DocumentData | null = null;
+    if (targetRef) {
+      const targetSnapshot = await transaction.get(targetRef);
+      if (!targetSnapshot.exists) throw new LeadAssignmentError(400, "El vendedor seleccionado no existe.");
+      targetData = targetSnapshot.data() ?? {};
+      if (!isAssignableSalesAgent(targetData)) {
+        throw new LeadAssignmentError(400, "El usuario seleccionado no es un vendedor activo.");
+      }
+    }
+
+    const previousAssignedToUid = leadData.assignedToUid ? String(leadData.assignedToUid) : null;
+    const assignmentAction = resolveLeadAssignmentAction(previousAssignedToUid, assignedToUid);
+    if (assignmentAction === "unchanged") return false;
+    const previousAssignedToName = leadData.assignedToName ? String(leadData.assignedToName) : null;
+    const previousAssignedToEmail = leadData.assignedToEmail ? String(leadData.assignedToEmail) : null;
+    const assignedToName = targetData ? String(targetData.name ?? targetData.displayName ?? "").trim() || null : null;
+    const assignedToEmail = targetData ? String(targetData.email ?? "").trim().toLowerCase() || null : null;
+    const action = assignmentAction === "assigned" ? "lead_assigned" : assignmentAction === "reassigned" ? "lead_reassigned" : "lead_unassigned";
+    const after = {
+      previousAssignedToUid,
+      previousAssignedToName,
+      previousAssignedToEmail,
+      assignedToUid,
+      assignedToName,
+      assignedToEmail,
+      assignedAt: assignedToUid ? now : null,
+    };
+
+    transaction.set(leadRef, {
+      assignedToUid,
+      assignedToName,
+      assignedToEmail,
+      assignedAt: assignedToUid ? now : null,
+      assignedByUid: admin.uid,
+      assignedByEmail: admin.email,
+      updatedAt: now,
+    }, { merge: true });
+    transaction.create(activityRef, {
+      entityType: "lead",
+      entityId: id,
+      leadId: id,
+      action,
+      title: formatActivityTitle(action),
+      description: action === "lead_unassigned"
+        ? "Lead dejado sin asignar."
+        : action === "lead_reassigned"
+          ? `Lead reasignado de ${previousAssignedToName || previousAssignedToEmail || "otro vendedor"} a ${assignedToName || assignedToEmail || "un vendedor"}.`
+          : `Lead asignado a ${assignedToName || assignedToEmail || "un vendedor"}.`,
+      before: { assignedToUid: previousAssignedToUid, assignedToName: previousAssignedToName, assignedToEmail: previousAssignedToEmail },
+      after,
+      previousAssignedToUid,
+      newAssignedToUid: assignedToUid,
+      performedByUid: admin.uid,
+      performedByEmail: admin.email,
+      userUid: admin.uid,
+      userEmail: admin.email,
+      createdAt: now,
+    });
+    return true;
+  });
+
+  return { lead: await getLead(id), changed };
 }
 
 export async function listNotes(leadId: string) {
@@ -393,13 +506,20 @@ export async function updateLead(id: string, updates: Partial<AdminLead>, admin:
     throw new Error("Firebase Admin no esta configurado.");
   }
   const ref = db.collection("leads").doc(id);
-  const before = await ref.get();
   const payload = {
     ...updates,
     updatedAt: new Date().toISOString(),
   };
-  await ref.set(payload, { merge: true });
-  const beforeData = before.exists ? before.data() : null;
+  const beforeData = await db.runTransaction(async (transaction) => {
+    const before = await transaction.get(ref);
+    if (!before.exists) throw new LeadAccessError();
+    const data = before.data() ?? {};
+    if (!canAccessLead(admin, { assignedToUid: data.assignedToUid ? String(data.assignedToUid) : null })) {
+      throw new LeadAccessError();
+    }
+    transaction.set(ref, payload, { merge: true });
+    return data;
+  });
   const changedFields = Object.keys(updates);
   const primaryAction = changedFields.includes("status")
     ? "lead_status_changed"
@@ -474,14 +594,25 @@ export async function addNote(leadId: string, text: string, admin: AdminUser) {
     throw new Error("Firebase Admin no esta configurado.");
   }
   const now = new Date().toISOString();
-  const doc = await db.collection("notes").add({
+  const doc = db.collection("notes").doc();
+  const leadRef = db.collection("leads").doc(leadId);
+  const notePayload = {
     leadId,
     text,
     createdBy: admin.uid,
     createdByEmail: admin.email,
     createdAt: now,
+  };
+  await db.runTransaction(async (transaction) => {
+    const leadSnapshot = await transaction.get(leadRef);
+    if (!leadSnapshot.exists) throw new LeadAccessError();
+    const leadData = leadSnapshot.data() ?? {};
+    if (!canAccessLead(admin, { assignedToUid: leadData.assignedToUid ? String(leadData.assignedToUid) : null })) {
+      throw new LeadAccessError();
+    }
+    transaction.create(doc, notePayload);
+    transaction.set(leadRef, { updatedAt: now }, { merge: true });
   });
-  await db.collection("leads").doc(leadId).set({ updatedAt: now }, { merge: true });
   await createNotification({
     title: "Nota agregada",
     message: `Se agrego una nota interna al lead.`,

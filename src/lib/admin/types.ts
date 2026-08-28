@@ -50,8 +50,36 @@ export type AdminLead = {
   followUpTimezone: string;
   followUpAt: string | null;
   tags: string[];
+  assignedToUid: string | null;
+  assignedToName: string | null;
+  assignedToEmail: string | null;
+  assignedAt: string | null;
+  assignedByUid: string | null;
+  assignedByEmail: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type AdminMember = {
+  uid: string;
+  name: string;
+  email: string;
+  role: import("@/lib/admin/authorization").AdminRole | null;
+  active: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  lastLoginAt: string | null;
+  invitedAt: string | null;
+  invitedByUid: string | null;
+  invitationStatus: import("@/lib/admin/authorization").InvitationStatus | null;
+  invitationLastSentAt: string | null;
+  assignedLeadCount: number;
+};
+
+export type AssignableSalesAgent = {
+  uid: string;
+  name: string;
+  email: string;
 };
 
 export type AdminNote = {
@@ -105,7 +133,7 @@ export type AdminNotification = {
 
 export type ActivityLog = {
   id: string;
-  entityType: "lead" | "note" | "task" | "notification" | "system";
+  entityType: "lead" | "note" | "task" | "notification" | "user" | "system";
   entityId: string;
   leadId: string | null;
   taskId?: string | null;
@@ -117,5 +145,11 @@ export type ActivityLog = {
   after: unknown;
   userUid?: string;
   userEmail: string;
+  previousAssignedToUid?: string | null;
+  newAssignedToUid?: string | null;
+  performedByUid?: string;
+  performedByEmail?: string;
+  actorUid?: string;
+  targetUid?: string;
   createdAt: string;
 };

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { ArrowLeft, CalendarPlus, CheckCircle2, Copy, Mail, Plus, Tag, Trash2, X } from "lucide-react";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
-import type { ActivityLog, AdminLead, AdminNote, AdminTask, LeadPriority, LeadStatus, PaymentStatus } from "@/lib/admin/types";
+import type { ActivityLog, AdminLead, AdminNote, AdminTask, AssignableSalesAgent, LeadPriority, LeadStatus, PaymentStatus } from "@/lib/admin/types";
 import { mapActivityTone } from "@/lib/admin/activity";
 import { whatsappLink } from "@/lib/site";
 import { HONDURAS_TIME_ZONE, hondurasDateTimeToIso } from "@/lib/time";
@@ -27,6 +27,8 @@ export function LeadDetail({
   canEditTasks,
   canViewActivity,
   canDeleteLead,
+  canAssignLead,
+  assignableUsers,
 }: {
   initialLead: AdminLead;
   initialNotes: AdminNote[];
@@ -39,6 +41,8 @@ export function LeadDetail({
   canEditTasks: boolean;
   canViewActivity: boolean;
   canDeleteLead: boolean;
+  canAssignLead: boolean;
+  assignableUsers: AssignableSalesAgent[];
 }) {
   const router = useRouter();
   const [lead, setLead] = useState(initialLead);
@@ -57,6 +61,7 @@ export function LeadDetail({
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [deleteLeadOpen, setDeleteLeadOpen] = useState(false);
   const [isDeletingLead, setIsDeletingLead] = useState(false);
+  const [isAssigningLead, setIsAssigningLead] = useState(false);
 
   const timeline = useMemo(() => {
     const createdItem: ActivityLog = {
@@ -125,6 +130,25 @@ export function LeadDetail({
       followUpTimezone: HONDURAS_TIME_ZONE,
       followUpAt,
     });
+  }
+
+  async function updateAssignment(assignedToUid: string | null) {
+    if (!canAssignLead || isAssigningLead) return;
+    setIsAssigningLead(true);
+    const response = await fetch(`/api/admin/leads/${lead.id}/assignment`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignedToUid }),
+    });
+    const result = await response.json();
+    setIsAssigningLead(false);
+    if (result.ok && result.lead) {
+      setLead(result.lead);
+      await refreshActivity();
+      showToast(result.changed ? "Asignacion actualizada." : "La asignacion no cambio.", result.changed ? "success" : "info");
+      return;
+    }
+    showToast(result.message || "No se pudo actualizar la asignacion.", "error");
   }
 
   async function addNote(event: FormEvent<HTMLFormElement>) {
@@ -274,6 +298,7 @@ export function LeadDetail({
               ["Seguimiento", lead.followUpAt ? dateTime(lead.followUpAt) : "Sin fecha"],
               ["Estado de pago", paymentStatusLabels[lead.paymentStatus]],
               ["Inicio mensualidad", lead.billingStartDate ? shortDate(lead.billingStartDate) : "Sin fecha"],
+              ["Vendedor asignado", lead.assignedToName || lead.assignedToEmail || "Sin asignar"],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl border border-white/10 bg-kc-bg/55 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-kc-muted">{label}</p>
@@ -330,6 +355,16 @@ export function LeadDetail({
           <div className="kc-admin-card p-5">
             <h2 className="font-display text-xl font-black text-kc-text">Gestion comercial</h2>
             <div className="mt-4 grid gap-3">
+              {canAssignLead ? <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                Vendedor asignado
+                <select value={lead.assignedToUid ?? ""} disabled={isAssigningLead} onChange={(event) => updateAssignment(event.target.value || null)} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text disabled:opacity-60">
+                  <option value="">Sin asignar</option>
+                  {lead.assignedToUid && !assignableUsers.some((member) => member.uid === lead.assignedToUid) ? (
+                    <option value={lead.assignedToUid}>{lead.assignedToName || lead.assignedToEmail || "Vendedor no disponible"} (inactivo o sin acceso)</option>
+                  ) : null}
+                  {assignableUsers.map((member) => <option key={member.uid} value={member.uid}>{member.name || member.email}</option>)}
+                </select>
+              </label> : null}
               <label className="grid gap-2 text-sm font-bold text-kc-muted">
                 Estado
                 <select value={lead.status} onChange={(event) => updateLead({ status: event.target.value as LeadStatus })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text">

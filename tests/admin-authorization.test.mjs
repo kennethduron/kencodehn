@@ -76,7 +76,7 @@ test("valores active malformados se rechazan y solo la ausencia conserva compati
 });
 
 test("perfiles heredados sin active siguen funcionando y roles invalidos se rechazan", () => {
-  assert.equal(adminFor("sales_agent"), null);
+  assert.ok(adminFor("sales_agent"));
   assert.equal(adminFor(undefined), null);
 });
 
