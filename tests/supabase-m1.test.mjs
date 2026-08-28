@@ -149,16 +149,25 @@ test("database enforces duplicate reminder protection", () => {
 });
 
 test("migration command defaults to local-only dry run", () => {
-  assert.deepEqual(parseMigrationMode([], {}), { dryRun: true, sourceRead: false, write: false, confirmedProjectRef: null });
+  assert.deepEqual(parseMigrationMode([], {}), {
+    dryRun: true,
+    sourceRead: false,
+    write: false,
+    confirmedSourceProject: null,
+    confirmedTargetProjectRef: null,
+    confirmedTargetProjectName: null,
+    confirmedTargetOrganization: null,
+    confirmedTargetRegion: null,
+  });
 });
 
 test("migration cannot write without two explicit safeguards", () => {
   assert.throws(() => parseMigrationMode(["--write"], {}), /MIGRATION_ALLOW_REMOTE_WRITE/);
-  assert.throws(() => parseMigrationMode(["--write", "--confirm-project-ref=wrong"], {
+  assert.throws(() => parseMigrationMode(["--write", "--confirm-source-project=kencode-81d66"], {
     MIGRATION_ALLOW_REMOTE_WRITE: "true",
-    SUPABASE_PROJECT_REF: "expected",
+    FIREBASE_PROJECT_ID: "kencode-81d66",
     SUPABASE_SECRET_KEY: "not-logged",
-  }), /exact --confirm-project-ref/);
+  }), /target identity mismatch/);
 });
 
 test("unknown enum and status values are rejected", () => {

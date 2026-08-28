@@ -19,7 +19,6 @@ index.html
 /images/
 /propuestas/
 firebase.json
-.firebaserc
 firestore.rules
 firestore.indexes.json
 database.rules.json

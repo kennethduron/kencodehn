@@ -26,6 +26,10 @@ export type MigrationRow = {
   checksum: string;
 };
 
+export type MigrationTransformOptions = {
+  orphanedReferences?: Readonly<Record<string, string>>;
+};
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CRM_ROLES = ["owner", "admin", "manager", "viewer", "sales_agent"] as const;
 const LEAD_STATUSES = ["new", "contacted", "conversation", "quoted", "won", "lost"] as const;
@@ -66,6 +70,21 @@ function json(value: unknown) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function legacyData(data: Record<string, unknown>, options: MigrationTransformOptions) {
+  const source = json(data) as Record<string, unknown>;
+  const orphanedReferences = options.orphanedReferences ?? {};
+  if (!Object.keys(orphanedReferences).length) return source;
+  return {
+    ...source,
+    orphaned_references: {
+      ...(source.orphaned_references && typeof source.orphaned_references === "object" && !Array.isArray(source.orphaned_references)
+        ? source.orphaned_references as Record<string, unknown>
+        : {}),
+      ...orphanedReferences,
+    },
+  };
+}
+
 export function assertKnownValue<const T extends readonly string[]>(value: unknown, allowed: T, field: string): T[number] {
   if (typeof value !== "string" || !allowed.includes(value as T[number])) {
     throw new Error(`Unknown ${field}: ${String(value)}`);
@@ -103,9 +122,17 @@ export function resolveProfileId(firebaseUid: unknown, profileIds: ProfileIdMap)
 
 export function moneyToMinorUnits(value: unknown) {
   if (value === null || value === undefined || value === "") return BigInt(0);
-  const normalized = typeof value === "number"
-    ? value.toFixed(2)
-    : String(value).trim().replace(/[$L\s]/g, "").replace(/,/g, "");
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 0 || !Number.isSafeInteger(Math.round(value * 100))) {
+      throw new Error("Invalid monetary value.");
+    }
+    const scaled = value * 100;
+    if (Math.abs(scaled - Math.round(scaled)) > Number.EPSILON * Math.max(1, Math.abs(scaled)) * 4) {
+      throw new Error("Monetary values cannot have more than two decimal places.");
+    }
+    return BigInt(Math.round(scaled));
+  }
+  const normalized = String(value).trim().replace(/[$L\s]/g, "").replace(/,/g, "");
   if (!/^\d+(\.\d{1,2})?$/.test(normalized)) throw new Error(`Invalid monetary value: ${String(value)}`);
   const [whole, fraction = ""] = normalized.split(".");
   return BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, "0"));
@@ -119,6 +146,13 @@ export function normalizeCurrency(value: unknown, fallback = "USD") {
 
 export function firestoreTimestampToIso(value: unknown): string | null {
   if (!value) return null;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("Invalid epoch timestamp.");
+    const milliseconds = Math.abs(value) < 10_000_000_000 ? value * 1000 : value;
+    const parsed = new Date(milliseconds);
+    if (Number.isNaN(parsed.getTime())) throw new Error("Invalid epoch timestamp.");
+    return parsed.toISOString();
+  }
   if (typeof value === "string") {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid timestamp: ${value}`);
@@ -156,7 +190,17 @@ export function deterministicReminderIdentity(taskFirebaseId: string, kind: stri
 }
 
 function checksum(row: Record<string, unknown>) {
-  const serialized = JSON.stringify(row, (_, value) => typeof value === "bigint" ? value.toString() : value);
+  const canonicalize = (value: unknown): unknown => {
+    if (typeof value === "bigint") return value.toString();
+    if (Array.isArray(value)) return value.map(canonicalize);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nested]) => [key, canonicalize(nested)]));
+    }
+    return value;
+  };
+  const serialized = JSON.stringify(canonicalize(row));
   return createHash("sha256").update(serialized).digest("hex");
 }
 
@@ -176,11 +220,12 @@ export function transformFirestoreDocument(
   sourceId: string,
   input: unknown,
   profileIds: ProfileIdMap = {},
+  options: MigrationTransformOptions = {},
 ): MigrationRow {
   if (!sourceId.trim()) throw new Error("Source ID is required.");
   const data = record(input);
   const id = targetUuidForFirebase(collection, sourceId);
-  const createdAt = firestoreTimestampToIso(data.createdAt) ?? new Date(0).toISOString();
+  const createdAt = firestoreTimestampToIso(data.createdAt);
   const updatedAt = firestoreTimestampToIso(data.updatedAt) ?? createdAt;
 
   if (collection === "adminUsers") {
@@ -246,7 +291,7 @@ export function transformFirestoreDocument(
       metadata: json(data.metadata) ?? {},
       tags: stringArray(data.tags).length ? stringArray(data.tags) : stringArray(record(data.crm ?? {}).tags),
       legacy_crm: json(data.crm) ?? {},
-      legacy_data: json(data),
+      legacy_data: legacyData(data, options),
       created_at: createdAt,
       updated_at: updatedAt,
     };
@@ -264,7 +309,7 @@ export function transformFirestoreDocument(
       author_id: resolveProfileId(data.createdBy, profileIds),
       author_firebase_uid: optionalString(data.createdBy),
       author_email: optionalString(data.createdByEmail),
-      legacy_data: json(data),
+      legacy_data: legacyData(data, options),
       created_at: createdAt,
     });
   }
@@ -303,7 +348,7 @@ export function transformFirestoreDocument(
       completed_at: completedAt,
       completed_by: resolveProfileId(data.completedByUid, profileIds),
       completed_by_email: optionalString(data.completedByEmail),
-      legacy_data: json(data),
+      legacy_data: legacyData(data, options),
       created_at: createdAt,
       updated_at: updatedAt,
     });
@@ -328,15 +373,19 @@ export function transformFirestoreDocument(
       is_read: boolean(data.read),
       read_at: firestoreTimestampToIso(data.readAt),
       deleted_at: firestoreTimestampToIso(data.deletedAt),
-      legacy_data: json(data),
+      legacy_data: legacyData(data, options),
       created_at: createdAt,
       updated_at: updatedAt,
     });
   }
 
   if (collection === "activityLogs") {
-    const leadId = optionalString(data.leadId ?? (data.entityType === "lead" ? data.entityId : null));
-    const taskId = optionalString(data.taskId);
+    const leadId = options.orphanedReferences?.lead_id
+      ? null
+      : optionalString(data.leadId ?? (data.entityType === "lead" ? data.entityId : null));
+    const taskId = options.orphanedReferences?.task_id
+      ? null
+      : optionalString(data.taskId ?? (data.entityType === "task" ? data.entityId : null));
     const noteId = optionalString(data.noteId);
     return base(collection, sourceId, {
       id,
@@ -356,7 +405,9 @@ export function transformFirestoreDocument(
       description: string(data.description),
       before_data: json(data.before),
       after_data: json(data.after),
-      metadata: {},
+      metadata: Object.keys(options.orphanedReferences ?? {}).length
+        ? { orphaned_references: options.orphanedReferences }
+        : {},
       created_at: createdAt,
     });
   }
@@ -430,7 +481,7 @@ export function transformFirestoreDocument(
       compact_mode_enabled: boolean(data.compactModeEnabled),
       updated_by: resolveProfileId(data.updatedByUid, profileIds),
       updated_by_email: optionalString(data.updatedBy),
-      legacy_data: json(data),
+      legacy_data: legacyData(data, options),
       created_at: createdAt,
       updated_at: updatedAt,
     }, "default");
@@ -440,7 +491,8 @@ export function transformFirestoreDocument(
   const recipientId = resolveProfileId(data.recipientUid ?? data.assignedToUid, profileIds);
   if (!taskFirebaseId || !recipientId) throw new Error("Reminder event requires task and recipient mappings.");
   const kind = assertKnownValue(data.kind, REMINDER_KINDS, "reminder kind");
-  const dueAt = firestoreTimestampToIso(data.dueAt) ?? createdAt;
+  const dueAt = firestoreTimestampToIso(data.dueAt);
+  if (!dueAt) throw new Error("Reminder due time is required.");
   return base(collection, sourceId, {
     id,
     firebase_id: sourceId,

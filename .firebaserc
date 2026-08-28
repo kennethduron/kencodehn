@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "kencode-81d66",
+    "crm-production": "kencode-81d66",
+    "legacy-live-chat": "kenneth-live-chat"
+  }
+}
