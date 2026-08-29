@@ -7,6 +7,8 @@ const backup = readFileSync("scripts/phase1-protect-pre-clean-dump.mjs", "utf8")
 const dpapi = readFileSync("scripts/dpapi-key.ps1", "utf8");
 const security = readFileSync("scripts/phase1-security-audit.mjs", "utf8");
 const endpoint = readFileSync("src/app/api/admin/phase1-baseline/route.ts", "utf8");
+const legacyEndpoint = readFileSync("src/app/api/admin/cleanup-test-data/route.ts", "utf8");
+const settingsPanel = readFileSync("src/components/admin/admin-settings-panel.tsx", "utf8");
 
 test("baseline cleanup is gated by target, confirmation, checksum and exact counts", () => {
   assert.match(sql, /PRE_CLEAN_BASELINE/);
@@ -60,4 +62,11 @@ test("remote baseline endpoint is Owner-only, exact and Preview-safe", () => {
   assert.match(endpoint, /isCrmPreviewReadOnly\(\)/);
   assert.match(endpoint, /PRE_CLEAN_BASELINE/);
   assert.match(endpoint, /1a348702f074789a85e778e9ae5d6c691f344017533b89d5398cb4526d2620dd/);
+});
+
+test("legacy cleanup write is disabled and maintenance UI uses the verified baseline", () => {
+  assert.doesNotMatch(legacyEndpoint, /cleanupOperationalData/);
+  assert.match(legacyEndpoint, /status: 410/);
+  assert.match(settingsPanel, /fetch\("\/api\/admin\/phase1-baseline"/);
+  assert.match(settingsPanel, /PRE_CLEAN_BASELINE/);
 });

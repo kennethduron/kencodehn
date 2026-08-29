@@ -213,13 +213,13 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
   }
 
   async function runCleanup() {
-    if (cleanupConfirmation !== "LIMPIAR") {
-      showToast("Escribe LIMPIAR para confirmar.", "error");
+    if (cleanupConfirmation !== "PRE_CLEAN_BASELINE") {
+      showToast("Escribe PRE_CLEAN_BASELINE para confirmar.", "error");
       return;
     }
     setIsCleaningCrm(true);
     try {
-      const response = await fetch("/api/admin/cleanup-test-data", {
+      const response = await fetch("/api/admin/phase1-baseline", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ confirmation: cleanupConfirmation }),
@@ -230,8 +230,8 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
       }
       setCleanupOpen(false);
       setCleanupConfirmation("");
-      setCleanupSummary(data.deleted);
-      showToast("CRM limpiado correctamente. Ya puedes comenzar con clientes reales.");
+      setCleanupSummary(data.result.deletedCounts);
+      showToast("Baseline limpio establecido correctamente. Ya puedes comenzar con clientes reales.");
     } catch {
       showToast("No se pudo limpiar el CRM. Intentalo nuevamente.", "error");
     } finally {
@@ -262,7 +262,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
         <p className="text-xs font-black uppercase tracking-[0.22em] text-kc-cyan">Configuracion</p>
         <h1 className="mt-2 font-display text-3xl font-black text-kc-text">Preferencias del CRM</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-kc-muted">
-          Ajusta como Ken Code CRM envia avisos, correos, recordatorios y preferencias visuales. Los cambios se guardan en Firestore y se aplican en el servidor.
+          Ajusta como Ken Code CRM envia avisos, correos, recordatorios y preferencias visuales. Los cambios se guardan en Supabase y se aplican en el servidor.
         </p>
       </section>
 
@@ -325,7 +325,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
             <div>
               <h2 className="font-display text-xl font-black text-rose-100">Zona de mantenimiento</h2>
               <p className="mt-1 text-sm leading-6 text-rose-100/75">
-                Limpia datos operativos de prueba sin tocar usuarios admin, configuracion, tokens reales, reglas ni variables de entorno.
+                Establece el baseline limpio verificado sin tocar usuarios admin, configuracion, tokens reales, reglas ni variables de entorno.
               </p>
             </div>
           </div>
@@ -335,7 +335,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
             className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-black text-white transition hover:bg-rose-800"
           >
             <Trash2 size={16} aria-hidden="true" />
-            Limpiar datos de prueba
+            Establecer baseline limpio
           </button>
         </section> : null}
       </div>
@@ -349,9 +349,9 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-200">Mantenimiento</p>
-                <h2 id="cleanup-title" className="mt-2 font-display text-2xl font-black text-kc-text">Limpiar datos de prueba del CRM?</h2>
+                <h2 id="cleanup-title" className="mt-2 font-display text-2xl font-black text-kc-text">Establecer baseline limpio del CRM?</h2>
                 <p className="mt-2 text-sm leading-6 text-kc-muted">
-                  Esta accion eliminara leads, tareas, notas, notificaciones y logs operativos. No se eliminaran usuarios admin ni configuracion del CRM.
+                  Esta accion usa el respaldo cifrado y sus conteos exactos para eliminar leads, tareas, notas, notificaciones y logs operativos. No se eliminaran usuarios admin ni configuracion del CRM.
                 </p>
               </div>
               <button
@@ -389,17 +389,17 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
 
             <div className="mt-5 rounded-2xl border border-rose-300/20 bg-rose-950/20 p-4">
               <label className="grid gap-2 text-sm font-bold text-rose-100">
-                Escribe LIMPIAR para confirmar
+                Escribe PRE_CLEAN_BASELINE para confirmar
                 <input
                   value={cleanupConfirmation}
                   onChange={(event) => setCleanupConfirmation(event.target.value)}
                   className="min-h-11 rounded-xl border border-rose-300/20 bg-kc-bg px-3 text-kc-text outline-none focus:border-rose-200"
-                  placeholder="LIMPIAR"
+                  placeholder="PRE_CLEAN_BASELINE"
                   disabled={isCleaningCrm}
                 />
               </label>
               <p className="mt-3 text-xs leading-5 text-rose-100/70">
-                Protegido: adminUsers, adminSettings, deviceTokens, variables de entorno, reglas de Firestore, Resend y cron.
+                Protegido: Owner, perfiles, adminSettings, deviceTokens, historial de migrations, variables de entorno, Resend, FCM y cron.
               </p>
             </div>
 
@@ -415,10 +415,10 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
               <button
                 type="button"
                 onClick={runCleanup}
-                disabled={isCleaningCrm || cleanupConfirmation !== "LIMPIAR" || isLoadingCleanupSummary}
+                disabled={isCleaningCrm || cleanupConfirmation !== "PRE_CLEAN_BASELINE" || isLoadingCleanupSummary}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-black text-white transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isCleaningCrm ? "Limpiando..." : "Si, limpiar CRM"}
+                {isCleaningCrm ? "Estableciendo..." : "Si, establecer baseline"}
               </button>
             </div>
           </div>
