@@ -35,7 +35,7 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
   }
 
   const nav = (
-    <nav className="mt-6 grid gap-2">
+    <nav className="mt-6 grid gap-2" aria-label="Navegacion principal del CRM">
       {visibleNavItems.map((item) => {
         const Icon = item.icon;
         const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
@@ -60,10 +60,10 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
   );
 
   return (
-    <main className="min-h-screen bg-kc-bg text-kc-text">
+    <main className="kc-admin-theme min-h-screen bg-kc-bg text-kc-text">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,217,255,0.12),transparent_30rem),radial-gradient(circle_at_90%_10%,rgba(0,230,168,0.08),transparent_26rem)]" />
       <div className="relative grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="sticky top-0 hidden h-screen border-r border-white/10 bg-kc-bg/84 p-5 backdrop-blur-xl lg:block">
+        <aside className="kc-admin-sidebar sticky top-0 hidden h-screen border-r border-white/10 p-5 lg:block">
           <Link href="/admin" className="block rounded-2xl border border-kc-cyan/20 bg-white/[0.04] p-4 shadow-2xl shadow-black/20">
             <span className="flex items-center gap-2 font-display text-2xl font-black">
               Ken Code
@@ -81,7 +81,7 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
         {menuOpen ? (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button type="button" aria-label="Cerrar menu" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
-            <aside className="relative h-full w-[min(86vw,320px)] border-r border-white/10 bg-kc-bg-soft p-5 shadow-2xl">
+            <aside className="kc-admin-sidebar relative h-full w-[min(86vw,320px)] border-r border-white/10 p-5 shadow-2xl">
               <div className="flex items-center justify-between gap-3">
                 <Link href="/admin" onClick={() => setMenuOpen(false)} className="font-display text-2xl font-black text-kc-text">Ken Code</Link>
                 <Tooltip label="Cerrar menu">
@@ -128,7 +128,7 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
         </section>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex overflow-x-auto border-t border-white/10 bg-kc-bg-soft/96 p-2 backdrop-blur-xl lg:hidden">
+      <nav aria-label="Navegacion movil del CRM" className="fixed inset-x-0 bottom-0 z-50 flex overflow-x-auto border-t border-white/10 bg-kc-bg-soft/96 p-2 backdrop-blur-xl lg:hidden">
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));

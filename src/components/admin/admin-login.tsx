@@ -65,8 +65,8 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-kc-bg px-4 py-10">
-      <section className="w-full max-w-md overflow-hidden rounded-2xl border border-kc-cyan/20 bg-kc-bg-soft/86 p-6 shadow-[0_0_80px_rgba(0,217,255,0.12)]">
+    <main className="kc-admin-theme grid min-h-screen place-items-center bg-kc-bg px-4 py-10">
+      <section className="w-full max-w-md overflow-hidden rounded-2xl border border-kc-cyan/20 bg-kc-bg-soft p-6 shadow-[0_24px_70px_rgba(15,35,63,0.14)]">
         <div className="grid h-14 w-14 place-items-center rounded-2xl border border-kc-cyan/35 bg-kc-cyan/10 text-kc-cyan">
           <LockKeyhole size={25} aria-hidden="true" />
         </div>

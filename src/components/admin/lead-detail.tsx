@@ -438,8 +438,8 @@ export function LeadDetail({
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => updateLead({ status: "won", wonValue: lead.initialProjectAmount || lead.estimatedValue || lead.wonValue, paymentStatus: lead.monthlyFee > 0 ? "active" : lead.paymentStatus })} className="min-h-11 rounded-xl bg-emerald-300 px-3 text-sm font-black text-kc-bg">Ganado</button>
-                <button type="button" onClick={() => updateLead({ status: "lost" })} className="min-h-11 rounded-xl bg-rose-300 px-3 text-sm font-black text-kc-bg">Perdido</button>
+                <button type="button" onClick={() => updateLead({ status: "won", wonValue: lead.initialProjectAmount || lead.estimatedValue || lead.wonValue, paymentStatus: lead.monthlyFee > 0 ? "active" : lead.paymentStatus })} className="min-h-11 rounded-xl bg-emerald-700 px-3 text-sm font-black text-white">Ganado</button>
+                <button type="button" onClick={() => updateLead({ status: "lost" })} className="min-h-11 rounded-xl bg-rose-700 px-3 text-sm font-black text-white">Perdido</button>
               </div>
             </div>
           </div>
@@ -475,7 +475,7 @@ export function LeadDetail({
             <button
               type="button"
               onClick={() => setDeleteLeadOpen(true)}
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-300 px-4 text-sm font-black text-kc-bg transition hover:bg-rose-200"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-black text-white transition hover:bg-rose-800"
             >
               <Trash2 size={16} aria-hidden="true" />
               Eliminar lead

@@ -180,7 +180,7 @@ export function TasksPanel({
           {task.completedAt ? <p className="mt-1 text-xs text-kc-muted">Completada {timeAgo(task.completedAt)}</p> : null}
         </div>
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => update(task.id, { status: task.status === "completed" ? "pending" : "completed" })} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-3 text-sm font-black text-kc-bg">
+          <button type="button" onClick={() => update(task.id, { status: task.status === "completed" ? "pending" : "completed" })} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 text-sm font-black text-white">
             <Check size={16} /> {task.status === "completed" ? "Reabrir" : "Completar"}
           </button>
           <button type="button" onClick={() => setEditing(task)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 px-3 text-sm font-black text-kc-text">

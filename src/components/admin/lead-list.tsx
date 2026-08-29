@@ -186,7 +186,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks, canAssign = fa
         </div>
       ) : null}
 
-      <div className="hidden overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] xl:block">
+      <div className="kc-responsive-table hidden overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] xl:block">
         <table className="w-full table-fixed text-left">
           <thead className="border-b border-white/10 bg-white/[0.04] text-xs font-black uppercase tracking-[0.14em] text-kc-muted">
             <tr>
@@ -249,7 +249,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks, canAssign = fa
         </table>
       </div>
 
-      <div className="grid gap-4 xl:hidden">
+      <div className="kc-mobile-cards grid gap-4 xl:hidden">
         {filtered.map((lead) => (
           <article key={lead.id} className="kc-admin-card p-5">
             <div className="flex flex-wrap items-center gap-2">

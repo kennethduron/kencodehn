@@ -77,9 +77,9 @@ export function OwnerEmailVerificationForm() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-start overflow-hidden px-4 py-10 sm:justify-center sm:px-6">
+    <main className="kc-admin-theme relative flex min-h-screen items-center justify-start overflow-hidden bg-kc-bg px-4 py-10 sm:justify-center sm:px-6">
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-kc-electric/20 blur-3xl" />
-      <section className="relative w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/85 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8" aria-labelledby="verification-title">
+      <section className="relative w-full max-w-md rounded-3xl border border-white/10 bg-kc-bg-soft p-5 shadow-[0_24px_70px_rgba(15,35,63,0.14)] sm:p-8" aria-labelledby="verification-title">
         <div className="flex items-center justify-between gap-4">
           <div className="inline-flex min-h-11 items-center gap-2 rounded-full border border-kc-cyan/25 bg-kc-cyan/10 px-4 text-sm font-bold text-kc-cyan"><ShieldCheck aria-hidden="true" size={18} /> Ken Code</div>
           <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-kc-turquoise/10 text-kc-turquoise" aria-hidden="true"><MailCheck size={24} /></div>

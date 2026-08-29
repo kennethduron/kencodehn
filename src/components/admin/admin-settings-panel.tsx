@@ -332,7 +332,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
           <button
             type="button"
             onClick={openCleanupDialog}
-            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-300 px-4 text-sm font-black text-kc-bg transition hover:bg-rose-200"
+            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-black text-white transition hover:bg-rose-800"
           >
             <Trash2 size={16} aria-hidden="true" />
             Limpiar datos de prueba
@@ -416,7 +416,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
                 type="button"
                 onClick={runCleanup}
                 disabled={isCleaningCrm || cleanupConfirmation !== "LIMPIAR" || isLoadingCleanupSummary}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-300 px-4 text-sm font-black text-kc-bg transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-black text-white transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isCleaningCrm ? "Limpiando..." : "Si, limpiar CRM"}
               </button>

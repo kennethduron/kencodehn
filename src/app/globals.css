@@ -185,6 +185,141 @@ select:focus-visible {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 62px rgba(0, 0, 0, 0.22);
 }
 
+/* CRM-only light theme. Public pages keep the dark Ken Code palette above. */
+.kc-admin-theme {
+  --kc-admin-workspace: #f3f6fb;
+  --kc-admin-surface: #ffffff;
+  --kc-admin-surface-soft: #f8fafc;
+  --kc-admin-sidebar: #14243d;
+  --kc-admin-sidebar-soft: #1b3152;
+  --kc-admin-text: #10233f;
+  --kc-admin-muted: #52627a;
+  --kc-admin-border: #d7e0eb;
+  --kc-admin-primary: #0759b8;
+  --kc-admin-success: #047857;
+  --kc-admin-warning: #854d0e;
+  --kc-admin-danger: #9f1239;
+  --kc-bg: var(--kc-admin-workspace);
+  --kc-bg-soft: var(--kc-admin-surface);
+  --kc-electric: var(--kc-admin-primary);
+  --kc-cyan: var(--kc-admin-primary);
+  --kc-turquoise: var(--kc-admin-success);
+  --kc-lime: #3f6212;
+  --kc-text: var(--kc-admin-text);
+  --kc-muted: var(--kc-admin-muted);
+  --kc-border: var(--kc-admin-border);
+  --kc-card: var(--kc-admin-surface);
+  color-scheme: light;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(7, 89, 184, 0.08), transparent 28rem),
+    var(--kc-admin-workspace);
+}
+
+.kc-admin-theme .kc-admin-card {
+  border-color: var(--kc-admin-border);
+  background: var(--kc-admin-surface);
+  box-shadow: 0 14px 36px rgba(15, 35, 63, 0.08);
+}
+
+.kc-admin-theme .kc-admin-card:hover {
+  border-color: #adc2dc;
+  box-shadow: 0 18px 42px rgba(15, 35, 63, 0.11);
+}
+
+.kc-admin-theme input,
+.kc-admin-theme textarea,
+.kc-admin-theme select {
+  border-color: #c7d2e0;
+  background-color: var(--kc-admin-surface);
+  color: var(--kc-admin-text);
+}
+
+.kc-admin-theme input::placeholder,
+.kc-admin-theme textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.kc-admin-theme input:disabled,
+.kc-admin-theme textarea:disabled,
+.kc-admin-theme select:disabled {
+  background-color: #eef2f7;
+  color: #64748b;
+}
+
+.kc-admin-theme input[type="date"],
+.kc-admin-theme input[type="time"],
+.kc-admin-theme input[type="datetime-local"] {
+  color-scheme: light;
+}
+
+.kc-admin-theme input[type="date"]::-webkit-calendar-picker-indicator,
+.kc-admin-theme input[type="time"]::-webkit-calendar-picker-indicator,
+.kc-admin-theme input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+.kc-admin-theme [class*="border-white"],
+.kc-admin-theme [class*="divide-white"] {
+  border-color: var(--kc-admin-border);
+}
+
+.kc-admin-theme [class*="bg-white/"] {
+  background-color: rgba(15, 35, 63, 0.035);
+}
+
+.kc-admin-theme [class*="text-rose-"] { color: var(--kc-admin-danger); }
+.kc-admin-theme [class*="text-emerald-"] { color: var(--kc-admin-success); }
+.kc-admin-theme [class*="text-amber-"] { color: var(--kc-admin-warning); }
+.kc-admin-theme [class*="text-blue-"] { color: #1d4ed8; }
+.kc-admin-theme [class*="text-slate-"] { color: #334155; }
+.kc-admin-theme [class*="bg-rose-950"] { background-color: #fff1f2; }
+
+.kc-admin-theme table {
+  background: var(--kc-admin-surface);
+}
+
+.kc-admin-theme thead {
+  background: var(--kc-admin-surface-soft);
+}
+
+.kc-admin-theme tbody tr:hover {
+  background: #f8fafc;
+}
+
+.kc-admin-sidebar {
+  --kc-bg: var(--kc-admin-sidebar);
+  --kc-bg-soft: var(--kc-admin-sidebar-soft);
+  --kc-text: #f8fafc;
+  --kc-muted: #bec9d8;
+  --kc-cyan: #77ddff;
+  --kc-turquoise: #6ee7b7;
+  --kc-lime: #c7f77a;
+  --kc-border: rgba(255, 255, 255, 0.14);
+  color-scheme: dark;
+  background: var(--kc-admin-sidebar);
+}
+
+.kc-admin-sidebar [class*="border-white"] {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.kc-admin-sidebar [class*="bg-white/"] {
+  background-color: rgba(255, 255, 255, 0.055);
+}
+
+.kc-modal-viewport {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 639px) {
+  .kc-admin-theme .kc-admin-card {
+    border-radius: 16px;
+  }
+}
+
 .kc-skeleton {
   background: linear-gradient(90deg, rgba(148, 163, 184, 0.08), rgba(248, 250, 252, 0.14), rgba(148, 163, 184, 0.08));
   background-size: 220% 100%;

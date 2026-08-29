@@ -65,11 +65,11 @@ export function ConfirmDialog({
   }, [loading, onCancel, open]);
 
   if (!open) return null;
-  const confirmClass = variant === "danger" ? "bg-rose-300 text-kc-bg hover:bg-rose-200" : "bg-kc-cyan text-kc-bg hover:bg-kc-turquoise";
+  const confirmClass = variant === "danger" ? "bg-rose-700 text-white hover:bg-rose-800" : "bg-kc-cyan text-white hover:bg-kc-electric";
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
       <button type="button" aria-label="Cancelar" className="absolute inset-0 cursor-pointer" onClick={loading ? undefined : onCancel} />
-      <div className="kc-admin-card relative w-full max-w-md p-5">
+      <div className="kc-admin-card kc-modal-viewport relative w-full max-w-md p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id="confirm-title" className="font-display text-2xl font-black text-kc-text">{title}</h2>
