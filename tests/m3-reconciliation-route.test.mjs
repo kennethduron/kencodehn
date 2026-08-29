@@ -25,6 +25,7 @@ test("reconciliation audit is GET-only and cannot mutate either source", () => {
 test("reconciliation audit returns aggregates and no identity or secret fields", () => {
   assert.match(route, /piiReturned: false/);
   assert.match(route, /secretsReturned: false/);
+  assert.match(route, /stage: failureStage/);
   assert.match(route, /mismatches/);
   assert.match(route, /matchedRows/);
   assert.doesNotMatch(route, /console\.(?:log|warn|error)/);

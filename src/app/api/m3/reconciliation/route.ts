@@ -42,6 +42,7 @@ function normalize(value: unknown, key = ""): unknown {
 export async function GET() {
   if (process.env.VERCEL_ENV !== "preview" || !isCrmPreviewReadOnly()) return unavailable();
 
+  let failureStage = "firebase_init";
   try {
     const db = getAdminDb();
     const auth = getAdminAuth();
@@ -49,12 +50,14 @@ export async function GET() {
       throw new Error("Firebase source guard failed.");
     }
 
+    failureStage = "firebase_collections";
     const collectionEntries = await Promise.all(MIGRATION_COLLECTION_ORDER.map(async (collection) => {
       const snapshot = await db.collection(collection).get();
       return [collection, snapshot.docs.map((document) => ({ id: document.id, data: document.data() }))] as const;
     }));
     const collections = Object.fromEntries(collectionEntries) as SourceCollections;
 
+    failureStage = "firebase_auth";
     const authUsers: AuthUserSummaryInput[] = [];
     let pageToken: string | undefined;
     do {
@@ -71,8 +74,10 @@ export async function GET() {
       pageToken = page.pageToken;
     } while (pageToken);
 
+    failureStage = "transform";
     const prepared = prepareMigrationRows(collections, authUsers);
     const client = createSupabaseAdminClient();
+    failureStage = "target_mappings";
     const { data: mappings, error: mappingsError } = await client.from("migration_id_map")
       .select("source_collection,source_id,target_table,target_id,checksum")
       .eq("source_system", "firebase");
@@ -81,6 +86,7 @@ export async function GET() {
 
     const domains: Record<string, { source: number; target: number; matched: number; checksum: string }> = {};
     let totalMatched = 0;
+    failureStage = "target_rows";
     for (const table of [...new Set(prepared.rows.map((row) => row.targetTable))]) {
       const expectedRows = prepared.rows.filter((row) => row.targetTable === table);
       const targetRows: Record<string, unknown>[] = [];
@@ -134,6 +140,6 @@ export async function GET() {
       secretsReturned: false,
     }, { headers: noStore });
   } catch {
-    return NextResponse.json({ ok: false, message: "Reconciliation audit unavailable." }, { status: 503, headers: noStore });
+    return NextResponse.json({ ok: false, message: "Reconciliation audit unavailable.", stage: failureStage }, { status: 503, headers: noStore });
   }
 }
