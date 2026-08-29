@@ -4,6 +4,7 @@ import { Loader2, MailPlus, RefreshCw, ShieldCheck, UserCheck, UserX } from "luc
 import { useMemo, useState } from "react";
 import type { AdminMember } from "@/lib/admin/types";
 import type { ManageableAdminRole } from "@/lib/admin/authorization";
+import { HONDURAS_TIME_ZONE } from "@/lib/time";
 import { ConfirmDialog, Toast } from "./ui";
 
 const ROLE_OPTIONS: Array<{ value: ManageableAdminRole; label: string }> = [
@@ -30,7 +31,11 @@ const INVITATION_LABELS: Record<string, string> = {
 
 function formatDate(value: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("es-HN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("es-HN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: HONDURAS_TIME_ZONE,
+  }).format(new Date(value));
 }
 
 type PendingStatusChange = { member: AdminMember; active: boolean } | null;

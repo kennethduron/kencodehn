@@ -10,6 +10,7 @@ const clientList = readFileSync("src/components/admin/client-list.tsx", "utf8");
 const clientDetail = readFileSync("src/components/admin/client-detail.tsx", "utf8");
 const projectList = readFileSync("src/components/admin/project-list.tsx", "utf8");
 const projectDetail = readFileSync("src/components/admin/project-detail.tsx", "utf8");
+const teamPanel = readFileSync("src/components/admin/team-panel.tsx", "utf8");
 const chrome = readFileSync("src/components/admin/admin-chrome.tsx", "utf8");
 const globals = readFileSync("src/app/globals.css", "utf8");
 
@@ -82,6 +83,7 @@ test("52 1440 layout uses bounded multi-column forms", matches(projectList + pro
 test("53 mobile installment builder uses cards instead of a table", () => { assert.match(projectDetail, /installments\.map[\s\S]*<article/); assert.doesNotMatch(projectDetail.slice(projectDetail.indexOf("installments.map")), /<table/); });
 test("54 tables use controlled horizontal overflow", matches(clientList + projectList, /overflow-x-auto/));
 test("55 modal viewport and tab overflow remain bounded", () => { assert.match(globals, /kc-modal-viewport/); assert.match(clientDetail + projectDetail, /overflow-x-auto/); });
+test("56 server and browser render team dates in the same timezone", matches(teamPanel, /timeZone:\s*HONDURAS_TIME_ZONE/));
 
 test("commercial activity always records a human actor", matches(sql, /actor_id uuid not null references public\.profiles/));
 test("seller history is immutable through grants", () => { assert.match(sql, /grant select, insert on public\.seller_assignment_events/); assert.doesNotMatch(sql, /grant[^;]*update[^;]*seller_assignment_events/); });
