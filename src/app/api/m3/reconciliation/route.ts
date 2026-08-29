@@ -46,7 +46,12 @@ export async function GET() {
   try {
     const db = getAdminDb();
     const auth = getAdminAuth();
-    if (!db || !auth || getAdminProjectId() !== FIREBASE_CRM_SOURCE_PROJECT_ID) {
+    if (!db || !auth) {
+      failureStage = "firebase_admin_unavailable";
+      throw new Error("Firebase Admin unavailable.");
+    }
+    failureStage = "firebase_project_guard";
+    if (getAdminProjectId() !== FIREBASE_CRM_SOURCE_PROJECT_ID) {
       throw new Error("Firebase source guard failed.");
     }
 
