@@ -12,8 +12,9 @@ test("reconciliation audit is restricted to read-only Preview", () => {
 
 test("reconciliation audit uses the exact Firebase source guard", () => {
   assert.match(route, /FIREBASE_CRM_SOURCE_PROJECT_ID/);
-  assert.match(route, /getAdminProjectId\(\) !== FIREBASE_CRM_SOURCE_PROJECT_ID/);
-  assert.doesNotMatch(route, /kenneth-live-chat/);
+  assert.match(route, /firebaseAdminProjectId !== FIREBASE_CRM_SOURCE_PROJECT_ID/);
+  assert.match(route, /FIREBASE_LEGACY_EXCLUDED_PROJECT_ID/);
+  assert.match(route, /firebase_legacy_project_excluded/);
 });
 
 test("reconciliation audit is GET-only and cannot mutate either source", () => {

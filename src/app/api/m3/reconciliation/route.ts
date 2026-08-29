@@ -8,7 +8,7 @@ import {
   type AuthUserSummaryInput,
   type SourceCollections,
 } from "@/lib/migration/preflight";
-import { FIREBASE_CRM_SOURCE_PROJECT_ID } from "@/lib/migration/guards";
+import { FIREBASE_CRM_SOURCE_PROJECT_ID, FIREBASE_LEGACY_EXCLUDED_PROJECT_ID } from "@/lib/migration/guards";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -51,7 +51,11 @@ export async function GET() {
       throw new Error("Firebase Admin unavailable.");
     }
     failureStage = "firebase_project_guard";
-    if (getAdminProjectId() !== FIREBASE_CRM_SOURCE_PROJECT_ID) {
+    const firebaseAdminProjectId = getAdminProjectId();
+    if (firebaseAdminProjectId !== FIREBASE_CRM_SOURCE_PROJECT_ID) {
+      failureStage = firebaseAdminProjectId === FIREBASE_LEGACY_EXCLUDED_PROJECT_ID
+        ? "firebase_legacy_project_excluded"
+        : "firebase_unexpected_project";
       throw new Error("Firebase source guard failed.");
     }
 
