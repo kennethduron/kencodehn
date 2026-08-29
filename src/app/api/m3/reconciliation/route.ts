@@ -39,6 +39,21 @@ function normalize(value: unknown, key = ""): unknown {
   return value;
 }
 
+function normalizeFirebaseValue(value: unknown): unknown {
+  if (value == null || typeof value !== "object") return value;
+  if (value instanceof Date) return value.toISOString();
+  if (Buffer.isBuffer(value)) return value.toString("base64");
+  if (Array.isArray(value)) return value.map(normalizeFirebaseValue);
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.toDate === "function") return (candidate.toDate as () => Date)().toISOString();
+  if (typeof candidate.toBase64 === "function") return (candidate.toBase64 as () => string)();
+  if (typeof candidate.path === "string" && typeof candidate.id === "string") return candidate.id;
+  if (typeof candidate.latitude === "number" && typeof candidate.longitude === "number") {
+    return { latitude: candidate.latitude, longitude: candidate.longitude };
+  }
+  return Object.fromEntries(Object.entries(candidate).map(([key, nested]) => [key, normalizeFirebaseValue(nested)]));
+}
+
 export async function GET() {
   if (process.env.VERCEL_ENV !== "preview" || !isCrmPreviewReadOnly()) return unavailable();
 
@@ -64,7 +79,10 @@ export async function GET() {
     failureStage = "firebase_collections";
     const collectionEntries = await Promise.all(MIGRATION_COLLECTION_ORDER.map(async (collection) => {
       const snapshot = await db.collection(collection).get();
-      return [collection, snapshot.docs.map((document) => ({ id: document.id, data: document.data() }))] as const;
+      return [collection, snapshot.docs.map((document) => ({
+        id: document.id,
+        data: normalizeFirebaseValue(document.data()) as Record<string, unknown>,
+      }))] as const;
     }));
     const collections = Object.fromEntries(collectionEntries) as SourceCollections;
 

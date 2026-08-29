@@ -38,3 +38,12 @@ test("reconciliation audit returns aggregates and no identity or secret fields",
   assert.doesNotMatch(route, /passwordHash\s*:/);
   assert.match(route, /Cache-Control": "no-store/);
 });
+
+test("Firebase Admin values are normalized to the canonical REST snapshot shape", () => {
+  assert.match(route, /function normalizeFirebaseValue/);
+  assert.match(route, /candidate\.toDate/);
+  assert.match(route, /candidate\.toBase64/);
+  assert.match(route, /candidate\.path/);
+  assert.match(route, /candidate\.latitude/);
+  assert.match(route, /data: normalizeFirebaseValue\(document\.data\(\)\)/);
+});
