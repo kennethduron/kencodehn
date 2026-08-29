@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AdminMember } from "@/lib/admin/types";
 import type { CommercialActivity, CommercialClient, CommercialProject, SellerAssignmentEvent } from "@/lib/commercial/types";
+import type { BillingPayment, BillingReceivable } from "@/lib/billing/types";
+import { ClientBillingSection, ClientBillingSettings, ClientPaymentsSection } from "./billing-detail-sections";
+import { formatMinor } from "@/lib/billing/money";
 
 const tabs = [
   ["overview", "Resumen"], ["projects", "Proyectos"], ["billing", "Facturación"], ["payments", "Pagos"], ["tasks", "Tareas"], ["communications", "Comunicaciones"], ["activity", "Actividad"],
@@ -22,8 +25,8 @@ function EmptyFuture({ icon: Icon, title, children }: { icon: typeof CreditCard;
   return <div className="kc-admin-card grid min-h-64 place-items-center p-8 text-center"><div><Icon className="mx-auto text-kc-cyan" size={32} /><h2 className="mt-4 font-display text-2xl font-black text-kc-text">{title}</h2><p className="mt-2 max-w-lg text-sm leading-6 text-kc-muted">{children}</p></div></div>;
 }
 
-export function ClientDetail({ client, projects, tasks, activity, assignments, members, canEdit, canAssign }: {
-  client: CommercialClient; projects: CommercialProject[]; tasks: Record<string, any>[]; activity: CommercialActivity[]; assignments: SellerAssignmentEvent[]; members: AdminMember[]; canEdit: boolean; canAssign: boolean;
+export function ClientDetail({ client, projects, tasks, activity, assignments, billingReceivables, billingPayments, members, canEdit, canAssign, canManageBilling }: {
+  client: CommercialClient; projects: CommercialProject[]; tasks: Record<string, any>[]; activity: CommercialActivity[]; assignments: SellerAssignmentEvent[]; billingReceivables: BillingReceivable[]; billingPayments: BillingPayment[]; members: AdminMember[]; canEdit: boolean; canAssign: boolean; canManageBilling: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<(typeof tabs)[number][0]>("overview");
@@ -70,9 +73,9 @@ export function ClientDetail({ client, projects, tasks, activity, assignments, m
       </aside>
     </div> : null}
 
-    {tab === "projects" ? projects.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{projects.map((project) => <Link key={project.id} href={`/admin/proyectos/${project.id}`} className="kc-admin-card p-5"><FolderKanban className="text-kc-cyan" size={24} /><h2 className="mt-4 font-display text-xl font-black text-kc-text">{project.name}</h2><p className="mt-2 text-sm text-kc-muted">{project.status} · {(project.totalAmountMinor / 100).toLocaleString("en-US", { style: "currency", currency: project.currency })}</p></Link>)}</div> : <EmptyFuture icon={FolderKanban} title="Sin proyectos">Cree el primer proyecto desde el módulo Proyectos y asócielo a este cliente.</EmptyFuture> : null}
-    {tab === "billing" ? <EmptyFuture icon={ReceiptText} title="Facturación no iniciada">Este espacio queda preparado para la próxima etapa. Phase 1 no genera facturas ni cuentas por cobrar.</EmptyFuture> : null}
-    {tab === "payments" ? <EmptyFuture icon={CreditCard} title="Pagos no iniciados">Los planes comerciales no son pagos reales. El registro de transacciones se implementará en una fase posterior.</EmptyFuture> : null}
+    {tab === "projects" ? projects.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{projects.map((project) => <Link key={project.id} href={`/admin/proyectos/${project.id}`} className="kc-admin-card p-5"><FolderKanban className="text-kc-cyan" size={24} /><h2 className="mt-4 font-display text-xl font-black text-kc-text">{project.name}</h2><p className="mt-2 text-sm text-kc-muted">{project.status} · {formatMinor(project.totalAmountMinor, project.currency)}</p></Link>)}</div> : <EmptyFuture icon={FolderKanban} title="Sin proyectos">Cree el primer proyecto desde el módulo Proyectos y asócielo a este cliente.</EmptyFuture> : null}
+    {tab === "billing" ? <div className="grid gap-5"><ClientBillingSettings client={client} canManage={canManageBilling}/><ClientBillingSection receivables={billingReceivables} /></div> : null}
+    {tab === "payments" ? <ClientPaymentsSection payments={billingPayments} /> : null}
     {tab === "tasks" ? tasks.length ? <div className="grid gap-3">{tasks.map((task) => <article key={task.id} className="kc-admin-card p-4"><div className="flex flex-wrap items-center gap-2"><ClipboardList size={18} className="text-kc-cyan" /><h2 className="font-black text-kc-text">{task.title}</h2><span className="rounded-full border px-2 py-1 text-xs font-bold text-kc-muted">{task.status}</span></div><p className="mt-2 text-sm text-kc-muted">{task.due_at ? new Date(task.due_at).toLocaleString("es-HN") : "Sin fecha"}</p></article>)}</div> : <EmptyFuture icon={CalendarDays} title="Sin tareas del cliente">Las tareas comerciales asociadas al cliente aparecerán aquí.</EmptyFuture> : null}
     {tab === "communications" ? <EmptyFuture icon={Mail} title="Sin comunicaciones">La bandeja de comunicaciones se conectará en una etapa futura; Ken Code Mail no fue iniciado.</EmptyFuture> : null}
     {tab === "activity" ? activity.length ? <div className="grid gap-3">{activity.map((event) => <article key={event.id} className="kc-admin-card grid grid-cols-[auto_1fr] gap-4 p-4"><span className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-kc-electric"><CheckCircle2 size={18} /></span><div><div className="flex flex-col gap-1 sm:flex-row sm:justify-between"><h2 className="font-black text-kc-text">{event.title}</h2><time className="text-xs font-bold text-kc-muted">{new Date(event.createdAt).toLocaleString("es-HN")}</time></div><p className="mt-1 text-sm text-kc-muted">{event.description}</p><p className="mt-2 text-xs font-bold text-kc-muted">Actor: {event.actorEmail}</p></div></article>)}</div> : <EmptyFuture icon={Activity} title="Sin actividad">Los eventos humanos del cliente aparecerán en esta línea de tiempo.</EmptyFuture> : null}

@@ -27,7 +27,7 @@ const permissionFor: Record<Operation, AdminPermission> = {
 const uuid = z.string().uuid();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const optionalDate = z.union([date, z.literal("")]);
-const moneyMinor = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const moneyMinor = z.string().regex(/^(0|[1-9][0-9]{0,15})$/);
 const seller = z.union([uuid, z.literal(""), z.null()]).optional();
 const schemas: Record<Operation, z.ZodType> = {
   lead_convert: z.object({ leadId: uuid, clientSince: date.optional(), notes: z.string().max(5000).optional() }).strict(),
@@ -37,9 +37,9 @@ const schemas: Record<Operation, z.ZodType> = {
   project_create: z.object({ clientId: uuid, name: z.string().trim().min(2).max(180), description: z.string().max(8000).optional(), status: z.enum(["draft", "planning", "active", "on_hold", "completed", "cancelled"]).optional(), totalAmountMinor: moneyMinor, currency: z.string().regex(/^[A-Z]{3}$/), soldAt: optionalDate.optional(), effectiveDate: date.optional(), startDate: optionalDate.optional(), targetEndDate: optionalDate.optional(), assignedToUid: seller }).strict(),
   project_update: z.object({ id: uuid, updates: z.object({ name: z.string().trim().min(2).max(180).optional(), description: z.string().max(8000).optional(), status: z.enum(["draft", "planning", "active", "on_hold", "completed", "cancelled"]).optional(), totalAmountMinor: moneyMinor.optional(), currency: z.string().regex(/^[A-Z]{3}$/).optional(), soldAt: optionalDate.optional(), effectiveDate: date.optional(), startDate: optionalDate.optional(), targetEndDate: optionalDate.optional() }).strict() }).strict(),
   project_assign: z.object({ id: uuid, assignedToUid: z.union([uuid, z.literal(""), z.null()]), reason: z.string().max(500).optional() }).strict(),
-  payment_plan_save: z.object({ id: uuid.optional(), projectId: uuid, name: z.string().trim().min(2).max(140), installments: z.array(z.object({ label: z.string().trim().min(1).max(140), amountMinor: moneyMinor.refine((value)=>value>0), currency: z.string().regex(/^[A-Z]{3}$/).optional(), dueDate: optionalDate.optional(), dueTime: z.union([z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),z.literal("")]).optional(), notes: z.string().max(1000).optional() }).strict()).max(60) }).strict(),
+  payment_plan_save: z.object({ id: uuid.optional(), projectId: uuid, name: z.string().trim().min(2).max(140), installments: z.array(z.object({ label: z.string().trim().min(1).max(140), amountMinor: moneyMinor.refine((value)=>value!=="0"), currency: z.string().regex(/^[A-Z]{3}$/).optional(), dueDate: optionalDate.optional(), dueTime: z.union([z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),z.literal("")]).optional(), notes: z.string().max(1000).optional() }).strict()).max(60) }).strict(),
   payment_plan_activate: z.object({ id: uuid }).strict(),
-  recurring_service_save: z.object({ projectId: uuid, name: z.string().trim().min(2).max(140), monthlyAmountMinor: moneyMinor.refine((value) => value > 0), currency: z.string().regex(/^[A-Z]{3}$/), frequency: z.enum(["monthly", "quarterly", "yearly"]), startDate: date, billingDay: z.number().int().min(1).max(28), billingTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), timezone: z.literal("America/Tegucigalpa"), status: z.enum(["draft", "active", "paused", "cancelled"]) }).strict(),
+  recurring_service_save: z.object({ projectId: uuid, name: z.string().trim().min(2).max(140), monthlyAmountMinor: moneyMinor.refine((value) => value !== "0"), currency: z.string().regex(/^[A-Z]{3}$/), frequency: z.enum(["monthly", "quarterly", "yearly"]), startDate: date, billingDay: z.number().int().min(1).max(28), billingTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), timezone: z.literal("America/Tegucigalpa"), status: z.enum(["draft", "active", "paused", "cancelled"]) }).strict(),
 };
 
 export async function POST(request: NextRequest) {

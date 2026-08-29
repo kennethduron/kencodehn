@@ -7,6 +7,7 @@ import { getCurrentAdmin, getMissingAdminEnv, getMissingAuthClientEnv } from "@/
 import { getCrmAuthProvider } from "@/lib/auth/provider";
 import { getCommercialClient } from "@/lib/commercial/data";
 import { commercialPageContext } from "@/lib/commercial/page-context";
+import { listPayments, listReceivables } from "@/lib/billing/data";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   if (!admin) return <AdminLogin authProvider={getCrmAuthProvider()} missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingAuthClientEnv()} />;
   if (!hasPermission(admin,"clients:view")) redirect("/admin");
   const { id } = await params;
-  const [detail, context] = await Promise.all([getCommercialClient(id), commercialPageContext(admin)]);
+  const [detail, context, receivables, payments] = await Promise.all([getCommercialClient(id), commercialPageContext(admin), listReceivables({clientId:id,pageSize:50}), listPayments(id)]);
   if (!detail) notFound();
-  return <AdminChrome admin={admin} unreadCount={context.unreadCount} authProvider={getCrmAuthProvider()}><ClientDetail {...detail} members={context.members} canEdit={hasPermission(admin,"clients:edit")} canAssign={canAssignCommercialOwner(admin)} /></AdminChrome>;
+  return <AdminChrome admin={admin} unreadCount={context.unreadCount} authProvider={getCrmAuthProvider()}><ClientDetail {...detail} billingReceivables={receivables.items} billingPayments={payments} members={context.members} canEdit={hasPermission(admin,"clients:edit")} canAssign={canAssignCommercialOwner(admin)} canManageBilling={hasPermission(admin,"billing_settings:manage")} /></AdminChrome>;
 }

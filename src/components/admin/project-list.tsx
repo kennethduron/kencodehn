@@ -6,10 +6,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminMember } from "@/lib/admin/types";
 import type { CommercialClient, CommercialProject } from "@/lib/commercial/types";
+import { compareMinor, formatMinor, parseMoneyToMinor } from "@/lib/billing/money";
 
 const PAGE_SIZE = 10;
 const statusLabels: Record<string, string> = { draft: "Borrador", planning: "Planificación", active: "Activo", on_hold: "En pausa", completed: "Completado", cancelled: "Cancelado" };
-const money = (minor: number, currency: string) => (minor / 100).toLocaleString("en-US", { style: "currency", currency });
+const money = formatMinor;
 
 async function mutate(operation: string, payload: Record<string, unknown>) {
   const response = await fetch("/api/admin/commercial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operation, payload }) });
@@ -25,15 +26,15 @@ export function ProjectList({ initialProjects, clients, members, canEdit, canAss
   const clientMap = useMemo(() => new Map(clients.map((item) => [item.id, item.company || item.name])), [clients]);
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return initialProjects.filter((project) => (!needle || `${project.name} ${project.description} ${project.clientName}`.toLowerCase().includes(needle)) && (status === "all" || project.status === status) && (client === "all" || project.clientId === client) && (seller === "all" || (seller === "none" ? !project.assignedToUid : project.assignedToUid === seller))).sort((a,b) => sort === "name" ? a.name.localeCompare(b.name) : sort === "amount_desc" ? b.totalAmountMinor - a.totalAmountMinor : b.createdAt.localeCompare(a.createdAt));
+    return initialProjects.filter((project) => (!needle || `${project.name} ${project.description} ${project.clientName}`.toLowerCase().includes(needle)) && (status === "all" || project.status === status) && (client === "all" || project.clientId === client) && (seller === "all" || (seller === "none" ? !project.assignedToUid : project.assignedToUid === seller))).sort((a,b) => sort === "name" ? a.name.localeCompare(b.name) : sort === "amount_desc" ? compareMinor(b.totalAmountMinor, a.totalAmountMinor) : b.createdAt.localeCompare(a.createdAt));
   }, [initialProjects, search, status, client, seller, sort]);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); const visible = filtered.slice((Math.min(page,pages)-1)*PAGE_SIZE, Math.min(page,pages)*PAGE_SIZE);
 
   async function createProject(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setFeedback(""); const data = new FormData(event.currentTarget);
     try {
-      const amount = Number(data.get("totalAmount") || 0);
-      const result = await mutate("project_create", { clientId: String(data.get("clientId") || ""), name: String(data.get("name") || ""), description: String(data.get("description") || ""), status: String(data.get("status") || "planning"), totalAmountMinor: Math.round(amount * 100), currency: String(data.get("currency") || "USD").toUpperCase(), soldAt: String(data.get("soldAt") || ""), effectiveDate: String(data.get("effectiveDate") || ""), startDate: String(data.get("startDate") || ""), targetEndDate: String(data.get("targetEndDate") || ""), assignedToUid: canAssign ? String(data.get("assignedToUid") || "") : undefined });
+      const amountMinor = parseMoneyToMinor(String(data.get("totalAmount") || "0")).toString();
+      const result = await mutate("project_create", { clientId: String(data.get("clientId") || ""), name: String(data.get("name") || ""), description: String(data.get("description") || ""), status: String(data.get("status") || "planning"), totalAmountMinor: amountMinor, currency: String(data.get("currency") || "USD").toUpperCase(), soldAt: String(data.get("soldAt") || ""), effectiveDate: String(data.get("effectiveDate") || ""), startDate: String(data.get("startDate") || ""), targetEndDate: String(data.get("targetEndDate") || ""), assignedToUid: canAssign ? String(data.get("assignedToUid") || "") : undefined });
       setFormOpen(false); router.push(`/admin/proyectos/${result.id}`); router.refresh();
     } catch (error) { setFeedback(error instanceof Error ? error.message : "No se pudo crear el proyecto."); }
     finally { setSaving(false); }

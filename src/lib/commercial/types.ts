@@ -12,6 +12,11 @@ export type CommercialClient = {
   name: string;
   company: string;
   email: string;
+  billingEmail: string;
+  billingNotificationsEnabled: boolean;
+  paymentConfirmationEnabled: boolean;
+  billingLocale: "es" | "en";
+  billingTimezone: "America/Tegucigalpa";
   phone: string;
   whatsapp: string;
   country: string;
@@ -36,7 +41,7 @@ export type CommercialProject = {
   name: string;
   description: string;
   status: ProjectStatus;
-  totalAmountMinor: number;
+  totalAmountMinor: string;
   currency: string;
   soldAt: string | null;
   effectiveDate: string;
@@ -55,7 +60,7 @@ export type ProjectInstallment = {
   paymentPlanId: string;
   sequence: number;
   label: string;
-  amountMinor: number;
+  amountMinor: string;
   currency: string;
   dueDate: string | null;
   dueTime: string | null;
@@ -68,7 +73,7 @@ export type ProjectPaymentPlan = {
   version: number;
   name: string;
   status: PaymentPlanStatus;
-  plannedTotalMinor: number;
+  plannedTotalMinor: string;
   currency: string;
   activatedAt: string | null;
   createdAt: string;
@@ -79,7 +84,7 @@ export type ProjectRecurringService = {
   id: string;
   projectId: string;
   name: string;
-  monthlyAmountMinor: number;
+  monthlyAmountMinor: string;
   currency: string;
   frequency: RecurringFrequency;
   startDate: string;

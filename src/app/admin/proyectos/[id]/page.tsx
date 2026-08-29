@@ -7,6 +7,7 @@ import { getCurrentAdmin, getMissingAdminEnv, getMissingAuthClientEnv } from "@/
 import { getCrmAuthProvider } from "@/lib/auth/provider";
 import { getCommercialClient, getCommercialProject } from "@/lib/commercial/data";
 import { commercialPageContext } from "@/lib/commercial/page-context";
+import { getProjectBillingSummary, listReceivables } from "@/lib/billing/data";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!admin) return <AdminLogin authProvider={getCrmAuthProvider()} missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingAuthClientEnv()} />;
   if (!hasPermission(admin,"projects:view")) redirect("/admin");
   const { id } = await params;
-  const [detail, context] = await Promise.all([getCommercialProject(id), commercialPageContext(admin)]);
+  const [detail, context, billingSummary, receivables] = await Promise.all([getCommercialProject(id), commercialPageContext(admin), getProjectBillingSummary(id), listReceivables({projectId:id,pageSize:50})]);
   if (!detail) notFound();
   const clientDetail = await getCommercialClient(detail.project.clientId);
   if (!clientDetail) notFound();
-  return <AdminChrome admin={admin} unreadCount={context.unreadCount} authProvider={getCrmAuthProvider()}><ProjectDetail {...detail} client={clientDetail.client} members={context.members} canEdit={hasPermission(admin,"projects:edit")} canAssign={canAssignCommercialOwner(admin)} canEditPlans={hasPermission(admin,"commercial_plans:edit")} canEditRecurring={hasPermission(admin,"recurring_services:edit")} /></AdminChrome>;
+  return <AdminChrome admin={admin} unreadCount={context.unreadCount} authProvider={getCrmAuthProvider()}><ProjectDetail {...detail} billingSummary={billingSummary} billingReceivables={receivables.items} client={clientDetail.client} members={context.members} canEdit={hasPermission(admin,"projects:edit")} canAssign={canAssignCommercialOwner(admin)} canEditPlans={hasPermission(admin,"commercial_plans:edit")} canEditRecurring={hasPermission(admin,"recurring_services:edit")} /></AdminChrome>;
 }

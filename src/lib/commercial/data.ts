@@ -18,7 +18,7 @@ function nullableText(value: unknown) { return typeof value === "string" ? value
 
 export function mapClient(row: Row): CommercialClient {
   return {
-    id: String(row.id), clientNumber: text(row.client_number), kind: row.kind, originLeadId: nullableText(row.origin_lead_id), name: text(row.name), company: text(row.company), email: text(row.email), phone: text(row.phone), whatsapp: text(row.whatsapp), country: text(row.country), region: text(row.region), city: text(row.city), address: text(row.address),
+    id: String(row.id), clientNumber: text(row.client_number), kind: row.kind, originLeadId: nullableText(row.origin_lead_id), name: text(row.name), company: text(row.company), email: text(row.email), billingEmail: text(row.billing_email), billingNotificationsEnabled: Boolean(row.billing_notifications_enabled), paymentConfirmationEnabled: Boolean(row.payment_confirmation_enabled), billingLocale: row.billing_locale === "en" ? "en" : "es", billingTimezone: "America/Tegucigalpa", phone: text(row.phone), whatsapp: text(row.whatsapp), country: text(row.country), region: text(row.region), city: text(row.city), address: text(row.address),
     status: row.status, clientSince: text(row.client_since), notes: text(row.notes), tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
     assignedToUid: nullableText(row.assigned_to), assignedAt: nullableText(row.assigned_at), createdByUid: text(row.created_by), createdAt: text(row.created_at), updatedAt: text(row.updated_at),
   };
@@ -27,14 +27,14 @@ export function mapClient(row: Row): CommercialClient {
 export function mapProject(row: Row): CommercialProject {
   return {
     id: String(row.id), clientId: String(row.client_id), name: text(row.name), description: text(row.description), status: row.status,
-    totalAmountMinor: Number(row.total_amount_minor ?? 0), currency: text(row.currency), soldAt: nullableText(row.sold_at), effectiveDate: text(row.effective_date), startDate: nullableText(row.start_date), targetEndDate: nullableText(row.target_end_date),
+    totalAmountMinor: String(row.total_amount_minor ?? "0"), currency: text(row.currency), soldAt: nullableText(row.sold_at), effectiveDate: text(row.effective_date), startDate: nullableText(row.start_date), targetEndDate: nullableText(row.target_end_date),
     completedAt: nullableText(row.completed_at), assignedToUid: nullableText(row.assigned_to), assignedAt: nullableText(row.assigned_at), createdByUid: text(row.created_by),
     createdAt: text(row.created_at), updatedAt: text(row.updated_at),
   };
 }
 
 function mapInstallment(row: Row): ProjectInstallment {
-  return { id: String(row.id), paymentPlanId: String(row.payment_plan_id), sequence: Number(row.sequence), label: text(row.label), amountMinor: Number(row.amount_minor ?? 0), currency: text(row.currency), dueDate: nullableText(row.due_date), dueTime: nullableText(row.due_time)?.slice(0,5) ?? null, notes: text(row.notes) };
+  return { id: String(row.id), paymentPlanId: String(row.payment_plan_id), sequence: Number(row.sequence), label: text(row.label), amountMinor: String(row.amount_minor ?? "0"), currency: text(row.currency), dueDate: nullableText(row.due_date), dueTime: nullableText(row.due_time)?.slice(0,5) ?? null, notes: text(row.notes) };
 }
 
 function mapActivity(row: Row): CommercialActivity {
@@ -98,11 +98,11 @@ export async function getCommercialProject(id: string) {
   const relevantInstallments = installmentRows.filter((row) => planRows.some((plan) => plan.id === row.payment_plan_id));
   const plans: ProjectPaymentPlan[] = planRows.map((row) => ({
     id: String(row.id), projectId: String(row.project_id), version: Number(row.version), name: text(row.name), status: row.status,
-    plannedTotalMinor: Number(row.planned_total_minor ?? 0), currency: text(row.currency), activatedAt: nullableText(row.activated_at), createdAt: text(row.created_at),
+    plannedTotalMinor: String(row.planned_total_minor ?? "0"), currency: text(row.currency), activatedAt: nullableText(row.activated_at), createdAt: text(row.created_at),
     installments: relevantInstallments.filter((item) => item.payment_plan_id === row.id).map(mapInstallment),
   }));
   const recurring: ProjectRecurringService | null = recurringRows[0] ? {
-    id: String(recurringRows[0].id), projectId: String(recurringRows[0].project_id), name: text(recurringRows[0].name), monthlyAmountMinor: Number(recurringRows[0].monthly_amount_minor),
+    id: String(recurringRows[0].id), projectId: String(recurringRows[0].project_id), name: text(recurringRows[0].name), monthlyAmountMinor: String(recurringRows[0].monthly_amount_minor),
     currency: text(recurringRows[0].currency), frequency: recurringRows[0].frequency, startDate: text(recurringRows[0].start_date), billingDay: Number(recurringRows[0].billing_day),
     billingTime: text(recurringRows[0].billing_time).slice(0, 5), timezone: text(recurringRows[0].timezone), status: recurringRows[0].status,
   } : null;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Bell, BriefcaseBusiness, ClipboardList, FolderKanban, LogOut, Menu, Search, Settings, ShieldCheck, Sparkles, UserRoundCog, Users, X } from "lucide-react";
+import { BarChart3, Bell, BriefcaseBusiness, ClipboardList, FolderKanban, LogOut, Menu, ReceiptText, Search, Settings, ShieldCheck, Sparkles, UserRoundCog, Users, X } from "lucide-react";
 import { useState } from "react";
 import type { AdminPermission, AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
@@ -15,6 +15,7 @@ const navItems: Array<{ href: string; label: string; icon: typeof BarChart3; per
   { href: "/admin/leads", label: "Leads", icon: Users, permission: "leads:view" },
   { href: "/admin/clientes", label: "Clientes", icon: BriefcaseBusiness, permission: "clients:view" },
   { href: "/admin/proyectos", label: "Proyectos", icon: FolderKanban, permission: "projects:view" },
+  { href: "/admin/cobros", label: "Cobros", icon: ReceiptText, permission: "billing:view" },
   { href: "/admin/tareas", label: "Tareas", icon: ClipboardList, permission: "tasks:view" },
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell, permission: "notifications:view" },
   { href: "/admin/equipo", label: "Equipo", icon: UserRoundCog, permission: "users:manage" },
