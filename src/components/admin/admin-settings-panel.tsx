@@ -18,6 +18,12 @@ type CleanupSummary = {
   pushLogs: number;
 };
 
+type CleanupVerification = {
+  countsMatchBackup: boolean;
+  activeOwnerCount: number;
+  reminderEventCount: number;
+};
+
 const cleanupLabels: Record<keyof CleanupSummary, string> = {
   leads: "Leads",
   notes: "Notas",
@@ -141,6 +147,8 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
   const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
   const [cleanupOpen, setCleanupOpen] = useState(false);
   const [cleanupSummary, setCleanupSummary] = useState<CleanupSummary | null>(null);
+  const [cleanupVerification, setCleanupVerification] = useState<CleanupVerification | null>(null);
+  const [cleanupError, setCleanupError] = useState("");
   const [cleanupConfirmation, setCleanupConfirmation] = useState("");
   const [isLoadingCleanupSummary, setIsLoadingCleanupSummary] = useState(false);
   const [isCleaningCrm, setIsCleaningCrm] = useState(false);
@@ -195,6 +203,8 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
   async function openCleanupDialog() {
     setCleanupOpen(true);
     setCleanupSummary(null);
+    setCleanupVerification(null);
+    setCleanupError("");
     setCleanupConfirmation("");
     setIsLoadingCleanupSummary(true);
     try {
@@ -204,6 +214,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
         throw new Error(data?.message || "No se pudo cargar el resumen.");
       }
       setCleanupSummary(data.summary);
+      setCleanupVerification(data.verification);
     } catch {
       setCleanupOpen(false);
       showToast("No se pudo cargar el resumen de limpieza.", "error");
@@ -218,6 +229,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
       return;
     }
     setIsCleaningCrm(true);
+    setCleanupError("");
     try {
       const response = await fetch("/api/admin/phase1-baseline", {
         method: "POST",
@@ -232,8 +244,10 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
       setCleanupConfirmation("");
       setCleanupSummary(data.result.deletedCounts);
       showToast("Baseline limpio establecido correctamente. Ya puedes comenzar con clientes reales.");
-    } catch {
-      showToast("No se pudo limpiar el CRM. Intentalo nuevamente.", "error");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo establecer el baseline.";
+      setCleanupError(message);
+      showToast(message, "error");
     } finally {
       setIsCleaningCrm(false);
     }
@@ -387,6 +401,17 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
               )}
             </div>
 
+            {cleanupVerification ? (
+              <div className={`mt-4 rounded-2xl border p-4 text-sm ${cleanupVerification.countsMatchBackup && cleanupVerification.activeOwnerCount === 1 ? "border-emerald-300/30 bg-emerald-50 text-emerald-900" : "border-rose-300/30 bg-rose-50 text-rose-900"}`}>
+                <p className="font-black">Verificación de seguridad</p>
+                <p className="mt-1">Conteos del backup: {cleanupVerification.countsMatchBackup ? "COINCIDEN" : "NO COINCIDEN"}</p>
+                <p>Owner activo: {cleanupVerification.activeOwnerCount}</p>
+                <p>Reminder events: {cleanupVerification.reminderEventCount}</p>
+              </div>
+            ) : null}
+
+            {cleanupError ? <p role="alert" className="mt-4 rounded-xl border border-rose-300/30 bg-rose-50 p-3 text-sm font-bold text-rose-900">{cleanupError}</p> : null}
+
             <div className="mt-5 rounded-2xl border border-rose-300/20 bg-rose-950/20 p-4">
               <label className="grid gap-2 text-sm font-bold text-rose-100">
                 Escribe PRE_CLEAN_BASELINE para confirmar
@@ -415,7 +440,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
               <button
                 type="button"
                 onClick={runCleanup}
-                disabled={isCleaningCrm || cleanupConfirmation !== "PRE_CLEAN_BASELINE" || isLoadingCleanupSummary}
+                disabled={isCleaningCrm || cleanupConfirmation !== "PRE_CLEAN_BASELINE" || isLoadingCleanupSummary || !cleanupVerification?.countsMatchBackup || cleanupVerification.activeOwnerCount !== 1}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-black text-white transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isCleaningCrm ? "Estableciendo..." : "Si, establecer baseline"}

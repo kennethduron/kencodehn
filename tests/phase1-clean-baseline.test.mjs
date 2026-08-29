@@ -73,4 +73,6 @@ test("legacy cleanup write is disabled and maintenance UI uses the verified base
   assert.match(legacyEndpoint, /status: 410/);
   assert.equal((settingsPanel.match(/fetch\("\/api\/admin\/phase1-baseline"/g) ?? []).length, 2);
   assert.match(settingsPanel, /PRE_CLEAN_BASELINE/);
+  assert.match(settingsPanel, /Conteos del backup:/);
+  assert.match(settingsPanel, /cleanupVerification\.activeOwnerCount !== 1/);
 });
