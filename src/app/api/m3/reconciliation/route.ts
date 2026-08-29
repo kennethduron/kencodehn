@@ -144,9 +144,11 @@ export async function GET() {
         if (mapping.target_id !== expected.targetId || mapping.target_table !== table) { mismatch("mapping_identity"); continue; }
         if (mapping.checksum !== expected.checksum) { mismatch("mapping_checksum"); continue; }
         if (!actual) { mismatch("target_missing"); continue; }
-        const comparisonKeys = Object.keys(expected.row).filter(
-          (key) => !(table === "admin_settings" && key === "updated_at"),
-        );
+        const comparisonKeys = Object.keys(expected.row).filter((key) => {
+          if (table === "admin_settings" && key === "updated_at") return false;
+          if (table === "profiles" && (key === "last_login_at" || key === "updated_at")) return false;
+          return true;
+        });
         const projectedExpected = Object.fromEntries(comparisonKeys.map((key) => [key, expected.row[key]]));
         const projectedActual = Object.fromEntries(comparisonKeys.map((key) => [key, actual[key]]));
         const expectedChecksum = deterministicChecksum(normalize(projectedExpected));
