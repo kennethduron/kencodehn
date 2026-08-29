@@ -66,6 +66,8 @@ test("remote baseline endpoint is Owner-only, exact and Preview-safe", () => {
   assert.match(endpoint, /activeOwnerCount/);
   assert.match(endpoint, /reminderEventCount/);
   assert.match(endpoint, /counts_changed/);
+  assert.match(endpoint, /diagnosticCode/);
+  assert.doesNotMatch(endpoint, /error\.message[,}]/);
 });
 
 test("legacy cleanup write is disabled and maintenance UI uses the verified baseline", () => {

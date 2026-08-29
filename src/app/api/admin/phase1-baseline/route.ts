@@ -92,19 +92,26 @@ export async function POST(request: NextRequest) {
     p_expected_counts: expectedCounts,
   });
   if (error) {
+    const diagnosticCode = typeof error.code === "string" && /^[A-Z0-9]{3,12}$/.test(error.code) ? error.code : "unknown";
     const reason = error.message.includes("changed after backup")
       ? "counts_changed"
       : error.message.includes("profile safety check failed")
         ? "profile_guard"
         : error.message.includes("already established")
           ? "baseline_conflict"
+          : error.message.includes("permission denied") || error.message.includes("row-level security")
+            ? "permission_guard"
+            : error.message.includes("foreign key")
+              ? "fk_guard"
+              : error.message.includes("schema cache")
+                ? "schema_cache"
           : "execution_failed";
     const message = reason === "counts_changed"
       ? "Los datos cambiaron después del backup; se requiere un nuevo respaldo."
       : reason === "profile_guard"
         ? "La protección del perfil Owner impidió establecer el baseline."
         : "No se pudo establecer el baseline limpio.";
-    return NextResponse.json({ ok: false, reason, message }, { status: 409 });
+    return NextResponse.json({ ok: false, reason, diagnosticCode, message }, { status: 409 });
   }
   return NextResponse.json({ ok: true, result: data });
 }

@@ -238,7 +238,8 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
       });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) {
-        throw new Error(data?.message || "No se pudo limpiar.");
+        const diagnostic = data?.reason && data?.diagnosticCode ? ` (${data.reason}/${data.diagnosticCode})` : "";
+        throw new Error(`${data?.message || "No se pudo limpiar."}${diagnostic}`);
       }
       setCleanupOpen(false);
       setCleanupConfirmation("");
