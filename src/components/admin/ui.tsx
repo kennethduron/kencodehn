@@ -42,6 +42,7 @@ type ConfirmDialogProps = {
   loading?: boolean;
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
+  children?: React.ReactNode;
 };
 
 export function ConfirmDialog({
@@ -54,6 +55,7 @@ export function ConfirmDialog({
   loading = false,
   onCancel,
   onConfirm,
+  children,
 }: ConfirmDialogProps) {
   useEffect(() => {
     if (!open) return;
@@ -79,6 +81,7 @@ export function ConfirmDialog({
             <X size={17} />
           </button>
         </div>
+        {children ? <div className="mt-4">{children}</div> : null}
         <div className="mt-5 grid grid-cols-2 gap-2">
           <button type="button" onClick={onCancel} disabled={loading} className="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-black text-kc-text transition hover:border-kc-cyan/35 disabled:cursor-not-allowed disabled:opacity-50">
             {cancelText}
