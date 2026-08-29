@@ -1,8 +1,13 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth, type Auth } from "firebase-admin/auth";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
-import { getMessaging, type Messaging } from "firebase-admin/messaging";
+import "server-only";
 
+import { createRequire } from "node:module";
+import type { App } from "firebase-admin/app";
+import type { Auth } from "firebase-admin/auth";
+import type { Firestore } from "firebase-admin/firestore";
+import type { Messaging } from "firebase-admin/messaging";
+
+const requireFirebaseAdmin = createRequire(import.meta.url);
+let app: App | null = null;
 let firestore: Firestore | null = null;
 let auth: Auth | null = null;
 let messaging: Messaging | null = null;
@@ -32,24 +37,25 @@ function getServiceAccount() {
   };
 }
 
+function getAdminApp() {
+  if (app) return app;
+  const serviceAccount = getServiceAccount();
+  if (!serviceAccount) return null;
+  const { cert, getApps, initializeApp } = requireFirebaseAdmin("firebase-admin/app") as typeof import("firebase-admin/app");
+  app = getApps()[0] ?? initializeApp({ credential: cert(serviceAccount) });
+  return app;
+}
+
 export function getAdminDb() {
   if (firestore) {
     return firestore;
   }
 
-  const serviceAccount = getServiceAccount();
-  if (!serviceAccount) {
-    return null;
-  }
-
   try {
-    if (!getApps().length) {
-      initializeApp({
-        credential: cert(serviceAccount),
-      });
-    }
-
-    firestore = getFirestore();
+    const currentApp = getAdminApp();
+    if (!currentApp) return null;
+    const { getFirestore } = requireFirebaseAdmin("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
+    firestore = getFirestore(currentApp);
     return firestore;
   } catch (error) {
     console.warn("[Ken Code Firebase config warning] Unable to initialize Firebase Admin.", error);
@@ -57,24 +63,21 @@ export function getAdminDb() {
   }
 }
 
+export function getAdminServerTimestamp() {
+  const { FieldValue } = requireFirebaseAdmin("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
+  return FieldValue.serverTimestamp();
+}
+
 export function getAdminAuth() {
   if (auth) {
     return auth;
   }
 
-  const serviceAccount = getServiceAccount();
-  if (!serviceAccount) {
-    return null;
-  }
-
   try {
-    if (!getApps().length) {
-      initializeApp({
-        credential: cert(serviceAccount),
-      });
-    }
-
-    auth = getAuth();
+    const currentApp = getAdminApp();
+    if (!currentApp) return null;
+    const { getAuth } = requireFirebaseAdmin("firebase-admin/auth") as typeof import("firebase-admin/auth");
+    auth = getAuth(currentApp);
     return auth;
   } catch (error) {
     console.warn("[Ken Code Firebase Auth warning] Unable to initialize Firebase Admin Auth.", error);
@@ -87,19 +90,11 @@ export function getAdminMessaging() {
     return messaging;
   }
 
-  const serviceAccount = getServiceAccount();
-  if (!serviceAccount) {
-    return null;
-  }
-
   try {
-    if (!getApps().length) {
-      initializeApp({
-        credential: cert(serviceAccount),
-      });
-    }
-
-    messaging = getMessaging();
+    const currentApp = getAdminApp();
+    if (!currentApp) return null;
+    const { getMessaging } = requireFirebaseAdmin("firebase-admin/messaging") as typeof import("firebase-admin/messaging");
+    messaging = getMessaging(currentApp);
     return messaging;
   } catch (error) {
     console.warn("[Ken Code Firebase Messaging warning] Unable to initialize Firebase Admin Messaging.", error);

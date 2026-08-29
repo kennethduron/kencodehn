@@ -1,7 +1,6 @@
-import { FieldValue } from "firebase-admin/firestore";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { getAdminDb, getAdminMessaging } from "@/lib/firebase/admin";
+import { getAdminDb, getAdminMessaging, getAdminServerTimestamp } from "@/lib/firebase/admin";
 import { getAdminSettings } from "@/lib/admin/settings";
 import { isSupabaseDataProviderEnabled } from "@/lib/data/provider";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -251,7 +250,7 @@ async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType
             await createSupabaseAdminClient().from("device_tokens").update({ active: false, disabled_at: new Date().toISOString() }).eq("id", device.id);
           } else {
             const db = getAdminDb();
-            await db?.collection("deviceTokens").doc(device.id).set({ active: false, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+            await db?.collection("deviceTokens").doc(device.id).set({ active: false, updatedAt: getAdminServerTimestamp() }, { merge: true });
           }
         }
       }
