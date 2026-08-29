@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const owner = await requireOwner(request);
   if ("response" in owner) return owner.response;
   const client = createSupabaseAdminClient();
-  const [profiles, owners, leads, leadNotes, tasks, reminders, notifications, activity, email, push, settings, baseline] = await Promise.all([
+  const [profiles, owners, leads, leadNotes, tasks, reminders, notifications, activity, email, push, settings] = await Promise.all([
     client.from("profiles").select("id", { head: true, count: "exact" }),
     client.from("profiles").select("id", { head: true, count: "exact" }).eq("role", "owner").eq("active", true),
     client.from("leads").select("id", { head: true, count: "exact" }),
@@ -44,9 +44,8 @@ export async function GET(request: NextRequest) {
     client.from("email_logs").select("id", { head: true, count: "exact" }),
     client.from("push_logs").select("id", { head: true, count: "exact" }),
     client.from("admin_settings").select("id", { head: true, count: "exact" }),
-    client.from("business_baselines").select("baseline_key").eq("baseline_key", "PRE_CLEAN_BASELINE").maybeSingle(),
   ]);
-  const queries = [profiles, owners, leads, leadNotes, tasks, reminders, notifications, activity, email, push, settings, baseline];
+  const queries = [profiles, owners, leads, leadNotes, tasks, reminders, notifications, activity, email, push, settings];
   if (queries.some((query) => query.error)) return NextResponse.json({ ok: false, message: "No se pudo verificar el estado del baseline." }, { status: 500 });
   const actualCounts = {
     profiles: profiles.count ?? -1,
@@ -75,7 +74,6 @@ export async function GET(request: NextRequest) {
       countsMatchBackup: JSON.stringify(actualCounts) === JSON.stringify(expectedCounts),
       activeOwnerCount: owners.count ?? -1,
       reminderEventCount: actualCounts.reminder_events,
-      baselineEstablished: Boolean(baseline.data),
     },
   });
 }
