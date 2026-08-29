@@ -46,6 +46,10 @@ function getAdminApp() {
   return app;
 }
 
+export function getAdminProjectId() {
+  return getAdminApp()?.options.projectId ?? null;
+}
+
 export function getAdminDb() {
   if (firestore) {
     return firestore;
