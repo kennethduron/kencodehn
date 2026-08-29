@@ -43,6 +43,7 @@ export async function GET() {
   if (process.env.VERCEL_ENV !== "preview" || !isCrmPreviewReadOnly()) return unavailable();
 
   let failureStage = "firebase_init";
+  let observedFirebaseProject: string | null = null;
   try {
     const db = getAdminDb();
     const auth = getAdminAuth();
@@ -52,6 +53,7 @@ export async function GET() {
     }
     failureStage = "firebase_project_guard";
     const firebaseAdminProjectId = getAdminProjectId();
+    observedFirebaseProject = firebaseAdminProjectId;
     if (firebaseAdminProjectId !== FIREBASE_CRM_SOURCE_PROJECT_ID) {
       failureStage = firebaseAdminProjectId === FIREBASE_LEGACY_EXCLUDED_PROJECT_ID
         ? "firebase_legacy_project_excluded"
@@ -149,6 +151,11 @@ export async function GET() {
       secretsReturned: false,
     }, { headers: noStore });
   } catch {
-    return NextResponse.json({ ok: false, message: "Reconciliation audit unavailable.", stage: failureStage }, { status: 503, headers: noStore });
+    return NextResponse.json({
+      ok: false,
+      message: "Reconciliation audit unavailable.",
+      stage: failureStage,
+      observedFirebaseProject: failureStage === "firebase_unexpected_project" ? observedFirebaseProject : undefined,
+    }, { status: 503, headers: noStore });
   }
 }
