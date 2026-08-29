@@ -24,7 +24,8 @@ export type EmailType =
   | "task_overdue"
   | "status_update"
   | "daily_summary"
-  | "user_invitation";
+  | "user_invitation"
+  | "owner_email_verification";
 
 export type EmailSendResult = {
   sent: boolean;
@@ -52,7 +53,7 @@ export type SendEmailInput = EmailTemplate & {
 let resend: Resend | null = null;
 
 const sendEmailSchema = z.object({
-  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary", "user_invitation"]),
+  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary", "user_invitation", "owner_email_verification"]),
   to: z.string().email().optional().nullable(),
   subject: z.string().trim().min(3).max(180),
   text: z.string().trim().min(10).max(10000),
@@ -156,7 +157,8 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
   const requiresExplicitRecipient = input.type === "client_lead_confirmation"
     || input.type === "task_reminder"
     || input.type === "task_overdue"
-    || input.type === "user_invitation";
+    || input.type === "user_invitation"
+    || input.type === "owner_email_verification";
   const to = requiresExplicitRecipient ? input.to : input.to || getEmailTarget();
   if (requiresExplicitRecipient && !to) {
     return withLog({ ...input, to, subject: input.subject || "Confirmacion Ken Code" }, { sent: false, reason: "email_to_missing" });
@@ -170,7 +172,7 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
   const client = getResendClient();
   const settings = await getAdminSettings();
 
-  if (!settings.emailNotificationsEnabled && parsed.data.type !== "client_lead_confirmation" && parsed.data.type !== "user_invitation") {
+  if (!settings.emailNotificationsEnabled && parsed.data.type !== "client_lead_confirmation" && parsed.data.type !== "user_invitation" && parsed.data.type !== "owner_email_verification") {
     return withLog(parsed.data, { sent: false, reason: "email_notifications_disabled" });
   }
 
