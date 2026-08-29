@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Clock3, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Clock3, FolderKanban, TrendingUp, Users, WalletCards } from "lucide-react";
 import type { ActivityLog, AdminLead, AdminNotification, AdminTask } from "@/lib/admin/types";
 import { activityHref, mapActivityTone } from "@/lib/admin/activity";
 import { leadStatusLabels, money, shortDate, timeAgo } from "./admin-labels";
@@ -7,8 +7,11 @@ import { todayInHonduras } from "@/lib/time";
 import { AdminBarChart, AdminDonutMetric } from "./admin-chart";
 import { KpiCard } from "./kpi-card";
 import { LeadList } from "./lead-list";
+import type { CommercialClient, CommercialProject } from "@/lib/commercial/types";
+import { formatMinor } from "@/lib/billing/money";
 
-export function AdminDashboard({ leads, tasks, notifications, activity, canEditLeads, canCreateTasks, canViewTasks, canViewNotifications, canViewActivity, personalScope = false }: { leads: AdminLead[]; tasks: AdminTask[]; notifications: AdminNotification[]; activity: ActivityLog[]; canEditLeads: boolean; canCreateTasks: boolean; canViewTasks: boolean; canViewNotifications: boolean; canViewActivity: boolean; personalScope?: boolean }) {
+type BillingSummary = { currency:string; dueToday:string; next7:string; overdue:string; outstanding:string; collectedMonth:string };
+export function AdminDashboard({ leads, tasks, notifications, activity, canEditLeads, canCreateTasks, canViewTasks, canViewNotifications, canViewActivity, personalScope = false, clients = [], projects = [], billingSummary = [] }: { leads: AdminLead[]; tasks: AdminTask[]; notifications: AdminNotification[]; activity: ActivityLog[]; canEditLeads: boolean; canCreateTasks: boolean; canViewTasks: boolean; canViewNotifications: boolean; canViewActivity: boolean; personalScope?: boolean; clients?:CommercialClient[];projects?:CommercialProject[];billingSummary?:BillingSummary[] }) {
   const total = leads.length;
   const newLeads = leads.filter((lead) => lead.status === "new").length;
   const contacted = leads.filter((lead) => lead.status === "contacted").length;
@@ -18,32 +21,22 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
   const lost = leads.filter((lead) => lead.status === "lost").length;
   const pendingTasks = tasks.filter((task) => task.status !== "completed").length;
   const overdueTasks = tasks.filter((task) => task.status === "overdue" || (task.dueAt && new Date(task.dueAt) < new Date() && task.status !== "completed")).length;
-  const potentialValue = leads.reduce((sum, lead) => sum + lead.estimatedValue, 0);
   const wonValue = leads.reduce((sum, lead) => sum + lead.wonValue, 0);
-  const potentialInitialRevenue = leads.reduce((sum, lead) => sum + (lead.initialProjectAmount || lead.estimatedValue), 0);
-  const wonInitialRevenue = leads.filter((lead) => lead.status === "won").reduce((sum, lead) => sum + (lead.initialProjectAmount || lead.wonValue || lead.estimatedValue), 0);
-  const potentialMonthlyRevenue = leads.reduce((sum, lead) => sum + lead.monthlyFee, 0);
-  const activeMonthlyRevenue = leads.filter((lead) => lead.status === "won" || lead.paymentStatus === "active").reduce((sum, lead) => sum + lead.monthlyFee, 0);
-  const leadsWithMonthly = leads.filter((lead) => lead.monthlyFee > 0).length;
-  const wonWithMonthly = leads.filter((lead) => lead.monthlyFee > 0 && lead.status === "won").length;
   const conversion = total ? Math.round((won / total) * 100) : 0;
   const unread = notifications.filter((notification) => !notification.read).length;
   const today = todayInHonduras();
   const todayTasks = tasks.filter((task) => task.date === today && task.status !== "completed").length;
 
+  const activeClients=clients.filter(client=>client.status==="active").length;
+  const activeProjects=projects.filter(project=>project.status==="active").length;
+  const financialValue=(key:"outstanding"|"collectedMonth")=>billingSummary.length?billingSummary.map(item=>formatMinor(item[key],item.currency)).join(" · "):"Sin movimientos";
   const cards = [
-    { label: personalScope ? "Mis leads" : "Total de leads", value: total, detail: `${newLeads} nuevos en pipeline`, icon: Users, accent: "cyan" as const },
-    { label: "Leads ganados", value: won, detail: `${money(wonValue)} cerrados`, icon: TrendingUp, accent: "green" as const },
-    { label: "Leads perdidos", value: lost, detail: "Oportunidades para revisar", icon: TrendingDown, accent: "rose" as const },
-    ...(canViewTasks ? [{ label: "Tareas pendientes", value: pendingTasks, detail: `${todayTasks} para hoy`, icon: CalendarClock, accent: overdueTasks ? "rose" as const : "blue" as const }] : []),
-    ...(canViewNotifications ? [{ label: "Sin leer", value: unread, detail: "Notificaciones internas", icon: Bell, accent: unread ? "rose" as const : "slate" as const }] : []),
-    { label: "Valor potencial", value: money(potentialValue), detail: "Estimado del pipeline", icon: CircleDollarSign, accent: "lime" as const },
-    { label: "Inicial potencial", value: money(potentialInitialRevenue), detail: "Monto inicial de proyectos", icon: CircleDollarSign, accent: "lime" as const },
-    { label: "Inicial ganado", value: money(wonInitialRevenue), detail: "Proyectos cerrados", icon: TrendingUp, accent: "green" as const },
-    { label: "Mensualidad potencial", value: `${money(potentialMonthlyRevenue)}/mes`, detail: `${leadsWithMonthly} leads con mensualidad`, icon: CircleDollarSign, accent: "blue" as const },
-    { label: "Mensualidad activa", value: `${money(activeMonthlyRevenue)}/mes`, detail: `${wonWithMonthly} clientes ganados`, icon: TrendingUp, accent: "green" as const },
-    { label: "Conversion", value: `${conversion}%`, detail: "Ganados sobre total", icon: TrendingUp, accent: "green" as const },
-    ...(canViewTasks ? [{ label: "Tareas vencidas", value: overdueTasks, detail: overdueTasks ? "Requieren accion" : "Todo bajo control", icon: Clock3, accent: overdueTasks ? "rose" as const : "slate" as const }] : []),
+    { label: "Clientes activos", value: activeClients, detail: `${clients.length} clientes registrados`, icon: Users, accent: "blue" as const },
+    { label: "Proyectos en curso", value: activeProjects, detail: `${projects.length} proyectos registrados`, icon: FolderKanban, accent: "cyan" as const },
+    { label: "Cobros pendientes", value: financialValue("outstanding"), detail: "Saldos separados por moneda", icon: CircleDollarSign, accent: "lime" as const },
+    { label: "Cobrado este mes", value: financialValue("collectedMonth"), detail: "Dinero real recibido", icon: WalletCards, accent: "green" as const },
+    { label: personalScope ? "Mis leads" : "Leads en cartera", value: total, detail: `${newLeads} nuevos · ${won} ganados`, icon: TrendingUp, accent: "blue" as const },
+    ...(canViewTasks ? [{ label: "Tareas pendientes", value: pendingTasks, detail: `${todayTasks} hoy · ${overdueTasks} vencidas`, icon: CalendarClock, accent: overdueTasks ? "rose" as const : "slate" as const }] : []),
   ];
   const pipeline = [
     { label: leadStatusLabels.new, value: newLeads, tone: "cyan" as const },
@@ -59,9 +52,9 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.22em] text-kc-cyan">Dashboard</p>
-          <h1 className="mt-2 font-display text-3xl font-black text-kc-text sm:text-4xl">{personalScope ? "Mi cartera comercial" : "Centro de operaciones"}</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-kc-muted">{personalScope ? "Metricas calculadas unicamente con los leads asignados a tu cuenta." : "Pipeline, tareas y alertas internas en una vista rapida para operar Ken Code con claridad."}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Panel General</p>
+          <h1 className="mt-1 font-display text-2xl font-black text-kc-text sm:text-3xl">{personalScope ? "Mi cartera comercial" : "Resumen comercial y operativo"}</h1>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-kc-muted">{personalScope ? "Indicadores calculados unicamente con registros asignados a tu cuenta." : "Clientes, proyectos, cobros y tareas reales de Ken Code en una vista compacta."}</p>
         </div>
         {canViewNotifications ? <Link href="/admin/notificaciones" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-kc-cyan/30 bg-kc-cyan/10 px-4 text-sm font-black text-kc-cyan transition hover:border-kc-cyan/60 hover:bg-kc-cyan/15">
           <Bell size={17} aria-hidden="true" />
@@ -69,7 +62,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
         </Link> : null}
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {cards.map((card) => <KpiCard key={card.label} {...card} />)}
       </section>
 

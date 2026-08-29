@@ -86,7 +86,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${spaceGrotesk.variable}`}>
+    <html lang="es" data-scroll-behavior="smooth" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body>
         <div className="pointer-events-none fixed inset-0 -z-10 kc-grid-bg" />
         <PublicShell>{children}</PublicShell>

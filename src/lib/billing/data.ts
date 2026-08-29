@@ -40,7 +40,9 @@ export async function listReceivables(input: { page?: number; pageSize?: number;
   return {items,total:rows[0]?Number(rows[0].total_count):0,page,pageSize};
 }
 
-export async function billingSummary() {
+export type BillingSummaryGroup = { currency:string;dueToday:string;next7:string;overdue:string;outstanding:string;collectedMonth:string };
+
+export async function billingSummary():Promise<BillingSummaryGroup[]> {
   const client=await createSupabaseServerClient();
   const [receivables,payments]=await Promise.all([
     unwrap(client.from("receivables").select("amount_due_minor,amount_paid_minor,balance_minor,currency,due_date,payment_state")),
@@ -51,7 +53,14 @@ export async function billingSummary() {
   const bucket=(currency:string)=>byCurrency[currency]??=( {dueToday:BigInt(0),next7:BigInt(0),overdue:BigInt(0),outstanding:BigInt(0),collectedMonth:BigInt(0)} );
   for(const row of (receivables??[]) as Row[]){const b=bucket(text(row.currency));if(row.payment_state==="cancelled")continue;const balance=BigInt(text(row.balance_minor));b.outstanding+=balance;if(row.payment_state!=="paid"){if(row.due_date===today)b.dueToday+=balance;else if(row.due_date<today)b.overdue+=balance;else if(row.due_date<=next7)b.next7+=balance;}}
   const month=today.slice(0,7);for(const row of (payments??[]) as Row[]){if(text(row.paid_at).slice(0,7)===month)bucket(text(row.currency)).collectedMonth+=BigInt(text(row.amount_minor));}
-  return Object.entries(byCurrency).map(([currency,value])=>({currency,...Object.fromEntries(Object.entries(value).map(([key,amount])=>[key,amount.toString()]))}));
+  return Object.entries(byCurrency).map(([currency,value])=>({
+    currency,
+    dueToday:value.dueToday.toString(),
+    next7:value.next7.toString(),
+    overdue:value.overdue.toString(),
+    outstanding:value.outstanding.toString(),
+    collectedMonth:value.collectedMonth.toString(),
+  }));
 }
 
 export async function listPayments(clientId?:string):Promise<BillingPayment[]> {
@@ -60,6 +69,15 @@ export async function listPayments(clientId?:string):Promise<BillingPayment[]> {
   if(clientId)query=query.eq("client_id",clientId);
   const data=await unwrap(query);
   return ((data??[]) as Row[]).map(row=>{const c=Array.isArray(row.clients)?row.clients[0]:row.clients;return{id:text(row.id),clientId:text(row.client_id),clientName:text(c?.company)||text(c?.name),amountMinor:text(row.amount_minor),currency:text(row.currency),paidAt:text(row.paid_at),method:row.method,reference:text(row.reference),notes:text(row.notes),status:row.status,recordedBy:text(row.recorded_by),reversedAt:nullable(row.reversed_at),reversalReason:text(row.reversal_reason),allocations:(row.payment_allocations??[]).map((a:Row)=>({id:text(a.id),receivableId:text(a.receivable_id),amountMinor:text(a.amount_minor),description:text((Array.isArray(a.receivables)?a.receivables[0]:a.receivables)?.description),reversedAt:nullable(a.reversed_at)}))}});
+}
+
+export async function listPaymentsPage(input:{page?:number;pageSize?:number;currency?:string;status?:string;clientId?:string}={}){
+  const client=await createSupabaseServerClient();const page=Math.max(1,input.page??1),pageSize=Math.min(50,Math.max(1,input.pageSize??20));
+  let query=client.from("payments").select("*,clients!inner(name,company),payment_allocations(id,receivable_id,amount_minor,reversed_at,receivables(description))",{count:"exact"}).order("paid_at",{ascending:false}).range((page-1)*pageSize,page*pageSize-1);
+  if(input.clientId)query=query.eq("client_id",input.clientId);if(input.currency)query=query.eq("currency",input.currency);if(input.status)query=query.eq("status",input.status);
+  const {data,error,count}=await query;if(error)throw new Error(`Billing payments query failed (${error.code??"unknown"}).`);
+  const items=((data??[]) as Row[]).map(row=>{const c=Array.isArray(row.clients)?row.clients[0]:row.clients;return{id:text(row.id),clientId:text(row.client_id),clientName:text(c?.company)||text(c?.name),amountMinor:text(row.amount_minor),currency:text(row.currency),paidAt:text(row.paid_at),method:row.method,reference:text(row.reference),notes:text(row.notes),status:row.status,recordedBy:text(row.recorded_by),reversedAt:nullable(row.reversed_at),reversalReason:text(row.reversal_reason),allocations:(row.payment_allocations??[]).map((a:Row)=>({id:text(a.id),receivableId:text(a.receivable_id),amountMinor:text(a.amount_minor),description:text((Array.isArray(a.receivables)?a.receivables[0]:a.receivables)?.description),reversedAt:nullable(a.reversed_at)}))} as BillingPayment;});
+  return {items,total:count??0,page,pageSize};
 }
 
 export async function getReceivable(id:string){const client=await createSupabaseServerClient();const data=await unwrap(client.from("receivables").select("*,clients!inner(name,company),projects!inner(name,assigned_to)").eq("id",id).limit(1));const row=(data as Row[]|null)?.[0];return row?mapReceivable(row):null;}

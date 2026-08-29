@@ -6,6 +6,8 @@ import { getCrmAuthProvider } from "@/lib/auth/provider";
 import { createCrmRepositories } from "@/lib/data/repositories";
 import { hasPermission, leadDataScopeForAdmin } from "@/lib/admin/authorization";
 import { redirect } from "next/navigation";
+import { listCommercialClients, listCommercialProjects } from "@/lib/commercial/data";
+import { billingSummary } from "@/lib/billing/data";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +24,14 @@ export default async function AdminPage() {
   const personalScope = leadDataScopeForAdmin(admin) === "assigned";
   const canViewDashboardActivity = canViewActivity;
   const repositories = await createCrmRepositories();
-  const [leads, tasks, notifications, activity] = await Promise.all([
+  const [leads, tasks, notifications, activity, clients, projects, billing] = await Promise.all([
     repositories.leads.list(admin),
     canViewTasks ? repositories.tasks.list(admin) : Promise.resolve([]),
     canViewNotifications ? repositories.notifications.list(admin) : Promise.resolve([]),
     canViewDashboardActivity ? repositories.activity.list(admin, undefined, 8) : Promise.resolve([]),
+    hasPermission(admin, "clients:view") ? listCommercialClients() : Promise.resolve([]),
+    hasPermission(admin, "projects:view") ? listCommercialProjects() : Promise.resolve([]),
+    hasPermission(admin, "billing:view") ? billingSummary() : Promise.resolve([]),
   ]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
@@ -43,6 +48,9 @@ export default async function AdminPage() {
         canViewNotifications={canViewNotifications}
         canViewActivity={canViewDashboardActivity}
         personalScope={personalScope}
+        clients={clients}
+        projects={projects}
+        billingSummary={billing}
       />
     </AdminChrome>
   );
