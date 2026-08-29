@@ -144,8 +144,12 @@ export async function GET() {
         if (mapping.target_id !== expected.targetId || mapping.target_table !== table) { mismatch("mapping_identity"); continue; }
         if (mapping.checksum !== expected.checksum) { mismatch("mapping_checksum"); continue; }
         if (!actual) { mismatch("target_missing"); continue; }
-        const projectedActual = Object.fromEntries(Object.keys(expected.row).map((key) => [key, actual[key]]));
-        const expectedChecksum = deterministicChecksum(normalize(expected.row));
+        const comparisonKeys = Object.keys(expected.row).filter(
+          (key) => !(table === "admin_settings" && key === "updated_at"),
+        );
+        const projectedExpected = Object.fromEntries(comparisonKeys.map((key) => [key, expected.row[key]]));
+        const projectedActual = Object.fromEntries(comparisonKeys.map((key) => [key, actual[key]]));
+        const expectedChecksum = deterministicChecksum(normalize(projectedExpected));
         const actualChecksum = deterministicChecksum(normalize(projectedActual));
         if (expectedChecksum !== actualChecksum) { mismatch("target_checksum"); continue; }
         matched += 1;

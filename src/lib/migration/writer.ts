@@ -280,7 +280,8 @@ export class SupabaseMigrationStore implements MigrationStore {
     });
     if (error) {
       const notNull = error.message?.match(/null value in column "([^"]+)" of relation "([^"]+)"/i);
-      const safeContext = notNull ? `; ${notNull[2]}.${notNull[1]} is null` : "";
+      const check = error.message?.match(/violates check constraint "([^"]+)"/i);
+      const safeContext = notNull ? `; ${notNull[2]}.${notNull[1]} is null` : check ? `; constraint ${check[1]}` : "";
       throw new Error(`Atomic migration commit failed (${error.code ?? "unknown"}${safeContext}).`);
     }
     if (data !== "inserted" && data !== "updated" && data !== "idempotent" && data !== "conflict") {

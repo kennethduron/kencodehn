@@ -187,6 +187,10 @@ grant execute on function public.baseline_reminders_for_cutover(timestamptz) to 
 revoke all on function public.enqueue_due_reminder_events(timestamptz) from public, anon, authenticated;
 grant execute on function public.enqueue_due_reminder_events(timestamptz) to service_role;
 
+-- Materialize the immutable baseline in the same recorded migration transaction.
+-- This only writes skipped/completed audit rows; it never calls a delivery or cron function.
+select public.baseline_reminders_for_cutover(statement_timestamp());
+
 comment on column public.admin_settings.automation_cutover_at is
   'Immutable M3 timestamp separating migration history from future reminder eligibility.';
 comment on column public.admin_settings.automation_baseline_completed_at is

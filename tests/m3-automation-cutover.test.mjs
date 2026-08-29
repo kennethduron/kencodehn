@@ -9,6 +9,7 @@ test("automation cutover timestamp and baseline completion are persisted", () =>
   assert.match(sql, /automation_cutover_at timestamptz/);
   assert.match(sql, /automation_baseline_completed_at timestamptz/);
   assert.match(sql, /automation cutover timestamp is immutable/);
+  assert.match(sql, /select public\.baseline_reminders_for_cutover\(statement_timestamp\(\)\)/);
 });
 
 test("historical windows are auditable and complete without delivery", () => {

@@ -47,3 +47,10 @@ test("Firebase Admin values are normalized to the canonical REST snapshot shape"
   assert.match(route, /candidate\.latitude/);
   assert.match(route, /data: normalizeFirebaseValue\(document\.data\(\)\)/);
 });
+
+test("reconciliation ignores only the Supabase-managed admin settings timestamp", () => {
+  assert.match(route, /table === "admin_settings" && key === "updated_at"/);
+  assert.match(route, /projectedExpected/);
+  assert.match(route, /projectedActual/);
+  assert.doesNotMatch(route, /table === "admin_settings" && key !==/);
+});

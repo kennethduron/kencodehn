@@ -244,6 +244,13 @@ test("mapped delta refuses to overwrite a target changed outside the migration",
   assert.equal(store.targets.values().next().value.title, "Unexpected target edit");
 });
 
+test("remote writer reports check constraint names without row contents", () => {
+  const writer = readFileSync(new URL("../src/lib/migration/writer.ts", import.meta.url), "utf8");
+  assert.match(writer, /violates check constraint/);
+  assert.match(writer, /constraint \$\{check\[1\]\}/);
+  assert.doesNotMatch(writer, /JSON\.stringify\(error\)/);
+});
+
 test("UUID mappings are immutable once committed", async () => {
   const row = prepareMigrationRows(SANITIZED_FIRESTORE, SANITIZED_AUTH_USERS).rows[0];
   const store = new MemoryMigrationStore();
