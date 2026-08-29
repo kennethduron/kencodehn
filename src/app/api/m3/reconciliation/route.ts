@@ -95,7 +95,13 @@ export async function GET() {
     if (mappingsError) throw mappingsError;
     const mappingBySource = new Map((mappings ?? []).map((mapping) => [`${mapping.source_collection}\0${mapping.source_id}`, mapping]));
 
-    const domains: Record<string, { source: number; target: number; matched: number; checksum: string }> = {};
+    const domains: Record<string, {
+      source: number;
+      target: number;
+      matched: number;
+      checksum: string;
+      mismatchReasons: Record<string, number>;
+    }> = {};
     let totalMatched = 0;
     failureStage = "target_rows";
     for (const table of [...new Set(prepared.rows.map((row) => row.targetTable))]) {
@@ -110,15 +116,20 @@ export async function GET() {
 
       const targetById = new Map(targetRows.map((row) => [String(row.id), row]));
       const matchTokens: string[] = [];
+      const mismatchReasons: Record<string, number> = {};
+      const mismatch = (reason: string) => { mismatchReasons[reason] = (mismatchReasons[reason] ?? 0) + 1; };
       let matched = 0;
       for (const expected of expectedRows) {
         const mapping = mappingBySource.get(`${expected.sourceCollection}\0${expected.sourceId}`);
         const actual = targetById.get(expected.targetId);
-        if (!mapping || mapping.target_id !== expected.targetId || mapping.target_table !== table || mapping.checksum !== expected.checksum || !actual) continue;
+        if (!mapping) { mismatch("mapping_missing"); continue; }
+        if (mapping.target_id !== expected.targetId || mapping.target_table !== table) { mismatch("mapping_identity"); continue; }
+        if (mapping.checksum !== expected.checksum) { mismatch("mapping_checksum"); continue; }
+        if (!actual) { mismatch("target_missing"); continue; }
         const projectedActual = Object.fromEntries(Object.keys(expected.row).map((key) => [key, actual[key]]));
         const expectedChecksum = deterministicChecksum(normalize(expected.row));
         const actualChecksum = deterministicChecksum(normalize(projectedActual));
-        if (expectedChecksum !== actualChecksum) continue;
+        if (expectedChecksum !== actualChecksum) { mismatch("target_checksum"); continue; }
         matched += 1;
         totalMatched += 1;
         matchTokens.push(`${expected.targetId}:${actualChecksum}`);
@@ -128,6 +139,7 @@ export async function GET() {
         target: targetRows.length,
         matched,
         checksum: deterministicChecksum(matchTokens.sort()),
+        mismatchReasons,
       };
     }
 

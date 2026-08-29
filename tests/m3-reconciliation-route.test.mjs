@@ -30,6 +30,10 @@ test("reconciliation audit returns aggregates and no identity or secret fields",
   assert.match(route, /failureStage === "firebase_unexpected_project" \? observedFirebaseProject : undefined/);
   assert.match(route, /mismatches/);
   assert.match(route, /matchedRows/);
+  assert.match(route, /mismatchReasons/);
+  for (const reason of ["mapping_missing", "mapping_identity", "mapping_checksum", "target_missing", "target_checksum"]) {
+    assert.match(route, new RegExp(reason));
+  }
   assert.doesNotMatch(route, /console\.(?:log|warn|error)/);
   assert.doesNotMatch(route, /passwordHash\s*:/);
   assert.match(route, /Cache-Control": "no-store/);
