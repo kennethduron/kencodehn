@@ -41,13 +41,15 @@ async function deliverQueuedEmail(event:Row,workerId:string){
 
 export async function runBillingDelivery(){
   const client=createSupabaseAdminClient();const workerId=crypto.randomUUID();const runId=crypto.randomUUID();const started=Date.now();let processed=0,sent=0,failed=0,skipped=0;
-  await client.from("billing_job_runs").insert({id:runId,job_type:"delivery",source:"supabase_cron",status:"running"});
+  const{error:startAuditError}=await client.from("billing_job_runs").insert({id:runId,job_type:"delivery",source:"supabase_cron",status:"running"});
+  if(startAuditError)throw new Error("Billing job audit start failed.");
   try{
     const[{data:reminders,error:reminderError},{data:emails,error:emailError}]=await Promise.all([client.rpc("billing_claim_reminders",{p_worker_id:workerId,p_limit:50,p_now:new Date().toISOString()}),client.rpc("billing_claim_emails",{p_worker_id:workerId,p_limit:25,p_now:new Date().toISOString()})]);
     if(reminderError||emailError)throw new Error("Billing claim failed.");
     for(const row of (reminders??[]) as Row[]){processed++;try{if(await deliverReminder(row,workerId))sent++;else failed++;}catch{failed++;await complete("reminder",text(row.event_id),workerId,false,null,"delivery_exception").catch(()=>{});}}
     for(const event of (emails??[]) as Row[]){processed++;try{if(await deliverQueuedEmail(event,workerId))sent++;else failed++;}catch{failed++;await complete("email",text(event.id),workerId,false,null,"delivery_exception").catch(()=>{});}}
-    await client.from("billing_job_runs").update({status:"succeeded",processed,sent,failed,skipped,finished_at:new Date().toISOString(),duration_ms:Date.now()-started}).eq("id",runId);
+    const{error:successAuditError}=await client.from("billing_job_runs").update({status:"succeeded",processed,sent,failed,skipped,finished_at:new Date().toISOString(),duration_ms:Date.now()-started}).eq("id",runId);
+    if(successAuditError)throw new Error("Billing job audit completion failed.");
     return{processed,sent,failed,skipped};
-  }catch(error){await client.from("billing_job_runs").update({status:"failed",processed,sent,failed,skipped,error_category:error instanceof Error?error.name:"unknown",finished_at:new Date().toISOString(),duration_ms:Date.now()-started}).eq("id",runId);throw error;}
+  }catch(error){const{error:failureAuditError}=await client.from("billing_job_runs").update({status:"failed",processed,sent,failed,skipped,error_category:error instanceof Error?error.name:"unknown",finished_at:new Date().toISOString(),duration_ms:Date.now()-started}).eq("id",runId);if(failureAuditError)throw new Error("Billing job failure audit failed.",{cause:error});throw error;}
 }

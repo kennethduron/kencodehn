@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const sql = readFileSync("supabase/migrations/20260830000200_phase2_automated_billing.sql", "utf8");
+const auditSql = readFileSync("supabase/migrations/20260830000300_phase2_billing_job_audit_grants.sql", "utf8");
 const financialSql = readFileSync("supabase/migrations/20260830000100_phase2_receivables_payments.sql", "utf8");
 const automation = readFileSync("src/lib/billing/automation.ts", "utf8");
 const templates = readFileSync("src/lib/billing/templates.ts", "utf8");
@@ -84,7 +85,7 @@ const cases = [
   ["A66 reminder settings are interactive", /billing_rule_write|\/api\/admin\/billing\/rules/],
 ];
 
-const allSource = sql + financialSql + automation + templates + email + cron + panel + payment + rules + sections + authorization + chrome;
+const allSource = sql + auditSql + financialSql + automation + templates + email + cron + panel + payment + rules + sections + authorization + chrome;
 for (const [name, pattern] of cases) test(name, () => assert.match(allSource, pattern));
 
 for (const [index, type] of ["payment_schedule_created", "payment_schedule_updated", "payment_due_7_days", "payment_due_3_days", "payment_due_today", "payment_due_time", "payment_overdue_1_day", "payment_received"].entries()) {
@@ -110,3 +111,12 @@ test("A87 scheduler RPC is service-role only", () => assert.match(sql, /grant ex
 test("A88 scheduler configuration rejects arbitrary endpoints", () => assert.match(sql, /p_endpoint<>'https:\/\/kencodehn\.com\/api\/cron\/billing'/));
 test("A89 no production email is sent by the migration", () => assert.doesNotMatch(sql, /net\.http_post[^;]*resend/i));
 test("A90 no manual cron execution exists in application code", () => assert.doesNotMatch(cron, /cron\.run|Run Now/));
+test("A91 service role can write only the scheduler run audit", () => {
+  assert.match(auditSql, /grant select, insert, update on table public\.billing_job_runs to service_role/);
+  assert.doesNotMatch(auditSql, /billing_(reminder|email)_events[^;]*service_role/);
+});
+test("A92 delivery fails closed when job auditing fails", () => {
+  assert.match(automation, /if\(startAuditError\)throw new Error/);
+  assert.match(automation, /if\(successAuditError\)throw new Error/);
+  assert.match(automation, /if\(failureAuditError\)throw new Error/);
+});
