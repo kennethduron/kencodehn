@@ -9,6 +9,16 @@ export const ADMIN_PERMISSIONS = [
   "leads:view",
   "leads:edit",
   "leads:assign",
+  "clients:view",
+  "clients:edit",
+  "clients:assign",
+  "projects:view",
+  "projects:edit",
+  "projects:assign",
+  "commercial_plans:view",
+  "commercial_plans:edit",
+  "recurring_services:view",
+  "recurring_services:edit",
   "notes:view",
   "notes:edit",
   "tasks:view",
@@ -41,6 +51,16 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "leads:view",
     "leads:edit",
     "leads:assign",
+    "clients:view",
+    "clients:edit",
+    "clients:assign",
+    "projects:view",
+    "projects:edit",
+    "projects:assign",
+    "commercial_plans:view",
+    "commercial_plans:edit",
+    "recurring_services:view",
+    "recurring_services:edit",
     "notes:view",
     "notes:edit",
     "tasks:view",
@@ -54,11 +74,17 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "settings:manage",
     "push:manage",
   ],
-  manager: ["leads:view", "leads:edit", "reports:view"],
-  viewer: ["leads:view"],
+  manager: ["leads:view", "leads:edit", "clients:view", "clients:edit", "projects:view", "projects:edit", "commercial_plans:view", "recurring_services:view", "reports:view"],
+  viewer: ["leads:view", "clients:view", "projects:view", "commercial_plans:view", "recurring_services:view"],
   sales_agent: [
     "leads:view",
     "leads:edit",
+    "clients:view",
+    "clients:edit",
+    "projects:view",
+    "projects:edit",
+    "commercial_plans:view",
+    "recurring_services:view",
     "notes:view",
     "notes:edit",
     "tasks:view",
@@ -144,6 +170,16 @@ export function canAccessLead(admin: AdminUser, lead: LeadOwnership) {
 
 export function canAssignLead(admin: AdminUser) {
   return hasPermission(admin, "leads:assign") && leadDataScopeForAdmin(admin) === "global";
+}
+
+export type CommercialDataScope = "global" | "assigned";
+
+export function commercialDataScopeForAdmin(admin: AdminUser): CommercialDataScope {
+  return admin.role === "sales_agent" ? "assigned" : "global";
+}
+
+export function canAssignCommercialOwner(admin: AdminUser) {
+  return admin.active && (admin.role === "owner" || admin.role === "admin");
 }
 
 export function taskDataScopeForAdmin(admin: AdminUser): TaskDataScope {

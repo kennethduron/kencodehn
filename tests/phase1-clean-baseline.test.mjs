@@ -6,6 +6,7 @@ const sql = readFileSync("supabase/migrations/20260829000300_phase1_clean_busine
 const backup = readFileSync("scripts/phase1-protect-pre-clean-dump.mjs", "utf8");
 const dpapi = readFileSync("scripts/dpapi-key.ps1", "utf8");
 const security = readFileSync("scripts/phase1-security-audit.mjs", "utf8");
+const endpoint = readFileSync("src/app/api/admin/phase1-baseline/route.ts", "utf8");
 
 test("baseline cleanup is gated by target, confirmation, checksum and exact counts", () => {
   assert.match(sql, /PRE_CLEAN_BASELINE/);
@@ -51,4 +52,12 @@ test("security audit never prints Supabase key values", () => {
   assert.match(security, /exactMatches/);
   assert.doesNotMatch(security, /console\.log\([^)]*(publishable|secret)\)/);
   assert.match(security, /secret_exact_match_in_public_build/);
+});
+
+test("remote baseline endpoint is Owner-only, exact and Preview-safe", () => {
+  assert.match(endpoint, /maintenance:run/);
+  assert.match(endpoint, /admin\.role !== "owner"/);
+  assert.match(endpoint, /isCrmPreviewReadOnly\(\)/);
+  assert.match(endpoint, /PRE_CLEAN_BASELINE/);
+  assert.match(endpoint, /1a348702f074789a85e778e9ae5d6c691f344017533b89d5398cb4526d2620dd/);
 });

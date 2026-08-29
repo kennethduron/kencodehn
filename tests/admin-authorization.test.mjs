@@ -40,6 +40,11 @@ test("manager solo recibe el conjunto operativo explicitamente declarado", () =>
   assert.equal(hasPermission(manager, "leads:view"), true);
   assert.equal(hasPermission(manager, "leads:edit"), true);
   assert.equal(hasPermission(manager, "reports:view"), true);
+  assert.equal(hasPermission(manager, "clients:edit"), true);
+  assert.equal(hasPermission(manager, "projects:edit"), true);
+  assert.equal(hasPermission(manager, "commercial_plans:view"), true);
+  assert.equal(hasPermission(manager, "commercial_plans:edit"), false);
+  assert.equal(hasPermission(manager, "recurring_services:edit"), false);
   assert.equal(hasPermission(manager, "notes:view"), false);
   assert.equal(hasPermission(manager, "tasks:view"), false);
   assert.equal(hasPermission(manager, "tasks:edit"), false);
@@ -49,14 +54,16 @@ test("manager solo recibe el conjunto operativo explicitamente declarado", () =>
   assert.equal(hasPermission(manager, "push:manage"), false);
 });
 
-test("viewer puede leer leads pero no editarlos ni acceder a otros modulos", () => {
+test("viewer puede leer datos comerciales pero no editarlos", () => {
   const viewer = adminFor("viewer");
   assert.ok(viewer);
-  assert.deepEqual(viewer.permissions, ["leads:view"]);
   assert.equal(hasPermission(viewer, "leads:view"), true);
-  for (const permission of ADMIN_PERMISSIONS.filter((permission) => permission !== "leads:view")) {
-    assert.equal(hasPermission(viewer, permission), false, `viewer no debe recibir ${permission}`);
-  }
+  assert.equal(hasPermission(viewer, "clients:view"), true);
+  assert.equal(hasPermission(viewer, "projects:view"), true);
+  assert.equal(hasPermission(viewer, "commercial_plans:view"), true);
+  assert.equal(hasPermission(viewer, "clients:edit"), false);
+  assert.equal(hasPermission(viewer, "projects:edit"), false);
+  assert.equal(hasPermission(viewer, "commercial_plans:edit"), false);
 });
 
 test("un perfil explicitamente inactivo es rechazado", () => {
@@ -99,7 +106,7 @@ test("la misma identidad usa el rol y active actuales del perfil", () => {
   assert.ok(changedViewer);
   assert.equal(hasPermission(initialAdmin, "settings:manage"), true);
   assert.equal(hasPermission(changedViewer, "settings:manage"), false);
-  assert.deepEqual(changedViewer.permissions, ["leads:view"]);
+  assert.equal(hasPermission(changedViewer, "clients:view"), true);
   assert.equal(deactivated, null);
 });
 

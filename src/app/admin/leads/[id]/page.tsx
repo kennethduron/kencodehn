@@ -52,6 +52,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
         canViewActivity={canViewActivity}
         canDeleteLead={hasPermission(admin, "maintenance:run")}
         canAssignLead={mayAssignLead}
+        canConvertLead={hasPermission(admin, "clients:edit")}
         assignableUsers={assignableUsers}
       />
     </AdminChrome>

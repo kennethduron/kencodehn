@@ -28,6 +28,7 @@ export function LeadDetail({
   canViewActivity,
   canDeleteLead,
   canAssignLead,
+  canConvertLead,
   assignableUsers,
 }: {
   initialLead: AdminLead;
@@ -42,6 +43,7 @@ export function LeadDetail({
   canViewActivity: boolean;
   canDeleteLead: boolean;
   canAssignLead: boolean;
+  canConvertLead: boolean;
   assignableUsers: AssignableSalesAgent[];
 }) {
   const router = useRouter();
@@ -62,6 +64,8 @@ export function LeadDetail({
   const [deleteLeadOpen, setDeleteLeadOpen] = useState(false);
   const [isDeletingLead, setIsDeletingLead] = useState(false);
   const [isAssigningLead, setIsAssigningLead] = useState(false);
+  const [isConvertingLead, setIsConvertingLead] = useState(false);
+  const [conversionDate, setConversionDate] = useState(new Date().toISOString().slice(0, 10));
 
   const timeline = useMemo(() => {
     const createdItem: ActivityLog = {
@@ -104,6 +108,26 @@ export function LeadDetail({
       return;
     }
     showToast(result.message || "Error al guardar.", "error");
+  }
+
+  async function convertLead() {
+    if (!canConvertLead || lead.status !== "won") return;
+    setIsConvertingLead(true);
+    try {
+      const response = await fetch("/api/admin/commercial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operation: "lead_convert", payload: { leadId: lead.id, clientSince: conversionDate } }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.result?.id) throw new Error(result.error || "No se pudo convertir el lead.");
+      router.push(`/admin/clientes/${result.result.id}`);
+      router.refresh();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "No se pudo convertir el lead.", "error");
+    } finally {
+      setIsConvertingLead(false);
+    }
   }
 
   async function saveFollowUp(nextDate = followUpDate, nextTime = followUpTime) {
@@ -441,6 +465,16 @@ export function LeadDetail({
                 <button type="button" onClick={() => updateLead({ status: "won", wonValue: lead.initialProjectAmount || lead.estimatedValue || lead.wonValue, paymentStatus: lead.monthlyFee > 0 ? "active" : lead.paymentStatus })} className="min-h-11 rounded-xl bg-emerald-700 px-3 text-sm font-black text-white">Ganado</button>
                 <button type="button" onClick={() => updateLead({ status: "lost" })} className="min-h-11 rounded-xl bg-rose-700 px-3 text-sm font-black text-white">Perdido</button>
               </div>
+              {canConvertLead && lead.status === "won" ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                <label className="grid gap-2 text-sm font-bold text-kc-muted">
+                  Cliente desde
+                  <input type="date" max={new Date().toISOString().slice(0, 10)} value={conversionDate} onChange={(event) => setConversionDate(event.target.value)} className="min-h-11 rounded-xl border px-3" />
+                </label>
+                <button type="button" disabled={isConvertingLead} onClick={convertLead} className="mt-3 min-h-11 w-full rounded-xl bg-emerald-700 px-3 text-sm font-black text-white disabled:opacity-60">
+                  {isConvertingLead ? "Convirtiendo…" : "Convertir en cliente"}
+                </button>
+                <p className="mt-2 text-xs leading-5 text-kc-muted">La conversión conserva el lead y es idempotente.</p>
+              </div> : null}
             </div>
           </div>
 
