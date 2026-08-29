@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const sql = readFileSync("supabase/migrations/20260829000300_phase1_clean_business_baseline.sql", "utf8");
+const safeDeleteSql = readFileSync("supabase/migrations/20260829000500_phase1_baseline_delete_guard.sql", "utf8");
 const backup = readFileSync("scripts/phase1-protect-pre-clean-dump.mjs", "utf8");
 const dpapi = readFileSync("scripts/dpapi-key.ps1", "utf8");
 const security = readFileSync("scripts/phase1-security-audit.mjs", "utf8");
@@ -33,6 +34,15 @@ test("baseline cleanup orders dependent operational tables before leads", () => 
     const next = sql.indexOf(`delete from public.${table}`, cursor + 1);
     assert.ok(next > cursor, `${table} must be deleted in FK-safe order`);
     cursor = next;
+  }
+});
+
+test("remote safe-delete enforcement is satisfied without weakening cleanup guards", () => {
+  for (const table of ["reminder_events", "email_logs", "push_logs", "notifications", "activity_logs", "lead_notes", "tasks", "leads"]) {
+    assert.match(safeDeleteSql, new RegExp(`delete from public\\.${table} where true`));
+  }
+  for (const guard of ["PRE_CLEAN_BASELINE", "verified backup checksum required", "profile safety check failed", "operational data changed after backup", "pg_advisory_xact_lock"]) {
+    assert.match(safeDeleteSql, new RegExp(guard));
   }
 });
 
