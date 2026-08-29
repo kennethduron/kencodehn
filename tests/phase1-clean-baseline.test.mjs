@@ -62,11 +62,15 @@ test("remote baseline endpoint is Owner-only, exact and Preview-safe", () => {
   assert.match(endpoint, /isCrmPreviewReadOnly\(\)/);
   assert.match(endpoint, /PRE_CLEAN_BASELINE/);
   assert.match(endpoint, /1a348702f074789a85e778e9ae5d6c691f344017533b89d5398cb4526d2620dd/);
+  assert.match(endpoint, /countsMatchBackup/);
+  assert.match(endpoint, /activeOwnerCount/);
+  assert.match(endpoint, /reminderEventCount/);
+  assert.match(endpoint, /counts_changed/);
 });
 
 test("legacy cleanup write is disabled and maintenance UI uses the verified baseline", () => {
   assert.doesNotMatch(legacyEndpoint, /cleanupOperationalData/);
   assert.match(legacyEndpoint, /status: 410/);
-  assert.match(settingsPanel, /fetch\("\/api\/admin\/phase1-baseline"/);
+  assert.equal((settingsPanel.match(/fetch\("\/api\/admin\/phase1-baseline"/g) ?? []).length, 2);
   assert.match(settingsPanel, /PRE_CLEAN_BASELINE/);
 });

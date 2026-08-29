@@ -198,7 +198,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
     setCleanupConfirmation("");
     setIsLoadingCleanupSummary(true);
     try {
-      const response = await fetch("/api/admin/cleanup-test-data");
+      const response = await fetch("/api/admin/phase1-baseline");
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) {
         throw new Error(data?.message || "No se pudo cargar el resumen.");

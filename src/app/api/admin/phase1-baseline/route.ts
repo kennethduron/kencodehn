@@ -21,10 +21,68 @@ const expectedCounts = {
   admin_settings: 1,
 } as const;
 
-export async function POST(request: NextRequest) {
+async function requireOwner(request: NextRequest) {
   const access = await requirePermissionsFromRequest(request, "maintenance:run");
-  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
-  if (access.admin.role !== "owner") return NextResponse.json({ ok: false, message: "Solo el Owner puede establecer el baseline." }, { status: 403 });
+  if (!access.ok) return { response: NextResponse.json({ ok: false, message: access.message }, { status: access.status }) };
+  if (access.admin.role !== "owner") return { response: NextResponse.json({ ok: false, message: "Solo el Owner puede establecer el baseline." }, { status: 403 }) };
+  return { access };
+}
+
+export async function GET(request: NextRequest) {
+  const owner = await requireOwner(request);
+  if ("response" in owner) return owner.response;
+  const client = createSupabaseAdminClient();
+  const [profiles, owners, leads, leadNotes, tasks, reminders, notifications, activity, email, push, settings, baseline] = await Promise.all([
+    client.from("profiles").select("id", { head: true, count: "exact" }),
+    client.from("profiles").select("id", { head: true, count: "exact" }).eq("role", "owner").eq("active", true),
+    client.from("leads").select("id", { head: true, count: "exact" }),
+    client.from("lead_notes").select("id", { head: true, count: "exact" }),
+    client.from("tasks").select("id", { head: true, count: "exact" }),
+    client.from("reminder_events").select("id", { head: true, count: "exact" }),
+    client.from("notifications").select("id", { head: true, count: "exact" }),
+    client.from("activity_logs").select("id", { head: true, count: "exact" }),
+    client.from("email_logs").select("id", { head: true, count: "exact" }),
+    client.from("push_logs").select("id", { head: true, count: "exact" }),
+    client.from("admin_settings").select("id", { head: true, count: "exact" }),
+    client.from("business_baselines").select("baseline_key").eq("baseline_key", "PRE_CLEAN_BASELINE").maybeSingle(),
+  ]);
+  const queries = [profiles, owners, leads, leadNotes, tasks, reminders, notifications, activity, email, push, settings, baseline];
+  if (queries.some((query) => query.error)) return NextResponse.json({ ok: false, message: "No se pudo verificar el estado del baseline." }, { status: 500 });
+  const actualCounts = {
+    profiles: profiles.count ?? -1,
+    leads: leads.count ?? -1,
+    lead_notes: leadNotes.count ?? -1,
+    tasks: tasks.count ?? -1,
+    reminder_events: reminders.count ?? -1,
+    notifications: notifications.count ?? -1,
+    activity_logs: activity.count ?? -1,
+    email_logs: email.count ?? -1,
+    push_logs: push.count ?? -1,
+    admin_settings: settings.count ?? -1,
+  };
+  return NextResponse.json({
+    ok: true,
+    summary: {
+      leads: actualCounts.leads,
+      notes: actualCounts.lead_notes,
+      tasks: actualCounts.tasks,
+      notifications: actualCounts.notifications,
+      activityLogs: actualCounts.activity_logs,
+      emailLogs: actualCounts.email_logs,
+      pushLogs: actualCounts.push_logs,
+    },
+    verification: {
+      countsMatchBackup: JSON.stringify(actualCounts) === JSON.stringify(expectedCounts),
+      activeOwnerCount: owners.count ?? -1,
+      reminderEventCount: actualCounts.reminder_events,
+      baselineEstablished: Boolean(baseline.data),
+    },
+  });
+}
+
+export async function POST(request: NextRequest) {
+  const owner = await requireOwner(request);
+  if ("response" in owner) return owner.response;
   if (isCrmPreviewReadOnly()) return NextResponse.json({ ok: false, message: "Preview permanece en modo solo lectura." }, { status: 423 });
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: false, message: "Confirmación de baseline inválida." }, { status: 400 });
@@ -36,7 +94,19 @@ export async function POST(request: NextRequest) {
     p_expected_counts: expectedCounts,
   });
   if (error) {
-    return NextResponse.json({ ok: false, message: error.message.includes("changed after backup") ? "Los datos cambiaron después del backup; se requiere un nuevo respaldo." : "No se pudo establecer el baseline limpio." }, { status: 409 });
+    const reason = error.message.includes("changed after backup")
+      ? "counts_changed"
+      : error.message.includes("profile safety check failed")
+        ? "profile_guard"
+        : error.message.includes("already established")
+          ? "baseline_conflict"
+          : "execution_failed";
+    const message = reason === "counts_changed"
+      ? "Los datos cambiaron después del backup; se requiere un nuevo respaldo."
+      : reason === "profile_guard"
+        ? "La protección del perfil Owner impidió establecer el baseline."
+        : "No se pudo establecer el baseline limpio.";
+    return NextResponse.json({ ok: false, reason, message }, { status: 409 });
   }
   return NextResponse.json({ ok: true, result: data });
 }
