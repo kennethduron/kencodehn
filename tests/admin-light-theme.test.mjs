@@ -7,6 +7,7 @@ const chrome = readFileSync("src/components/admin/admin-chrome.tsx", "utf8");
 const login = readFileSync("src/components/admin/admin-login.tsx", "utf8");
 const authShell = readFileSync("src/components/auth/auth-shell.tsx", "utf8");
 const verification = readFileSync("src/components/auth/owner-email-verification-form.tsx", "utf8");
+const loading = readFileSync("src/app/admin/loading.tsx", "utf8");
 const leads = readFileSync("src/components/admin/lead-list.tsx", "utf8");
 const dialogs = readFileSync("src/components/admin/ui.tsx", "utf8");
 const password = readFileSync("src/components/auth/password-field.tsx", "utf8");
@@ -32,6 +33,7 @@ test("CRM theme centralizes a light workspace palette without changing public ro
   assert.match(login, /kc-admin-theme/);
   assert.match(authShell, /kc-admin-theme/);
   assert.match(verification, /kc-admin-theme/);
+  assert.match(loading, /kc-admin-theme/);
 });
 
 test("core light theme color pairs meet WCAG AA contrast", () => {
@@ -63,6 +65,7 @@ test("mobile navigation remains horizontally controlled with touch-sized targets
   assert.match(chrome, /aria-label="Navegacion movil del CRM"/);
   assert.match(chrome, /overflow-x-auto/);
   assert.match(chrome, /min-h-12 min-w-\[4\.5rem\]/);
+  assert.match(chrome, /aria-label="Cerrar sesion" className="inline-flex min-h-11 min-w-11/);
   assert.match(chrome, /aria-label="Abrir menu"/);
   assert.match(chrome, /aria-label="Cerrar menu"/);
 });

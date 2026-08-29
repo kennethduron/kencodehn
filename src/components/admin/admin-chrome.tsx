@@ -116,7 +116,7 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
                 </div>
                 {hasPermission(admin, "notifications:view") ? <NotificationDropdown initialUnreadCount={unreadCount} /> : null}
                 <Tooltip label="Cerrar sesion">
-                  <button type="button" onClick={logout} title="Cerrar sesion" aria-label="Cerrar sesion" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-bold text-kc-text transition hover:border-rose-300/45 hover:text-rose-200 sm:px-4">
+                  <button type="button" onClick={logout} title="Cerrar sesion" aria-label="Cerrar sesion" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-bold text-kc-text transition hover:border-rose-300/45 hover:text-rose-200 sm:px-4">
                     <LogOut size={17} aria-hidden="true" />
                     <span className="hidden sm:inline">Salir</span>
                   </button>
