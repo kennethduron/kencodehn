@@ -25,7 +25,15 @@ export type EmailType =
   | "status_update"
   | "daily_summary"
   | "user_invitation"
-  | "owner_email_verification";
+  | "owner_email_verification"
+  | "payment_schedule_created"
+  | "payment_schedule_updated"
+  | "payment_due_7_days"
+  | "payment_due_3_days"
+  | "payment_due_today"
+  | "payment_due_time"
+  | "payment_overdue_1_day"
+  | "payment_received";
 
 export type EmailSendResult = {
   sent: boolean;
@@ -47,13 +55,17 @@ export type SendEmailInput = EmailTemplate & {
   relatedLeadId?: string | null;
   relatedTaskId?: string | null;
   relatedUserUid?: string | null;
+  relatedClientId?: string | null;
+  relatedProjectId?: string | null;
+  relatedReceivableId?: string | null;
+  relatedPaymentId?: string | null;
   idempotencyKey?: string | null;
 };
 
 let resend: Resend | null = null;
 
 const sendEmailSchema = z.object({
-  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary", "user_invitation", "owner_email_verification"]),
+  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary", "user_invitation", "owner_email_verification", "payment_schedule_created", "payment_schedule_updated", "payment_due_7_days", "payment_due_3_days", "payment_due_today", "payment_due_time", "payment_overdue_1_day", "payment_received"]),
   to: z.string().email().optional().nullable(),
   subject: z.string().trim().min(3).max(180),
   text: z.string().trim().min(10).max(10000),
@@ -61,6 +73,10 @@ const sendEmailSchema = z.object({
   relatedLeadId: z.string().trim().max(160).optional().nullable(),
   relatedTaskId: z.string().trim().max(160).optional().nullable(),
   relatedUserUid: z.string().trim().max(160).optional().nullable(),
+  relatedClientId: z.string().uuid().optional().nullable(),
+  relatedProjectId: z.string().uuid().optional().nullable(),
+  relatedReceivableId: z.string().uuid().optional().nullable(),
+  relatedPaymentId: z.string().uuid().optional().nullable(),
   idempotencyKey: z.string().trim().max(256).optional().nullable(),
 });
 
@@ -69,7 +85,7 @@ function getEmailTarget() {
 }
 
 function getReplyTo(input: SendEmailInput) {
-  if (input.type === "client_lead_confirmation") {
+  if (input.type === "client_lead_confirmation" || input.type.startsWith("payment_")) {
     return site.email;
   }
   return undefined;
@@ -112,6 +128,10 @@ async function logEmail(input: SendEmailInput, result: EmailSendResult) {
         lead_id: input.relatedLeadId ?? null,
         task_id: input.relatedTaskId ?? null,
         related_user_id: input.relatedUserUid ?? null,
+        client_id: input.relatedClientId ?? null,
+        project_id: input.relatedProjectId ?? null,
+        receivable_id: input.relatedReceivableId ?? null,
+        payment_id: input.relatedPaymentId ?? null,
         idempotency_key: input.idempotencyKey ?? null,
         created_at: new Date().toISOString(),
       });
@@ -138,6 +158,10 @@ async function logEmail(input: SendEmailInput, result: EmailSendResult) {
       relatedLeadId: input.relatedLeadId ?? null,
       relatedTaskId: input.relatedTaskId ?? null,
       relatedUserUid: input.relatedUserUid ?? null,
+      relatedClientId: input.relatedClientId ?? null,
+      relatedProjectId: input.relatedProjectId ?? null,
+      relatedReceivableId: input.relatedReceivableId ?? null,
+      relatedPaymentId: input.relatedPaymentId ?? null,
       idempotencyKey: input.idempotencyKey ?? null,
       createdAt: new Date().toISOString(),
     });
@@ -158,14 +182,15 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
     || input.type === "task_reminder"
     || input.type === "task_overdue"
     || input.type === "user_invitation"
-    || input.type === "owner_email_verification";
+    || input.type === "owner_email_verification"
+    || input.type.startsWith("payment_");
   const to = requiresExplicitRecipient ? input.to : input.to || getEmailTarget();
   if (requiresExplicitRecipient && !to) {
     return withLog({ ...input, to, subject: input.subject || "Confirmacion Ken Code" }, { sent: false, reason: "email_to_missing" });
   }
   const parsed = sendEmailSchema.safeParse({ ...input, to });
   if (!parsed.success) {
-    console.warn("[Ken Code email input warning]", parsed.error.issues);
+    console.warn("[Ken Code email input warning]", { invalid: true });
     return withLog({ ...input, to, subject: input.subject || "Email invalido" }, { sent: false, reason: "invalid_email_input" });
   }
   const from = process.env.RESEND_FROM_EMAIL;

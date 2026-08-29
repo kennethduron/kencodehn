@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, Bell, LockKeyhole, Mail, MonitorSmartphone, Palette, ShieldCheck, Smartphone, Trash2, X } from "lucide-react";
 import type { AdminSettings } from "@/lib/admin/types";
 import { PushSettings } from "./push-settings";
@@ -313,6 +314,10 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
             </section>
           );
         })}
+        <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+          <div className="flex items-start gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan"><Bell size={19}/></span><div><h2 className="font-display text-xl font-black text-kc-text">Recordatorios de cobro</h2><p className="mt-1 text-sm leading-6 text-kc-muted">Administra reglas de 7 días, 3 días, vencimiento y atraso sin ejecutar el scheduler manualmente.</p></div></div>
+          <Link href="/admin/configuracion/cobros" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-kc-electric px-4 text-sm font-black text-white">Configurar billing reminders</Link>
+        </section>
         <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
           <div className="flex items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-kc-lime/25 bg-kc-lime/10 text-kc-lime">

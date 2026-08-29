@@ -17,6 +17,8 @@
     "test:m2b:local": "node --experimental-strip-types scripts/m2b-local-auth-rls-e2e.mts",
     "test:owner-verification": "node --experimental-strip-types --test tests/owner-email-verification.test.mjs",
     "test:owner-verification:local": "node --experimental-strip-types scripts/owner-email-verification-local.mts",
+    "test:phase2:local": "node --experimental-strip-types scripts/phase2-financial-local-e2e.mts",
+    "test:phase2": "node --experimental-strip-types --test tests/phase2-financial.test.mjs tests/phase2-automation-ui.test.mjs",
     "migrate:supabase": "node --experimental-strip-types scripts/migrate-firebase-to-supabase.mts",
     "migrate:preflight": "node --experimental-strip-types scripts/m2a-firebase-preflight.mts",
     "migrate:scrypt-local": "node --experimental-strip-types scripts/m2a-scrypt-local.mts",
