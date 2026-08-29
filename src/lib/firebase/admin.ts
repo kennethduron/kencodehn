@@ -47,7 +47,9 @@ function getAdminApp() {
 }
 
 export function getAdminProjectId() {
-  return getAdminApp()?.options.projectId ?? null;
+  const serviceAccount = getServiceAccount() as { projectId?: unknown; project_id?: unknown } | null;
+  const projectId = serviceAccount?.projectId ?? serviceAccount?.project_id;
+  return typeof projectId === "string" && projectId.trim() ? projectId.trim() : null;
 }
 
 export function getAdminDb() {

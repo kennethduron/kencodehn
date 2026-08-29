@@ -13,6 +13,7 @@ test("Firebase Auth and Firestore have no eager runtime imports", () => {
 });
 
 test("Firebase services load only inside their explicit accessors", () => {
+  assert.match(admin, /getAdminProjectId[\s\S]*serviceAccount\?\.projectId \?\? serviceAccount\?\.project_id/);
   assert.match(admin, /getAdminDb[\s\S]*requireFirebaseAdmin\("firebase-admin\/firestore"\)/);
   assert.match(admin, /getAdminAuth[\s\S]*requireFirebaseAdmin\("firebase-admin\/auth"\)/);
   assert.match(admin, /getAdminMessaging[\s\S]*requireFirebaseAdmin\("firebase-admin\/messaging"\)/);
