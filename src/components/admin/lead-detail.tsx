@@ -360,9 +360,9 @@ export function LeadDetail({
               <WhatsAppIcon size={18} />
               WhatsApp
             </Link>
-            <Link href={`mailto:${lead.email}?subject=Solicitud Ken Code`} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text">
+            <Link href={`/admin/mail?compose=1&to=${encodeURIComponent(lead.email)}&lead=${lead.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text">
               <Mail size={16} aria-hidden="true" />
-              Correo
+              Enviar desde Mail
             </Link>
             <button type="button" onClick={() => copy(lead.phone, "Telefono")} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-bold text-kc-text">
               <Copy size={16} aria-hidden="true" />
