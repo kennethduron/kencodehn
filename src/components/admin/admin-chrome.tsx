@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3, Bell, BriefcaseBusiness, ChevronLeft, ChevronRight, ClipboardList,
-  FolderKanban, Landmark, LogOut, Menu, MoreHorizontal, ReceiptText, Settings,
+  FolderKanban, Landmark, LogOut, Menu, MoreHorizontal, Puzzle, ReceiptText, Settings,
   ShieldCheck, UserRoundCog, Users, WalletCards, X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -20,6 +20,7 @@ const navItems: Array<{ href: string; label: string; icon: typeof BarChart3; per
   { href: "/admin/leads", label: "Leads", icon: Users, permission: "leads:view" },
   { href: "/admin/clientes", label: "Clientes", icon: BriefcaseBusiness, permission: "clients:view" },
   { href: "/admin/proyectos", label: "Proyectos", icon: FolderKanban, permission: "projects:view" },
+  { href: "/admin/modulos", label: "Modulos", icon: Puzzle, permission: "modules:view" },
   { href: "/admin/cobros", label: "Cobros", icon: ReceiptText, permission: "billing:view" },
   { href: "/admin/pagos", label: "Pagos", icon: WalletCards, permission: "billing:view" },
   { href: "/admin/finanzas", label: "Finanzas", icon: Landmark, permission: "finance:view" },
