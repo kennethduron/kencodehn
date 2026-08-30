@@ -27,12 +27,13 @@ export async function listMail(admin: AdminUser, folder: MailFolder, search: str
   const { data: identityRows } = await client.from("mail_identities").select("id,email,display_name,status,mail_identity_assignments!inner(profile_id,active,is_primary)").eq("mail_identity_assignments.profile_id", admin.uid).eq("mail_identity_assignments.active", true).eq("status", "active");
   const { data: templates } = await client.from("mail_templates").select("id,name,subject,body_html").eq("active", true).order("name").limit(100);
   const { data: signatures } = await client.from("mail_signatures").select("id,identity_id,name,body_html,is_default").eq("profile_id", admin.uid).order("is_default", { ascending: false }).limit(20);
+  const { data: assignees } = maySuperviseMail(admin) ? await client.from("profiles").select("id,name,display_name,role").eq("active", true).in("role", ["owner", "admin", "manager", "sales_agent"]).order("name").limit(200) : { data: [] };
   if (folder === "drafts") {
     let draftsQuery = client.from("mail_drafts").select("id,subject,to_addresses,updated_at,version,identity_id,body_text").eq("owner_id", admin.uid).order("updated_at", { ascending: false }).limit(26);
     if (cursor) draftsQuery = draftsQuery.lt("updated_at", cursor);
     if (search) draftsQuery = draftsQuery.ilike("subject", `%${search.replace(/[%_,()]/g, "")}%`);
     const { data: drafts, error } = await draftsQuery; if (error) throw error;
-    return { folder, drafts: drafts || [], threads: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], nextCursor: drafts?.length === 26 ? drafts.at(-1)?.updated_at : null };
+    return { folder, drafts: drafts || [], threads: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], assignees: assignees || [], nextCursor: drafts?.length === 26 ? drafts.at(-1)?.updated_at : null };
   }
   let query = client.from("mail_threads").select("id,subject,state,assigned_to,is_important,follow_up_at,snippet,latest_message_at,identity_id,lead_id,client_id,project_id,add_on_id,proposal_id,mail_identities(email,display_name),mail_read_states(unread),mail_messages(id,direction,from_address,to_addresses,created_at)").order("latest_message_at", { ascending: false }).limit(26);
   if (!maySuperviseMail(admin)) query = identities.length ? query.or(`assigned_to.eq.${admin.uid},identity_id.in.(${identities.join(",")})`) : query.eq("assigned_to", admin.uid);
@@ -42,7 +43,15 @@ export async function listMail(admin: AdminUser, folder: MailFolder, search: str
   if (cursor) query = query.lt("latest_message_at", cursor);
   const { data, error } = await query; if (error) throw error;
   const threads = (data || []).filter((thread) => folder !== "sent" || thread.mail_messages?.some((message: { direction: string }) => message.direction === "outbound"));
-  return { folder, threads, drafts: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], nextCursor: data?.length === 26 ? data.at(-1)?.latest_message_at : null };
+  return { folder, threads, drafts: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], assignees: assignees || [], nextCursor: data?.length === 26 ? data.at(-1)?.latest_message_at : null };
+}
+
+export async function loadDraft(admin: AdminUser, draftId: string) {
+  const client = createSupabaseAdminClient();
+  const { data: draft, error } = await client.from("mail_drafts").select("id,thread_id,identity_id,to_addresses,cc_addresses,bcc_addresses,subject,body_html,version,lead_id,client_id,project_id,add_on_id,proposal_id").eq("id", draftId).eq("owner_id", admin.uid).maybeSingle();
+  if (error || !draft) throw new Error("MAIL_FORBIDDEN");
+  const { data: attachments } = await client.from("mail_attachments").select("id,filename,size_bytes").eq("draft_id", draftId).order("created_at");
+  return { ...draft, attachments: attachments || [] };
 }
 
 export async function loadThread(admin: AdminUser, threadId: string) {

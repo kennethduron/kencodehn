@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { hasPermission } from "@/lib/admin/authorization";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { listMail, loadThread, mayAccessThread, sendMail, type MailFolder } from "@/lib/mail/service";
+import { listMail, loadDraft, loadThread, mayAccessThread, sendMail, type MailFolder } from "@/lib/mail/service";
 import { recipientListSchema, safeSubjectSchema, uuidSchema, sanitizeMailHtml, textFromHtml } from "@/lib/mail/security";
 
 const folderSchema = z.enum(["inbox", "sent", "drafts", "archived", "trash", "follow-up"]);
@@ -25,8 +25,9 @@ export async function GET(request: NextRequest) {
   const auth = await requirePermissionsFromRequest(request, "mail:use"); if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
   const folder = folderSchema.safeParse(request.nextUrl.searchParams.get("folder") || "inbox");
   const search = (request.nextUrl.searchParams.get("q") || "").trim().slice(0, 120); const cursor = request.nextUrl.searchParams.get("cursor"); const threadId = request.nextUrl.searchParams.get("thread");
+  const draftId = request.nextUrl.searchParams.get("draft");
   if (!folder.success) return NextResponse.json({ error: "Carpeta inválida." }, { status: 400 });
-  try { const list = await listMail(auth.admin, folder.data as MailFolder, search, cursor); const thread = threadId && uuidSchema.safeParse(threadId).success ? await loadThread(auth.admin, threadId) : null; return NextResponse.json({ ...list, selected: thread }); } catch (error) { return mailError(error); }
+  try { const list = await listMail(auth.admin, folder.data as MailFolder, search, cursor); const thread = threadId && uuidSchema.safeParse(threadId).success ? await loadThread(auth.admin, threadId) : null; const draft = draftId && uuidSchema.safeParse(draftId).success ? await loadDraft(auth.admin, draftId) : null; return NextResponse.json({ ...list, selected: thread, selectedDraft: draft }); } catch (error) { return mailError(error); }
 }
 
 export async function POST(request: NextRequest) {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     await client.from("mail_audit_events").insert({ action: `mail_thread_${state.data.action}`, actor_id: auth.admin.uid, thread_id: state.data.threadId }); return NextResponse.json({ ok: true });
   }
   const assign = assignSchema.safeParse(body);
-  if (assign.success) { if (!hasPermission(auth.admin, "mail:assign_threads")) return NextResponse.json({ error: "No autorizado." }, { status: 403 }); const client = createSupabaseAdminClient(); await client.from("mail_threads").update({ assigned_to: assign.data.profileId, updated_at: new Date().toISOString() }).eq("id", assign.data.threadId); await client.from("mail_audit_events").insert({ action: "mail_thread_assigned", actor_id: auth.admin.uid, thread_id: assign.data.threadId, safe_metadata: { assignedTo: assign.data.profileId } }); return NextResponse.json({ ok: true }); }
+  if (assign.success) { if (!hasPermission(auth.admin, "mail:assign_threads") || !(await mayAccessThread(auth.admin, assign.data.threadId))) return NextResponse.json({ error: "No autorizado." }, { status: 403 }); const client = createSupabaseAdminClient(); if (assign.data.profileId) { const target = await client.from("profiles").select("id").eq("id", assign.data.profileId).eq("active", true).in("role", ["owner", "admin", "manager", "sales_agent"]).maybeSingle(); if (target.error || !target.data) return NextResponse.json({ error: "Responsable inválido." }, { status: 400 }); } await client.from("mail_threads").update({ assigned_to: assign.data.profileId, updated_at: new Date().toISOString() }).eq("id", assign.data.threadId); await client.from("mail_audit_events").insert({ action: "mail_thread_assigned", actor_id: auth.admin.uid, thread_id: assign.data.threadId, safe_metadata: { assignedTo: assign.data.profileId } }); return NextResponse.json({ ok: true }); }
   const follow = followUpSchema.safeParse(body);
   if (follow.success) { if (!(await mayAccessThread(auth.admin, follow.data.threadId))) return NextResponse.json({ error: "No autorizado." }, { status: 403 }); const client = createSupabaseAdminClient(); const now = new Date().toISOString(); const due = new Date(follow.data.dueAt); const id = crypto.randomUUID(); await client.from("mail_follow_ups").insert({ thread_id: follow.data.threadId, assigned_to: auth.admin.uid, due_at: follow.data.dueAt, created_by: auth.admin.uid }); await client.from("tasks").insert({ id, firebase_id: `mail:${id}`, title: follow.data.title, type: "email", status: "pending", priority: "medium", due_date: due.toISOString().slice(0, 10), due_time: due.toISOString().slice(11, 19), timezone: "America/Tegucigalpa", due_at: follow.data.dueAt, assigned_to: auth.admin.uid, assigned_at: now, assigned_by: auth.admin.uid, created_by: auth.admin.uid, created_by_email: auth.admin.email, created_at: now, updated_at: now, legacy_data: { source: "ken_code_mail", threadId: follow.data.threadId } }); await client.from("mail_threads").update({ follow_up_at: follow.data.dueAt, updated_at: now }).eq("id", follow.data.threadId); return NextResponse.json({ ok: true, taskId: id }); }
   return NextResponse.json({ error: "Solicitud de correo inválida." }, { status: 400 });
