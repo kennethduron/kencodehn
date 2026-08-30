@@ -225,6 +225,13 @@ export async function POST(request: NextRequest) {
           },
           { status: 409 },
         );
+      await client
+        .from("mail_audit_events")
+        .insert({
+          action: "mail_draft_updated",
+          actor_id: auth.admin.uid,
+          safe_metadata: { draftId: result.data.id },
+        });
       return NextResponse.json({ ok: true, draft: result.data });
     }
     const result = await client
@@ -232,9 +239,15 @@ export async function POST(request: NextRequest) {
       .insert({ ...values, created_at: now })
       .select("id,version,updated_at")
       .single();
-    return result.error
-      ? mailError(result.error)
-      : NextResponse.json({ ok: true, draft: result.data });
+    if (result.error) return mailError(result.error);
+    await client
+      .from("mail_audit_events")
+      .insert({
+        action: "mail_draft_created",
+        actor_id: auth.admin.uid,
+        safe_metadata: { draftId: result.data.id },
+      });
+    return NextResponse.json({ ok: true, draft: result.data });
   }
   const deletedDraft = deleteDraftSchema.safeParse(body);
   if (deletedDraft.success) {
@@ -269,13 +282,11 @@ export async function POST(request: NextRequest) {
       .eq("id", deletedDraft.data.draftId)
       .eq("owner_id", auth.admin.uid);
     if (removed.error) return mailError(removed.error);
-    await client
-      .from("mail_audit_events")
-      .insert({
-        action: "mail_draft_deleted",
-        actor_id: auth.admin.uid,
-        safe_metadata: { attachmentCount: paths.length },
-      });
+    await client.from("mail_audit_events").insert({
+      action: "mail_draft_deleted",
+      actor_id: auth.admin.uid,
+      safe_metadata: { attachmentCount: paths.length },
+    });
     return NextResponse.json({ ok: true });
   }
   const state = stateSchema.safeParse(body);
@@ -285,14 +296,12 @@ export async function POST(request: NextRequest) {
     const client = createSupabaseAdminClient();
     const now = new Date().toISOString();
     if (state.data.action === "read" || state.data.action === "unread")
-      await client
-        .from("mail_read_states")
-        .upsert({
-          thread_id: state.data.threadId,
-          profile_id: auth.admin.uid,
-          unread: state.data.action === "unread",
-          last_read_at: now,
-        });
+      await client.from("mail_read_states").upsert({
+        thread_id: state.data.threadId,
+        profile_id: auth.admin.uid,
+        unread: state.data.action === "unread",
+        last_read_at: now,
+      });
     else {
       const update =
         state.data.action === "important"
@@ -311,13 +320,19 @@ export async function POST(request: NextRequest) {
         .update(update)
         .eq("id", state.data.threadId);
     }
-    await client
-      .from("mail_audit_events")
-      .insert({
-        action: `mail_thread_${state.data.action}`,
-        actor_id: auth.admin.uid,
-        thread_id: state.data.threadId,
-      });
+    const auditAction = {
+      archive: "mail_thread_archived",
+      trash: "mail_thread_trashed",
+      restore: "mail_thread_restored",
+      read: "mail_thread_marked_read",
+      unread: "mail_thread_marked_unread",
+      important: "mail_thread_importance_updated",
+    }[state.data.action];
+    await client.from("mail_audit_events").insert({
+      action: auditAction,
+      actor_id: auth.admin.uid,
+      thread_id: state.data.threadId,
+    });
     return NextResponse.json({ ok: true });
   }
   const assign = assignSchema.safeParse(body);
@@ -349,14 +364,12 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", assign.data.threadId);
-    await client
-      .from("mail_audit_events")
-      .insert({
-        action: "mail_thread_assigned",
-        actor_id: auth.admin.uid,
-        thread_id: assign.data.threadId,
-        safe_metadata: { assignedTo: assign.data.profileId },
-      });
+    await client.from("mail_audit_events").insert({
+      action: "mail_thread_assigned",
+      actor_id: auth.admin.uid,
+      thread_id: assign.data.threadId,
+      safe_metadata: { assignedTo: assign.data.profileId },
+    });
     return NextResponse.json({ ok: true });
   }
   const follow = followUpSchema.safeParse(body);
@@ -367,43 +380,47 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const due = new Date(follow.data.dueAt);
     const id = crypto.randomUUID();
-    await client
-      .from("mail_follow_ups")
-      .insert({
-        thread_id: follow.data.threadId,
-        assigned_to: auth.admin.uid,
-        due_at: follow.data.dueAt,
-        created_by: auth.admin.uid,
-      });
-    await client
-      .from("tasks")
-      .insert({
-        id,
-        firebase_id: `mail:${id}`,
-        title: follow.data.title,
-        type: "email",
-        status: "pending",
-        priority: "medium",
-        due_date: due.toISOString().slice(0, 10),
-        due_time: due.toISOString().slice(11, 19),
-        timezone: "America/Tegucigalpa",
-        due_at: follow.data.dueAt,
-        assigned_to: auth.admin.uid,
-        assigned_at: now,
-        assigned_by: auth.admin.uid,
-        created_by: auth.admin.uid,
-        created_by_email: auth.admin.email,
-        created_at: now,
-        updated_at: now,
-        legacy_data: {
-          source: "ken_code_mail",
-          threadId: follow.data.threadId,
-        },
-      });
+    await client.from("mail_follow_ups").insert({
+      thread_id: follow.data.threadId,
+      assigned_to: auth.admin.uid,
+      due_at: follow.data.dueAt,
+      created_by: auth.admin.uid,
+    });
+    await client.from("tasks").insert({
+      id,
+      firebase_id: `mail:${id}`,
+      title: follow.data.title,
+      type: "email",
+      status: "pending",
+      priority: "medium",
+      due_date: due.toISOString().slice(0, 10),
+      due_time: due.toISOString().slice(11, 19),
+      timezone: "America/Tegucigalpa",
+      due_at: follow.data.dueAt,
+      assigned_to: auth.admin.uid,
+      assigned_at: now,
+      assigned_by: auth.admin.uid,
+      created_by: auth.admin.uid,
+      created_by_email: auth.admin.email,
+      created_at: now,
+      updated_at: now,
+      legacy_data: {
+        source: "ken_code_mail",
+        threadId: follow.data.threadId,
+      },
+    });
     await client
       .from("mail_threads")
       .update({ follow_up_at: follow.data.dueAt, updated_at: now })
       .eq("id", follow.data.threadId);
+    await client
+      .from("mail_audit_events")
+      .insert({
+        action: "mail_follow_up_created",
+        actor_id: auth.admin.uid,
+        thread_id: follow.data.threadId,
+        safe_metadata: { taskId: id },
+      });
     return NextResponse.json({ ok: true, taskId: id });
   }
   return NextResponse.json(
