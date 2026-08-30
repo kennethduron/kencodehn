@@ -354,6 +354,44 @@ select:focus-visible {
   background-color: rgba(255, 255, 255, 0.055);
 }
 
+.kc-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(203, 213, 225, 0.3) transparent;
+  overscroll-behavior: contain;
+}
+.kc-sidebar-scroll::-webkit-scrollbar { width: 5px; }
+.kc-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.kc-sidebar-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(203, 213, 225, 0.3); }
+.kc-sidebar-scroll.is-collapsed { scrollbar-width: none; }
+.kc-sidebar-scroll.is-collapsed::-webkit-scrollbar { display: none; }
+
+.kc-mail-shell {
+  display: grid;
+  grid-template-columns: 12rem minmax(17rem, 22rem) minmax(0, 1fr);
+  min-height: min(44rem, calc(100dvh - 10.5rem));
+}
+.kc-mail-folders { min-width: 0; }
+.kc-mail-list,
+.kc-mail-detail { min-height: 0; }
+.kc-mail-composer { min-height: min(42rem, 100dvh); }
+
+@media (max-width: 1279px) {
+  .kc-mail-shell { grid-template-columns: 11rem minmax(17rem, 20rem) minmax(0, 1fr); }
+}
+@media (max-width: 1023px) {
+  .kc-mail-shell { grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr); }
+  .kc-mail-folders { position: fixed; inset: 0 auto 0 0; z-index: 70; width: min(82vw, 18rem); padding-top: max(1rem, env(safe-area-inset-top)); transform: translateX(-105%); transition: transform 180ms ease; box-shadow: 0 25px 60px rgba(15,23,42,.28); }
+  .kc-mail-folders.is-open { transform: translateX(0); }
+}
+@media (max-width: 767px) {
+  .kc-mail-shell { display: block; min-height: calc(100dvh - 12rem); }
+  .kc-mail-list { display: block; }
+  .kc-mail-list.has-selection { display: none; }
+  .kc-mail-detail { display: none; }
+  .kc-mail-detail.is-open { display: block; }
+}
+@media (min-width: 640px) { .kc-mail-composer { min-height: min(42rem, calc(100dvh - 2rem)); } }
+
 .kc-modal-viewport {
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;

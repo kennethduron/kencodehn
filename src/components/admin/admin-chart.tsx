@@ -24,11 +24,11 @@ export function AdminBarChart({ title, description, items }: { title: string; de
           {description ? <p className="mt-1 text-sm leading-6 text-kc-muted">{description}</p> : null}
         </div>
       </div>
-      <div className="mt-5 grid gap-4">
+      <div className="mt-4 grid gap-2.5">
         {items.map((item) => {
           const width = `${Math.max((item.value / max) * 100, item.value > 0 ? 9 : 0)}%`;
           return (
-            <div key={item.label} className="grid gap-2">
+            <div key={item.label} className="grid gap-1.5">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="font-semibold text-kc-muted">{item.label}</span>
                 <span className="font-black text-kc-text">{item.value}</span>
@@ -51,9 +51,9 @@ export function AdminDonutMetric({ title, value, total, label }: { title: string
   return (
     <article className="kc-admin-card p-5">
       <h2 className="font-display text-xl font-black text-kc-text">{title}</h2>
-      <div className="mt-5 flex items-center gap-5">
-        <div className="grid h-28 w-28 shrink-0 place-items-center rounded-full" style={{ background }}>
-          <div className="grid h-20 w-20 place-items-center rounded-full bg-kc-bg-soft text-center shadow-inner">
+      <div className="mt-4 flex items-center gap-4">
+        <div className="grid h-24 w-24 shrink-0 place-items-center rounded-full" style={{ background }}>
+          <div className="grid h-17 w-17 place-items-center rounded-full bg-kc-bg-soft text-center shadow-inner">
             <span className="font-display text-2xl font-black text-kc-text">{percent}%</span>
           </div>
         </div>

@@ -45,10 +45,10 @@ test("manager solo recibe el conjunto operativo explicitamente declarado", () =>
   assert.equal(hasPermission(manager, "commercial_plans:view"), true);
   assert.equal(hasPermission(manager, "commercial_plans:edit"), false);
   assert.equal(hasPermission(manager, "recurring_services:edit"), false);
-  assert.equal(hasPermission(manager, "notes:view"), false);
-  assert.equal(hasPermission(manager, "tasks:view"), false);
-  assert.equal(hasPermission(manager, "tasks:edit"), false);
-  assert.equal(hasPermission(manager, "notifications:view"), false);
+  assert.equal(hasPermission(manager, "notes:view"), true);
+  assert.equal(hasPermission(manager, "tasks:view"), true);
+  assert.equal(hasPermission(manager, "tasks:edit"), true);
+  assert.equal(hasPermission(manager, "notifications:view"), true);
   assert.equal(hasPermission(manager, "tasks:delete"), false);
   assert.equal(hasPermission(manager, "settings:view"), false);
   assert.equal(hasPermission(manager, "push:manage"), false);

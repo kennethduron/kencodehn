@@ -45,6 +45,11 @@ export const ADMIN_PERMISSIONS = [
   "push:manage",
   "users:manage",
   "maintenance:run",
+  "mail:use",
+  "mail:supervise",
+  "mail:assign_threads",
+  "mail:manage_templates",
+  "mail:manage_identities",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -55,6 +60,10 @@ export type AdminUser = {
   role: AdminRole;
   active: true;
   permissions: AdminPermission[];
+  displayName?: string;
+  preferredName?: string;
+  jobTitle?: string;
+  profilePhotoPath?: string | null;
 };
 
 export const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
@@ -97,8 +106,12 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "settings:view",
     "settings:manage",
     "push:manage",
+    "mail:use",
+    "mail:supervise",
+    "mail:assign_threads",
+    "mail:manage_templates",
   ],
-  manager: ["leads:view", "leads:edit", "clients:view", "clients:edit", "projects:view", "projects:edit", "commercial_plans:view", "recurring_services:view", "billing:view", "reports:view", "modules:view"],
+  manager: ["leads:view", "leads:edit", "leads:assign", "clients:view", "clients:edit", "clients:assign", "projects:view", "projects:edit", "projects:assign", "commercial_plans:view", "recurring_services:view", "billing:view", "payments:manage", "finance:view", "reports:view", "reports:export", "modules:view", "modules:draft", "modules:manage", "notes:view", "notes:edit", "tasks:view", "tasks:edit", "activity:view", "notifications:view", "notifications:edit", "mail:use", "mail:supervise", "mail:assign_threads", "mail:manage_templates"],
   viewer: ["leads:view", "clients:view", "projects:view", "commercial_plans:view", "recurring_services:view", "billing:view", "modules:view"],
   sales_agent: [
     "leads:view",
@@ -120,6 +133,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "reports:view",
     "modules:view",
     "modules:draft",
+    "mail:use",
   ],
 };
 
@@ -142,7 +156,7 @@ export type TaskDataScope = "global" | "assigned" | "none";
 const ROLE_TASK_SCOPES: Record<AdminRole, TaskDataScope> = {
   owner: "global",
   admin: "global",
-  manager: "none",
+  manager: "global",
   viewer: "none",
   sales_agent: "assigned",
 };
@@ -158,7 +172,7 @@ export type NotificationDataScope = "personal_with_legacy" | "personal" | "none"
 const ROLE_NOTIFICATION_SCOPES: Record<AdminRole, NotificationDataScope> = {
   owner: "personal_with_legacy",
   admin: "personal_with_legacy",
-  manager: "none",
+  manager: "personal_with_legacy",
   viewer: "none",
   sales_agent: "personal",
 };
@@ -206,7 +220,7 @@ export function commercialDataScopeForAdmin(admin: AdminUser): CommercialDataSco
 }
 
 export function canAssignCommercialOwner(admin: AdminUser) {
-  return admin.active && (admin.role === "owner" || admin.role === "admin");
+  return admin.active && (hasPermission(admin, "clients:assign") || hasPermission(admin, "projects:assign"));
 }
 
 export function taskDataScopeForAdmin(admin: AdminUser): TaskDataScope {
@@ -350,5 +364,9 @@ export function resolveAdminUserFromProfile(input: {
     role: input.profile.role,
     active: true,
     permissions: defaultPermissionsForRole(input.profile.role),
+    displayName: typeof input.profile.display_name === "string" ? input.profile.display_name : typeof input.profile.name === "string" ? input.profile.name : "",
+    preferredName: typeof input.profile.preferred_name === "string" ? input.profile.preferred_name : "",
+    jobTitle: typeof input.profile.job_title === "string" ? input.profile.job_title : "",
+    profilePhotoPath: typeof input.profile.profile_photo_path === "string" ? input.profile.profile_photo_path : null,
   };
 }

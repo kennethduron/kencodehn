@@ -45,11 +45,11 @@ test("admin puede ver leads asignados a cualquier usuario", () => {
   assert.equal(canAccessLead(admin, { assignedToUid: "agent-b" }), true);
 });
 
-test("manager conserva scope global sin permiso de asignacion", () => {
+test("manager conserva scope global y puede distribuir trabajo comercial", () => {
   assert.ok(manager);
   assert.equal(leadDataScopeForAdmin(manager), "global");
   assert.equal(canAccessLead(manager, { assignedToUid: "agent-b" }), true);
-  assert.equal(canAssignLead(manager), false);
+  assert.equal(canAssignLead(manager), true);
 });
 
 test("viewer conserva lectura global y no puede editar ni asignar", () => {

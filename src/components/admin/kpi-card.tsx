@@ -19,17 +19,17 @@ const accentClass = {
 
 export function KpiCard({ label, value, detail, accent = "cyan", icon: Icon }: KpiCardProps) {
   return (
-    <article className="kc-admin-card group min-h-28 p-4">
+    <article className="kc-admin-card group min-h-24 p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-kc-muted">{label}</p>
-          <p className="mt-2 break-words font-display text-2xl font-black leading-tight text-kc-text">{value}</p>
+          <p className="mt-1.5 break-words font-display text-2xl font-black leading-tight text-kc-text">{value}</p>
         </div>
         <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br to-white/[0.03] ring-1 ${accentClass[accent]}`}>
           <Icon size={19} aria-hidden="true" />
         </span>
       </div>
-      {detail ? <p className="mt-3 text-xs font-semibold leading-5 text-kc-muted">{detail}</p> : null}
+      {detail ? <p className="mt-2 text-xs font-semibold leading-5 text-kc-muted">{detail}</p> : null}
     </article>
   );
 }

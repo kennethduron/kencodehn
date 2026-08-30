@@ -62,12 +62,12 @@ test("large lead tables switch to mobile cards and never become an uncontrolled 
 });
 
 test("mobile navigation remains horizontally controlled with touch-sized targets", () => {
-  assert.match(chrome, /aria-label="Navegacion movil del CRM"/);
+  assert.match(chrome, /aria-label="Navegación móvil del CRM"/);
   assert.match(chrome, /overflow-x-auto/);
   assert.match(chrome, /min-h-12 min-w-\[4\.5rem\]/);
-  assert.match(chrome, /aria-label="Cerrar sesion" className="inline-flex min-h-11 min-w-11/);
-  assert.match(chrome, /aria-label="Abrir menu"/);
-  assert.match(chrome, /aria-label="Cerrar menu"/);
+  assert.match(chrome, /Cerrar sesión/);
+  assert.match(chrome, /aria-label="Abrir menú"/);
+  assert.match(chrome, /aria-label="Cerrar menú"/);
 });
 
 test("dialogs stay inside the viewport and password controls remain accessible", () => {

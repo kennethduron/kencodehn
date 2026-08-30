@@ -195,7 +195,7 @@ async function getSupabaseCurrentAdmin(): Promise<AdminUser | null> {
     if (authError || !authData.user?.email) return null;
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id,email,role,active")
+      .select("id,email,name,role,active,display_name,preferred_name,job_title,profile_photo_path")
       .eq("id", authData.user.id)
       .maybeSingle();
     if (profileError || !profile || profile.active !== true) return null;

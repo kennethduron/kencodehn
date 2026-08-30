@@ -49,7 +49,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
   const recentActivity = activity.slice(0, 6);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Panel General</p>
@@ -62,7 +62,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
         </Link> : null}
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         {cards.map((card) => <KpiCard key={card.label} {...card} />)}
       </section>
 
@@ -72,7 +72,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
       </section>
 
       {canViewTasks || canViewActivity ? <section className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
-        {canViewTasks ? <article className="kc-admin-card p-5">
+        {canViewTasks ? <article className="kc-admin-card p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-display text-xl font-black text-kc-text">Proximos seguimientos</h2>
             <Link href="/admin/tareas" className="inline-flex items-center gap-1 text-sm font-black text-kc-cyan">
@@ -81,7 +81,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
           </div>
           <div className="mt-4 grid gap-3">
             {tasks.slice(0, 5).map((task) => (
-              <Link key={task.id} href="/admin/tareas" className="rounded-xl border border-white/10 bg-kc-bg/48 p-4 transition hover:border-kc-cyan/35 hover:bg-white/[0.04]">
+              <Link key={task.id} href="/admin/tareas" className="rounded-xl border border-white/10 bg-kc-bg/48 p-3 transition hover:border-kc-cyan/35 hover:bg-white/[0.04]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-bold text-kc-text">{task.title}</p>
@@ -91,17 +91,17 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
                 </div>
               </Link>
             ))}
-            {tasks.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">No hay tareas creadas todavia.</p> : null}
+            {tasks.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-4 text-sm text-kc-muted">No hay tareas creadas todavía.</p> : null}
           </div>
         </article> : null}
-        {canViewActivity ? <article className="kc-admin-card p-5">
+        {canViewActivity ? <article className="kc-admin-card p-4 sm:p-5">
           <h2 className="font-display text-xl font-black text-kc-text">Actividad reciente</h2>
           <div className="mt-4 grid gap-3">
             {recentActivity.map((item) => {
               const tone = mapActivityTone(item);
               const dot = tone === "danger" ? "bg-rose-300" : tone === "warning" ? "bg-kc-lime" : tone === "success" ? "bg-kc-turquoise" : "bg-kc-cyan";
               return (
-              <Link key={item.id} href={activityHref(item)} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl border border-white/10 bg-kc-bg/48 p-4 transition hover:border-kc-cyan/35 hover:bg-white/[0.04]">
+              <Link key={item.id} href={activityHref(item)} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl border border-white/10 bg-kc-bg/48 p-3 transition hover:border-kc-cyan/35 hover:bg-white/[0.04]">
                 <span className={`mt-1 h-2.5 w-2.5 rounded-full ${dot} shadow-[0_0_18px_rgba(0,217,255,0.35)]`} />
                 <span className="min-w-0">
                   <span className="block truncate font-bold text-kc-text">{item.title}</span>
@@ -110,7 +110,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
                 </span>
               </Link>
             )})}
-            {recentActivity.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-5 text-sm text-kc-muted">Aun no hay actividad reciente.</p> : null}
+            {recentActivity.length === 0 ? <p className="rounded-xl border border-dashed border-white/12 p-4 text-sm text-kc-muted">Aún no hay actividad reciente.</p> : null}
           </div>
         </article> : null}
       </section> : null}

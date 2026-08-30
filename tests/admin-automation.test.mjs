@@ -32,7 +32,7 @@ const task = (overrides = {}) => ({ id: "task-1", dueAt: "2026-08-28T14:00:00.00
 test("Owner conserva scope global de tareas", () => assert.equal(taskDataScopeForAdmin(owner), "global"));
 test("Admin conserva scope global de tareas", () => assert.equal(taskDataScopeForAdmin(admin), "global"));
 test("Sales Agent usa scope assigned", () => assert.equal(taskDataScopeForAdmin(salesA), "assigned"));
-test("Manager no obtiene modulo de tareas", () => assert.equal(taskDataScopeForAdmin(user("manager")), "none"));
+test("Manager obtiene alcance global para operar tareas del equipo", () => assert.equal(taskDataScopeForAdmin(user("manager")), "global"));
 test("Viewer no obtiene modulo de tareas", () => assert.equal(taskDataScopeForAdmin(user("viewer")), "none"));
 test("Owner puede leer cualquier tarea", () => assert.equal(canAccessTask(owner, { assignedToUid: "agent-b" }), true));
 test("Admin puede leer cualquier tarea", () => assert.equal(canAccessTask(admin, { assignedToUid: "agent-b" }), true));
@@ -41,7 +41,7 @@ test("Sales Agent no lee tarea de otro", () => assert.equal(canAccessTask(salesA
 test("Sales Agent no lee tarea legacy sin responsable", () => assert.equal(canAccessTask(salesA, {}), false));
 test("Tarea ligada exige ownership coincidente del lead", () => assert.equal(canAccessTask(salesA, { assignedToUid: "agent-a", leadId: "lead-1", leadAssignedToUid: "agent-a" }), true));
 test("Tarea ligada a lead ajeno queda oculta", () => assert.equal(canAccessTask(salesA, { assignedToUid: "agent-a", leadId: "lead-1", leadAssignedToUid: "agent-b" }), false));
-test("Owner y Admin pueden seleccionar responsable", () => { assert.equal(canAssignTask(owner), true); assert.equal(canAssignTask(admin), true); });
+test("Owner, Admin y Manager pueden seleccionar responsable", () => { assert.equal(canAssignTask(owner), true); assert.equal(canAssignTask(admin), true); assert.equal(canAssignTask(user("manager")), true); });
 test("Sales Agent no puede reasignar su tarea", () => assert.equal(canAssignTask(salesA), false));
 test("Sales Agent queda forzado a su propio UID", () => assert.deepEqual(resolveTaskAssigneeForRequest(salesA), { ok: true, assignedToUid: "agent-a" }));
 test("Sales Agent no puede forjar otro assignee", () => assert.deepEqual(resolveTaskAssigneeForRequest(salesA, "agent-b"), { ok: false }));
