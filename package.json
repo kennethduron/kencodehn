@@ -25,6 +25,8 @@
     "test:phase4": "node --experimental-strip-types --test tests/phase4-modules.test.mjs",
     "test:phase4:local": "node --experimental-strip-types scripts/phase4-modules-local-e2e.mts",
     "test:phase4:production-qa": "node --experimental-strip-types scripts/phase4-production-engine-qa.mts",
+    "test:phase5": "node --experimental-strip-types --test tests/phase5-mail-shell.test.mjs",
+    "test:phase5:local": "node --experimental-strip-types scripts/phase5-mail-local-e2e.mts",
     "migrate:supabase": "node --experimental-strip-types scripts/migrate-firebase-to-supabase.mts",
     "migrate:preflight": "node --experimental-strip-types scripts/m2a-firebase-preflight.mts",
     "migrate:scrypt-local": "node --experimental-strip-types scripts/m2a-scrypt-local.mts",
@@ -45,6 +47,7 @@
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.68.0",
     "resend": "^6.6.0",
+    "sanitize-html": "^2.17.7",
     "zod": "^4.2.1"
   },
   "devDependencies": {
@@ -53,6 +56,7 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/sanitize-html": "^2.16.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
