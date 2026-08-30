@@ -31,5 +31,11 @@ test("93 migrations send no push",()=>assert.doesNotMatch(domain+billing,/send_p
 test("94 migrations do not schedule cron",()=>assert.doesNotMatch(domain+billing,/cron\.schedule/i));
 test("95 ordinary UI hides implementation terms",()=>{for(const word of ["UUID","RLS","Supabase","Foreign Key","Metadata","Webhook"])assert.doesNotMatch(list+detail,new RegExp(`\\b${word}\\b`,"i"));});
 test("96 no fake business data",()=>assert.doesNotMatch(domain,/insert into public\.project_add_ons\s*\([^)]*\)\s*values\s*\('[0-9a-f]/i));
+test("97 Honduras business date defaults",()=>{
+  assert.match(list,/defaultValue=\{todayInHonduras\(\)\}/);
+  assert.match(detail,/effectiveDate:todayInHonduras\(\)/);
+  assert.match(detail,/startDate\|\|todayInHonduras\(\)/);
+  assert.doesNotMatch(list+detail,/new Date\(\)\.toISOString\(\)\.slice\(0,10\)/);
+});
 
 
