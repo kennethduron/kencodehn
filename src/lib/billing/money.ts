@@ -21,8 +21,9 @@ export function formatMinor(value: string | number | bigint, currency: string, l
   const minor = parseMinor(value);
   const whole = minor / BigInt(100);
   const cents = (minor % BigInt(100)).toString().padStart(2, "0");
-  const grouped = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(whole);
-  return `${currency.toUpperCase()} ${grouped}.${cents}`;
+  const normalizedCurrency = currency.toUpperCase();
+  const grouped = new Intl.NumberFormat(normalizedCurrency === "USD" ? "en-US" : locale, { maximumFractionDigits: 0 }).format(whole);
+  return normalizedCurrency === "USD" ? `$${grouped}.${cents}` : `${normalizedCurrency} ${grouped}.${cents}`;
 }
 
 export function minorToDecimalInput(value: string | number | bigint) {

@@ -7,7 +7,7 @@ import { financialMutation } from "@/lib/billing/data";
 const uuid=z.string().uuid();
 const minor=z.string().regex(/^[1-9][0-9]{0,15}$/);
 const requestSchema=z.discriminatedUnion("operation",[
-  z.object({operation:z.literal("payment_post"),payload:z.object({clientId:uuid,currency:z.string().regex(/^[A-Z]{3}$/),amountMinor:minor,paidAt:z.string().datetime({offset:true}),method:z.enum(["bank_transfer","cash","card","paypal","other"]),reference:z.string().max(240),notes:z.string().max(4000),notifyClient:z.boolean(),allocations:z.array(z.object({receivableId:uuid,amountMinor:minor}).strict()).min(1).max(100)}).strict()}).strict(),
+  z.object({operation:z.literal("payment_post"),payload:z.object({clientId:uuid,currency:z.literal("USD").optional().default("USD"),amountMinor:minor,paidAt:z.string().datetime({offset:true}),method:z.enum(["bank_transfer","cash","card","paypal","other"]),reference:z.string().max(240),notes:z.string().max(4000),notifyClient:z.boolean(),allocations:z.array(z.object({receivableId:uuid,amountMinor:minor}).strict()).min(1).max(100)}).strict()}).strict(),
   z.object({operation:z.literal("payment_reverse"),payload:z.object({id:uuid,reason:z.string().trim().min(3).max(1000)}).strict()}).strict(),
   z.object({operation:z.literal("receivable_cancel"),payload:z.object({id:uuid,reason:z.string().trim().min(3).max(1000)}).strict()}).strict(),
   z.object({operation:z.literal("client_billing_settings_update"),payload:z.object({clientId:uuid,billingEmail:z.union([z.string().email(),z.literal("")]),billingNotificationsEnabled:z.boolean(),paymentConfirmationEnabled:z.boolean(),locale:z.enum(["es","en"]),timezone:z.literal("America/Tegucigalpa")}).strict()}).strict(),

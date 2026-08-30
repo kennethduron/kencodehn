@@ -1,0 +1,48 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import { formatMinor } from "../src/lib/billing/money.ts";
+
+const migration = readFileSync("supabase/migrations/20260831000200_enforce_usd_business_currency.sql", "utf8");
+const commercialApi = readFileSync("src/app/api/admin/commercial/route.ts", "utf8");
+const billingApi = readFileSync("src/app/api/admin/billing/route.ts", "utf8");
+const financeApi = readFileSync("src/app/api/admin/finance/route.ts", "utf8");
+const exportApi = readFileSync("src/app/api/admin/finance/export/route.ts", "utf8");
+const financeData = readFileSync("src/lib/finance/data.ts", "utf8");
+const billingData = readFileSync("src/lib/billing/data.ts", "utf8");
+const projectList = readFileSync("src/components/admin/project-list.tsx", "utf8");
+const projectDetail = readFileSync("src/components/admin/project-detail.tsx", "utf8");
+const expensePanel = readFileSync("src/components/admin/expense-panel.tsx", "utf8");
+const billingPanel = readFileSync("src/components/admin/billing-panel.tsx", "utf8");
+const paymentList = readFileSync("src/components/admin/payment-list.tsx", "utf8");
+const financeDashboard = readFileSync("src/components/admin/finance-dashboard.tsx", "utf8");
+const reports = readFileSync("src/components/admin/finance-report-table.tsx", "utf8");
+const automationSql = readFileSync("supabase/migrations/20260830000200_phase2_automated_billing.sql", "utf8");
+const templates = readFileSync("src/lib/billing/templates.ts", "utf8");
+
+const monetaryTables = ["projects", "project_payment_plans", "project_installments", "project_recurring_services", "receivables", "payments", "expenses"];
+
+test("USD01 ISO currency fields remain present", () => { for (const table of monetaryTables) assert.match(migration, new RegExp(`alter table public\\.${table} alter column currency`)); });
+test("USD02 all current monetary entities default to USD", () => { for (const table of monetaryTables) assert.match(migration, new RegExp(`alter table public\\.${table} alter column currency set default 'USD'`)); });
+test("USD03 all current monetary entities have USD constraints", () => { for (const table of monetaryTables) assert.match(migration, new RegExp(`${table}_currency_usd check \\(currency = 'USD'\\)`)); });
+test("USD04 all current monetary entities enforce USD before write", () => { for (const table of monetaryTables) assert.match(migration, new RegExp(`${table}_enforce_usd`)); });
+test("USD05 HNL is rejected at database boundary", () => assert.match(migration, /new\.currency is distinct from 'USD'/));
+test("USD06 EUR is rejected by the same database boundary", () => assert.match(migration, /Ken Code business currency must be USD/));
+test("USD07 project API accepts and defaults only USD", () => assert.match(commercialApi, /const usd = z\.literal\("USD"\)/));
+test("USD08 installment and recurring APIs use the USD schema", () => { assert.match(commercialApi, /currency: usd\.optional\(\)\.default\("USD"\)/); assert.doesNotMatch(commercialApi, /currency: z\.string\(\)\.regex\(\/\^\[A-Z\]/); });
+test("USD09 payment API rejects manipulated non-USD currency", () => assert.match(billingApi, /currency:z\.literal\("USD"\)/));
+test("USD10 expense API rejects manipulated non-USD currency", () => assert.match(financeApi, /currency:z\.literal\("USD"\)/));
+test("USD11 export API rejects manipulated non-USD currency", () => assert.match(exportApi, /currency:z\.literal\("USD"\)/));
+test("USD12 report and series RPCs reject non-USD", () => { assert.match(migration, /report currency must be USD/); assert.match(migration, /finance series currency must be USD/); });
+test("USD13 finance server data always requests USD", () => assert.match(financeData, /p_currency:"USD"/));
+test("USD14 billing summary is one USD perspective", () => { assert.match(billingData, /currency:"USD"/); assert.doesNotMatch(billingData.slice(billingData.indexOf("billingSummary"), billingData.indexOf("listPayments")), /byCurrency/); });
+test("USD15 ordinary forms expose no currency selector", () => assert.doesNotMatch(projectList + projectDetail + expensePanel + billingPanel + paymentList + reports, /name="currency"[^>]*(select|input)|HNL|Todas las monedas|USD \/ HNL/));
+test("USD16 project, recurring and expense UI submit USD automatically", () => { assert.match(projectList, /currency: "USD"/); assert.match(projectDetail, /currency:"USD"/); assert.match(expensePanel, /currency:"USD"/); });
+test("USD17 finance dashboard has a single USD view", () => { assert.match(financeDashboard, /Resumen USD/); assert.doesNotMatch(financeDashboard, /summary\.map|Sin conversion de moneda/); });
+test("USD18 reports expose no currency filter", () => { assert.doesNotMatch(reports, /<select name="currency"/); assert.match(reports, /type="hidden" name="currency" value="USD"/); });
+test("USD19 exports declare Moneda USD", () => assert.match(exportApi, /\["Moneda","USD"\]/));
+test("USD20 CRM money renders with the dollar symbol", () => assert.equal(formatMinor("149900", "USD"), "$1,499.00"));
+test("USD21 recurring generation preserves the guarded service currency", () => assert.match(automationSql, /v_service\.monthly_amount_minor,v_service\.currency/));
+test("USD22 billing reminders use the official shared money formatter", () => assert.match(templates, /formatMinor\(input\.amountMinor,input\.currency/));
+test("USD23 migration creates no business records", () => assert.doesNotMatch(migration, /insert into public\.(clients|projects|project_payment_plans|project_installments|project_recurring_services|receivables|payments|payment_allocations|expenses)/));
+test("USD24 migration sends no email, push or cron", () => assert.doesNotMatch(migration, /resend|send_email|send_push|cron\.|net\.http/i));

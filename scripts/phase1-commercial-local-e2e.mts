@@ -119,9 +119,7 @@ const secondDraft = await owner.rpc("commercial_write", { p_operation: "payment_
 if (secondDraft.error) throw secondDraft.error;
 const secondInstallment = await service.from("project_installments").select("id").eq("payment_plan_id", secondDraft.data.id).single();
 if (secondInstallment.error) throw secondInstallment.error;
-if ((await service.from("project_installments").update({ currency: "HNL" }).eq("id", secondInstallment.data.id)).error) throw new Error("Could not prepare local currency mismatch fixture.");
-assert.ok((await owner.rpc("commercial_write", { p_operation: "payment_plan_activate", p_payload: { id: secondDraft.data.id } })).error);
-if ((await service.from("project_installments").update({ currency: "USD" }).eq("id", secondInstallment.data.id)).error) throw new Error("Could not restore local currency fixture.");
+assert.ok((await service.from("project_installments").update({ currency: "HNL" }).eq("id", secondInstallment.data.id)).error);
 const secondActivation = await owner.rpc("commercial_write", { p_operation: "payment_plan_activate", p_payload: { id: secondDraft.data.id } });
 if (secondActivation.error) throw secondActivation.error;
 const plans = await owner.from("project_payment_plans").select("id,status").eq("project_id", projectId);

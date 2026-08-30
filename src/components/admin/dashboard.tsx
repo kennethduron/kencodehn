@@ -33,7 +33,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
   const cards = [
     { label: "Clientes activos", value: activeClients, detail: `${clients.length} clientes registrados`, icon: Users, accent: "blue" as const },
     { label: "Proyectos en curso", value: activeProjects, detail: `${projects.length} proyectos registrados`, icon: FolderKanban, accent: "cyan" as const },
-    { label: "Cobros pendientes", value: financialValue("outstanding"), detail: "Saldos separados por moneda", icon: CircleDollarSign, accent: "lime" as const },
+    { label: "Cobros pendientes", value: financialValue("outstanding"), detail: "Saldo total en USD", icon: CircleDollarSign, accent: "lime" as const },
     { label: "Cobrado este mes", value: financialValue("collectedMonth"), detail: "Dinero real recibido", icon: WalletCards, accent: "green" as const },
     { label: personalScope ? "Mis leads" : "Leads en cartera", value: total, detail: `${newLeads} nuevos · ${won} ganados`, icon: TrendingUp, accent: "blue" as const },
     ...(canViewTasks ? [{ label: "Tareas pendientes", value: pendingTasks, detail: `${todayTasks} hoy · ${overdueTasks} vencidas`, icon: CalendarClock, accent: overdueTasks ? "rose" as const : "slate" as const }] : []),

@@ -1,5 +1,5 @@
 export type ExpenseStatus = "posted" | "reversed";
-export type FinanceCurrency = "USD" | "HNL";
+export type FinanceCurrency = "USD";
 export type FinancePeriod = "month" | "last_month" | "quarter" | "year" | "custom";
 export type FinanceReportType = "collections" | "receivables" | "overdue" | "expenses" | "cash_result" | "project_sales" | "seller";
 

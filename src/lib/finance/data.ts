@@ -42,14 +42,14 @@ export async function financeSummary(from:string,to:string):Promise<FinanceSumma
   return ((data??[]) as Row[]).map((row)=>({currency:text(row.currency),soldMinor:text(row.sold_minor),collectedMinor:text(row.collected_minor),outstandingMinor:text(row.outstanding_minor),overdueMinor:text(row.overdue_minor),recurringCollectedMinor:text(row.recurring_collected_minor),expenseMinor:text(row.expense_minor),netCashMinor:text(row.net_cash_minor)}));
 }
 
-export async function financeSeries(from:string,to:string,currency:string):Promise<FinanceSeriesPoint[]> {
+export async function financeSeries(from:string,to:string,currency:"USD"="USD"):Promise<FinanceSeriesPoint[]> {
   const client=await createSupabaseServerClient();const{data,error}=await client.rpc("finance_monthly_series",{p_from:from,p_to:to,p_currency:currency});wrapError(error,"No se pudo calcular la serie financiera.");
   return ((data??[]) as Row[]).map((row)=>({monthStart:text(row.month_start),collectedMinor:text(row.collected_minor),expenseMinor:text(row.expense_minor)}));
 }
 
-export async function financeReport(input:{report:string;from:string;to:string;currency?:string;clientId?:string;projectId?:string;sellerId?:string;paymentMethod?:string;categoryId?:string;page?:number;pageSize?:number}) {
+export async function financeReport(input:{report:string;from:string;to:string;currency?:"USD";clientId?:string;projectId?:string;sellerId?:string;paymentMethod?:string;categoryId?:string;page?:number;pageSize?:number}) {
   const client=await createSupabaseServerClient();const page=Math.max(1,input.page??1),pageSize=Math.min(200,Math.max(1,input.pageSize??25));
-  const {data,error}=await client.rpc("finance_report",{p_report:input.report,p_from:input.from,p_to:input.to,p_currency:input.currency||null,p_client_id:input.clientId||null,p_project_id:input.projectId||null,p_seller_id:input.sellerId||null,p_payment_method:input.paymentMethod||null,p_category_id:input.categoryId||null,p_page:page,p_page_size:pageSize});wrapError(error,"No se pudo generar el reporte.");
+  const {data,error}=await client.rpc("finance_report",{p_report:input.report,p_from:input.from,p_to:input.to,p_currency:"USD",p_client_id:input.clientId||null,p_project_id:input.projectId||null,p_seller_id:input.sellerId||null,p_payment_method:input.paymentMethod||null,p_category_id:input.categoryId||null,p_page:page,p_page_size:pageSize});wrapError(error,"No se pudo generar el reporte.");
   const rows=(data??[]) as Row[];const items:FinanceReportRow[]=rows.map((row)=>({occurredOn:text(row.occurred_on),recordType:text(row.record_type),party:text(row.party),concept:text(row.concept),projectName:text(row.project_name),paymentMethod:text(row.payment_method),amountMinor:text(row.amount_minor),currency:text(row.currency),status:text(row.status),sellerId:nullable(row.seller_id),recordId:text(row.record_id)}));
   return {items,total:rows[0]?Number(rows[0].total_count):0,page,pageSize};
 }

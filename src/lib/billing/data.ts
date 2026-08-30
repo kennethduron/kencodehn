@@ -45,22 +45,21 @@ export type BillingSummaryGroup = { currency:string;dueToday:string;next7:string
 export async function billingSummary():Promise<BillingSummaryGroup[]> {
   const client=await createSupabaseServerClient();
   const [receivables,payments]=await Promise.all([
-    unwrap(client.from("receivables").select("amount_due_minor,amount_paid_minor,balance_minor,currency,due_date,payment_state")),
-    unwrap(client.from("payments").select("amount_minor,currency,paid_at,status").eq("status","posted")),
+    unwrap(client.from("receivables").select("amount_due_minor,amount_paid_minor,balance_minor,currency,due_date,payment_state").eq("currency","USD")),
+    unwrap(client.from("payments").select("amount_minor,currency,paid_at,status").eq("status","posted").eq("currency","USD")),
   ]);
   const today=todayInHonduras(); const next=new Date(`${today}T12:00:00Z`); next.setUTCDate(next.getUTCDate()+7); const next7=next.toISOString().slice(0,10);
-  const byCurrency:Record<string,{dueToday:bigint;next7:bigint;overdue:bigint;outstanding:bigint;collectedMonth:bigint}>={};
-  const bucket=(currency:string)=>byCurrency[currency]??=( {dueToday:BigInt(0),next7:BigInt(0),overdue:BigInt(0),outstanding:BigInt(0),collectedMonth:BigInt(0)} );
-  for(const row of (receivables??[]) as Row[]){const b=bucket(text(row.currency));if(row.payment_state==="cancelled")continue;const balance=BigInt(text(row.balance_minor));b.outstanding+=balance;if(row.payment_state!=="paid"){if(row.due_date===today)b.dueToday+=balance;else if(row.due_date<today)b.overdue+=balance;else if(row.due_date<=next7)b.next7+=balance;}}
-  const month=today.slice(0,7);for(const row of (payments??[]) as Row[]){if(text(row.paid_at).slice(0,7)===month)bucket(text(row.currency)).collectedMonth+=BigInt(text(row.amount_minor));}
-  return Object.entries(byCurrency).map(([currency,value])=>({
-    currency,
+  const value={dueToday:BigInt(0),next7:BigInt(0),overdue:BigInt(0),outstanding:BigInt(0),collectedMonth:BigInt(0)};
+  for(const row of (receivables??[]) as Row[]){if(row.payment_state==="cancelled")continue;const balance=BigInt(text(row.balance_minor));value.outstanding+=balance;if(row.payment_state!=="paid"){if(row.due_date===today)value.dueToday+=balance;else if(row.due_date<today)value.overdue+=balance;else if(row.due_date<=next7)value.next7+=balance;}}
+  const month=today.slice(0,7);for(const row of (payments??[]) as Row[]){if(text(row.paid_at).slice(0,7)===month)value.collectedMonth+=BigInt(text(row.amount_minor));}
+  return [{
+    currency:"USD",
     dueToday:value.dueToday.toString(),
     next7:value.next7.toString(),
     overdue:value.overdue.toString(),
     outstanding:value.outstanding.toString(),
     collectedMonth:value.collectedMonth.toString(),
-  }));
+  }];
 }
 
 export async function listPayments(clientId?:string):Promise<BillingPayment[]> {
