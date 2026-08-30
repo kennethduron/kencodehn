@@ -1,7 +1,7 @@
 export type ExpenseStatus = "posted" | "reversed";
 export type FinanceCurrency = "USD";
 export type FinancePeriod = "month" | "last_month" | "quarter" | "year" | "custom";
-export type FinanceReportType = "collections" | "receivables" | "overdue" | "expenses" | "cash_result" | "project_sales" | "seller";
+export type FinanceReportType = "collections" | "receivables" | "overdue" | "expenses" | "cash_result" | "project_sales" | "seller" | "module_sales" | "module_collected" | "module_outstanding" | "module_recurring";
 
 export type ExpenseCategory = {
   id: string;

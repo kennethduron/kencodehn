@@ -1,5 +1,5 @@
 export type ReceivableState = "open" | "partially_paid" | "paid" | "cancelled";
-export type ReceivableOrigin = "project_installment" | "recurring_service";
+export type ReceivableOrigin = "project_installment" | "recurring_service" | "add_on_installment" | "add_on_recurring";
 export type ReceivableTiming = "upcoming" | "due_today" | "overdue" | "settled";
 
 export type BillingReceivable = {
