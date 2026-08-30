@@ -191,6 +191,7 @@ export function MailWorkspace({
   >([]);
   const [followDue, setFollowDue] = useState("");
   const [followTitle, setFollowTitle] = useState("Dar seguimiento al correo");
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const signatureApplied = useRef(false);
   const selected = initial.selected;
   const lastMessage = selected?.messages.at(-1);
@@ -268,12 +269,6 @@ export function MailWorkspace({
       setCompose(false);
       return;
     }
-    if (
-      !window.confirm(
-        "¿Descartar este borrador? Esta acción no se puede deshacer.",
-      )
-    )
-      return;
     setBusy(true);
     setError("");
     const response = await fetch("/api/admin/mail", {
@@ -293,6 +288,7 @@ export function MailWorkspace({
     setBcc("");
     setSubject("");
     setHtml("");
+    setConfirmDiscard(false);
     setCompose(false);
     setNotice("Borrador descartado.");
     router.refresh();
@@ -1244,15 +1240,35 @@ export function MailWorkspace({
                     disabled={busy}
                   />
                 </label>
-                {draft.id ? (
+                {draft.id && !confirmDiscard ? (
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void discardDraft()}
+                    onClick={() => setConfirmDiscard(true)}
                     className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-200 px-3 text-sm font-bold text-rose-700 disabled:opacity-50"
                   >
                     <Trash2 size={16} /> Descartar borrador
                   </button>
+                ) : null}
+                {draft.id && confirmDiscard ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void discardDraft()}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-rose-700 px-3 text-sm font-bold text-white disabled:opacity-50"
+                    >
+                      <Trash2 size={16} /> Confirmar descarte
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setConfirmDiscard(false)}
+                      className="inline-flex min-h-10 items-center rounded-xl border px-3 text-sm font-bold"
+                    >
+                      Cancelar
+                    </button>
+                  </>
                 ) : null}
               </div>
               <button
