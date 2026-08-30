@@ -39,7 +39,7 @@ async function checkPage(page: Page, routeLabel: string, viewportLabel: string, 
   const geometry = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, width: window.innerWidth, height: window.innerHeight }));
   result.checks += 1;
   if (geometry.scrollWidth > geometry.width + 1) result.issues.push(`${engine}/${viewportLabel}/${routeLabel}: document overflow ${geometry.scrollWidth}>${geometry.width}`);
-  const visibleText = await page.locator("main").innerText();
+  const visibleText = await page.locator("main.kc-admin-theme").last().innerText();
   result.checks += 1;
   const forbidden = visibleText.match(forbiddenTerms);
   if (forbidden) result.issues.push(`${engine}/${viewportLabel}/${routeLabel}: technical term ${forbidden[0]}`);
@@ -74,7 +74,9 @@ async function checkSidebar(page: Page) {
   await page.goto(`${baseUrl}/admin`, { waitUntil: "domcontentloaded" });
   await page.evaluate(() => localStorage.removeItem("kc-crm-sidebar-collapsed"));
   await page.reload({ waitUntil: "domcontentloaded" });
-  const sidebar = page.getByLabel("Barra lateral");
+  const sidebar = page.locator('aside[aria-label="Barra lateral"]:visible');
+  await sidebar.waitFor({ state: "visible" });
+  await page.waitForTimeout(350);
   const expanded = await sidebar.evaluate((element) => Math.round(element.getBoundingClientRect().width));
   await page.getByRole("button", { name: "Colapsar menu" }).click();
   await page.waitForTimeout(350);
@@ -83,6 +85,8 @@ async function checkSidebar(page: Page) {
   assert.ok(Math.abs(collapsed - 72) <= 2, `collapsed sidebar ${collapsed}px`);
   assert.equal(await page.evaluate(() => localStorage.getItem("kc-crm-sidebar-collapsed")), "true");
   await page.reload({ waitUntil: "domcontentloaded" });
+  await sidebar.waitFor({ state: "visible" });
+  await page.waitForTimeout(350);
   assert.ok(Math.abs((await sidebar.evaluate((element) => Math.round(element.getBoundingClientRect().width))) - 72) <= 2);
   await page.getByRole("button", { name: "Expandir menu" }).click();
   result.checks += 4;
@@ -93,7 +97,8 @@ async function runMatrix(browser: Browser, state: Awaited<ReturnType<typeof auth
   const page = await context.newPage();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("response", (response) => { if (response.status() >= 400) errors.push(`HTTP ${response.status()} ${response.url()}`); });
+  page.on("console", (message) => { if (message.type() === "error" && !/^Failed to load resource:/i.test(message.text())) errors.push(message.text()); });
   let screenshots = 0;
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);

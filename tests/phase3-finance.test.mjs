@@ -101,3 +101,4 @@ test("F39b ordinary finance UI exposes no HNL", () => assert.doesNotMatch(dashbo
 test("F81 finance implementation never sends email or push", () => assert.doesNotMatch(sql + usdSql + data + api, /resend\.com|sendEmail|sendPush|firebase-admin/i));
 test("F82 migration does not seed business expenses", () => assert.doesNotMatch(sql.slice(0, sql.indexOf("create or replace function public.finance_write")), /insert into public\.expenses/));
 test("F83 money columns are never floating point", () => assert.doesNotMatch(sql + usdSql, /amount_minor\s+(real|double precision|numeric)/i));
+test("F84 CSV export is a browser download, not an App Router navigation", () => { assert.match(reports, /<a href={`\/api\/admin\/finance\/export/); assert.doesNotMatch(reports, /<Link href={`\/api\/admin\/finance\/export/); });

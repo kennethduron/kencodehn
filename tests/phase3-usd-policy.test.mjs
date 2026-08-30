@@ -46,3 +46,4 @@ test("USD21 recurring generation preserves the guarded service currency", () => 
 test("USD22 billing reminders use the official shared money formatter", () => assert.match(templates, /formatMinor\(input\.amountMinor,input\.currency/));
 test("USD23 migration creates no business records", () => assert.doesNotMatch(migration, /insert into public\.(clients|projects|project_payment_plans|project_installments|project_recurring_services|receivables|payments|payment_allocations|expenses)/));
 test("USD24 migration sends no email, push or cron", () => assert.doesNotMatch(migration, /resend|send_email|send_push|cron\.|net\.http/i));
+test("USD25 CSV export does not trigger a Next.js RSC prefetch", () => { assert.match(reports, /<a href={`\/api\/admin\/finance\/export/); assert.match(reports, /download className=/); });
