@@ -44,11 +44,17 @@ export function NotificationDropdown({ initialUnreadCount = 0 }: { initialUnread
   }, []);
 
   async function fetchNotifications() {
-    const response = await fetch("/api/admin/notifications");
-    const result = await response.json();
-    if (result.ok) {
-      setNotifications(result.notifications);
-      setUnreadCount(result.notifications.filter((notification: AdminNotification) => !notification.read).length);
+    try {
+      const response = await fetch("/api/admin/notifications");
+      if (!response.ok) return;
+      const result = await response.json();
+      if (result.ok) {
+        setNotifications(result.notifications);
+        setUnreadCount(result.notifications.filter((notification: AdminNotification) => !notification.read).length);
+      }
+    } catch {
+      // A document navigation can cancel this optional refresh. Keep the
+      // server-rendered unread count and let the next mounted view retry.
     }
   }
 
