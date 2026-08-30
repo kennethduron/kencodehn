@@ -53,7 +53,8 @@ async function checkPage(page: Page, routeLabel: string, viewportLabel: string, 
 
 async function checkDrawer(page: Page, viewportLabel: string) {
   await page.goto(`${baseUrl}/admin`, { waitUntil: "domcontentloaded" });
-  const opener = page.getByRole("button", { name: "Abrir menu" }).first();
+  const opener = page.locator('button[aria-label="Abrir menu"]:visible').first();
+  await opener.waitFor({ state: "visible" });
   await opener.click();
   const dialog = page.getByRole("dialog", { name: "Menu principal" });
   await dialog.waitFor({ state: "visible" });
