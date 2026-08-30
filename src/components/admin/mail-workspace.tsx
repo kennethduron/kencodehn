@@ -191,7 +191,6 @@ export function MailWorkspace({
   >([]);
   const [followDue, setFollowDue] = useState("");
   const [followTitle, setFollowTitle] = useState("Dar seguimiento al correo");
-  const autosaveReady = useRef(false);
   const signatureApplied = useRef(false);
   const selected = initial.selected;
   const lastMessage = selected?.messages.at(-1);
@@ -203,11 +202,23 @@ export function MailWorkspace({
 
   useEffect(() => {
     if (!compose) return;
+    const isCompletelyEmpty =
+      !draft.id &&
+      !identityId &&
+      !to &&
+      !cc &&
+      !bcc &&
+      !subject &&
+      !html &&
+      !attachments.length &&
+      !selected?.thread.id &&
+      !composeContext.leadId &&
+      !composeContext.clientId &&
+      !composeContext.projectId &&
+      !composeContext.addOnId &&
+      !composeContext.proposalId;
+    if (isCompletelyEmpty) return;
     const timer = setTimeout(async () => {
-      if (!autosaveReady.current) {
-        autosaveReady.current = true;
-        if (!to && !subject && !html) return;
-      }
       const response = await fetch("/api/admin/mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -242,6 +253,7 @@ export function MailWorkspace({
     cc,
     compose,
     composeContext,
+    attachments.length,
     draft.id,
     draft.version,
     html,
@@ -250,6 +262,41 @@ export function MailWorkspace({
     subject,
     to,
   ]);
+
+  async function discardDraft() {
+    if (!draft.id) {
+      setCompose(false);
+      return;
+    }
+    if (
+      !window.confirm(
+        "¿Descartar este borrador? Esta acción no se puede deshacer.",
+      )
+    )
+      return;
+    setBusy(true);
+    setError("");
+    const response = await fetch("/api/admin/mail", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete_draft", draftId: draft.id }),
+    });
+    const body = await response.json();
+    setBusy(false);
+    if (!response.ok)
+      return setError(body.error || "No pudimos descartar el borrador.");
+    setDraft({});
+    setAttachments([]);
+    setIdentityId("");
+    setTo("");
+    setCc("");
+    setBcc("");
+    setSubject("");
+    setHtml("");
+    setCompose(false);
+    setNotice("Borrador descartado.");
+    router.refresh();
+  }
 
   function openReply(mode: "reply" | "replyAll" | "forward") {
     if (!lastMessage) return;
@@ -1108,9 +1155,7 @@ export function MailWorkspace({
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      setHtml((value) => `${value}<u>texto</u>`)
-                    }
+                    onClick={() => setHtml((value) => `${value}<u>texto</u>`)}
                     className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white"
                     aria-label="Subrayado"
                   >
@@ -1119,9 +1164,7 @@ export function MailWorkspace({
                   <button
                     type="button"
                     onClick={() =>
-                      setHtml(
-                        (value) => `${value}<ol><li>Elemento</li></ol>`,
-                      )
+                      setHtml((value) => `${value}<ol><li>Elemento</li></ol>`)
                     }
                     className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white"
                     aria-label="Lista numerada"
@@ -1143,7 +1186,9 @@ export function MailWorkspace({
                   <button
                     type="button"
                     onClick={() =>
-                      setHtml((value) => `${value}<blockquote>cita</blockquote>`)
+                      setHtml(
+                        (value) => `${value}<blockquote>cita</blockquote>`,
+                      )
                     }
                     className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white"
                     aria-label="Cita"
@@ -1184,20 +1229,32 @@ export function MailWorkspace({
               </div>
             </div>
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
-              <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-bold">
-                <Paperclip size={16} /> Adjuntar
-                <input
-                  type="file"
-                  className="sr-only"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.txt"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = "";
-                    if (file) void uploadAttachment(file);
-                  }}
-                  disabled={busy}
-                />
-              </label>
+              <div className="flex flex-wrap gap-2">
+                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-bold">
+                  <Paperclip size={16} /> Adjuntar
+                  <input
+                    type="file"
+                    className="sr-only"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.txt"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void uploadAttachment(file);
+                    }}
+                    disabled={busy}
+                  />
+                </label>
+                {draft.id ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void discardDraft()}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-200 px-3 text-sm font-bold text-rose-700 disabled:opacity-50"
+                  >
+                    <Trash2 size={16} /> Descartar borrador
+                  </button>
+                ) : null}
+              </div>
               <button
                 type="submit"
                 disabled={busy}
