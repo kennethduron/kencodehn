@@ -34,7 +34,7 @@ export async function listMail(admin: AdminUser, folder: MailFolder, search: str
     const { data: drafts, error } = await draftsQuery; if (error) throw error;
     return { folder, drafts: drafts || [], threads: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], nextCursor: drafts?.length === 26 ? drafts.at(-1)?.updated_at : null };
   }
-  let query = client.from("mail_threads").select("id,subject,state,assigned_to,is_important,follow_up_at,snippet,latest_message_at,identity_id,lead_id,client_id,project_id,add_on_id,proposal_id,mail_identities(email,display_name),leads(name),clients(name,company),projects(name),project_add_ons(name),add_on_proposals(proposal_number,title,status),mail_read_states(unread),mail_messages(id,direction,from_address,to_addresses,created_at)").order("latest_message_at", { ascending: false }).limit(26);
+  let query = client.from("mail_threads").select("id,subject,state,assigned_to,is_important,follow_up_at,snippet,latest_message_at,identity_id,lead_id,client_id,project_id,add_on_id,proposal_id,mail_identities(email,display_name),mail_read_states(unread),mail_messages(id,direction,from_address,to_addresses,created_at)").order("latest_message_at", { ascending: false }).limit(26);
   if (!maySuperviseMail(admin)) query = identities.length ? query.or(`assigned_to.eq.${admin.uid},identity_id.in.(${identities.join(",")})`) : query.eq("assigned_to", admin.uid);
   if (folder === "archived") query = query.eq("state", "archived"); else if (folder === "trash") query = query.eq("state", "trash"); else query = query.eq("state", "inbox");
   if (folder === "follow-up") query = query.not("follow_up_at", "is", null);
@@ -48,7 +48,7 @@ export async function listMail(admin: AdminUser, folder: MailFolder, search: str
 export async function loadThread(admin: AdminUser, threadId: string) {
   if (!(await mayAccessThread(admin, threadId))) throw new Error("MAIL_FORBIDDEN");
   const client = createSupabaseAdminClient();
-  const { data: thread, error } = await client.from("mail_threads").select("*,mail_identities(email,display_name),leads(name),clients(name,company),projects(name),project_add_ons(name),add_on_proposals(proposal_number,title,status)").eq("id", threadId).single(); if (error) throw error;
+  const { data: thread, error } = await client.from("mail_threads").select("*,mail_identities(email,display_name)").eq("id", threadId).single(); if (error) throw error;
   const { data: messages, error: messageError } = await client.from("mail_messages").select("id,direction,delivery_status,from_address,to_addresses,cc_addresses,bcc_addresses,subject,body_html,body_text,sender_snapshot,sent_at,received_at,created_at,has_remote_images").eq("thread_id", threadId).order("created_at"); if (messageError) throw messageError;
   await client.from("mail_read_states").upsert({ thread_id: threadId, profile_id: admin.uid, unread: false, last_read_at: new Date().toISOString() });
   return { thread, messages: messages || [] };
