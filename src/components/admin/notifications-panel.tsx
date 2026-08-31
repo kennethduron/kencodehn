@@ -41,7 +41,10 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
     if (result.ok && result.notifications) {
       setNotifications(result.notifications);
       window.dispatchEvent(new CustomEvent("kc:notifications-changed", {
-        detail: { unreadCount: result.notifications.filter((notification) => !notification.read).length },
+        detail: {
+          unreadCount: result.notifications.filter((notification) => !notification.read).length,
+          notifications: result.notifications,
+        },
       }));
       return true;
     }

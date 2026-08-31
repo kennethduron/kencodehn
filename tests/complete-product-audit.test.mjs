@@ -71,8 +71,11 @@ test("corrected core CRM copy preserves Spanish orthography", () => {
 
 test("notification center updates the global unread badge immediately", () => {
   assert.match(notificationPanel, /dispatchEvent\(new CustomEvent\("kc:notifications-changed"/);
+  assert.match(notificationPanel, /notifications: result\.notifications/);
   assert.match(notificationDropdown, /addEventListener\("kc:notifications-changed"/);
   assert.match(notificationDropdown, /setUnreadCount\(Math\.max\(0, unread\)\)/);
+  assert.match(notificationDropdown, /setNotifications\(detail\.notifications/);
+  assert.doesNotMatch(notificationDropdown, /onNotificationsChanged[\s\S]{0,400}fetchNotifications\(\)/);
 });
 
 test("push deep links are restricted to CRM routes", () => {

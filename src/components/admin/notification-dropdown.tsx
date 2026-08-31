@@ -23,9 +23,10 @@ export function NotificationDropdown({ initialUnreadCount = 0 }: { initialUnread
   useEffect(() => {
     fetchNotifications();
     function onNotificationsChanged(event: Event) {
-      const unread = (event as CustomEvent<{ unreadCount?: unknown }>).detail?.unreadCount;
+      const detail = (event as CustomEvent<{ unreadCount?: unknown; notifications?: unknown }>).detail;
+      const unread = detail?.unreadCount;
       if (typeof unread === "number" && Number.isFinite(unread)) setUnreadCount(Math.max(0, unread));
-      fetchNotifications();
+      if (Array.isArray(detail?.notifications)) setNotifications(detail.notifications as AdminNotification[]);
     }
     window.addEventListener("kc:notifications-changed", onNotificationsChanged);
     return () => window.removeEventListener("kc:notifications-changed", onNotificationsChanged);
