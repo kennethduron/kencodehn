@@ -223,6 +223,20 @@ select:focus-visible {
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
 }
 
+.kc-auth-layout input,
+.kc-auth-layout select,
+.kc-auth-layout textarea {
+  font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+  .kc-auth-layout input,
+  .kc-auth-layout select,
+  .kc-auth-layout textarea {
+    font-size: 0.875rem;
+  }
+}
+
 .kc-admin-workspace {
   display: grid;
   min-height: 100dvh;
@@ -329,21 +343,6 @@ select:focus-visible {
   background: linear-gradient(135deg, #0759b8, #0f6fe8);
   color: #ffffff;
   box-shadow: 0 8px 20px rgba(0, 79, 174, 0.28);
-}
-
-.kc-admin-sidebar .group > [role="tooltip"] {
-  left: calc(100% + 0.75rem);
-  bottom: auto;
-  top: 50%;
-  margin: 0;
-  transform: translateY(-50%);
-}
-
-.kc-admin-sidebar .group:has(.kc-sidebar-toggle) > [role="tooltip"] {
-  left: 50%;
-  bottom: calc(100% + 0.5rem);
-  top: auto;
-  transform: translateX(-50%);
 }
 
 @media (min-width: 1024px) {

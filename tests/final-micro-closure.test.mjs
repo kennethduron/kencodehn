@@ -71,7 +71,9 @@ test("icon-only Mail actions expose hover, focus, and accessible names", () => {
   assert.match(mailUi, /<Tooltip label="Archivar" placement="bottom">/);
   assert.match(mailUi, /<Tooltip label="Mover a Papelera" placement="bottom">/);
   assert.match(mailUi, /<Tooltip label="Eliminar definitivamente" placement="bottom">/);
-  assert.match(ui, /group-hover:block.*group-focus-within:block/);
+  assert.match(ui, /createPortal/);
+  assert.match(ui, /onMouseEnter.*setOpen\(true\)/s);
+  assert.match(ui, /onFocusCapture.*setOpen\(true\)/s);
   assert.match(mailUi, /aria-label="Cerrar carpetas"/);
 });
 
@@ -139,7 +141,7 @@ test("mobile composer keeps header and actions accessible", () => {
 });
 
 test("FCM device queries select the intended profile relationship", () => {
-  const explicitRelationships = pushService.match(/profiles!device_tokens_profile_id_fkey\(email\)/g) || [];
+  const explicitRelationships = pushService.match(/profiles!device_tokens_profile_id_fkey\(email,active\)/g) || [];
   assert.equal(explicitRelationships.length, 2);
   assert.doesNotMatch(pushService, /select\("\*,profiles\(email\)"\)/);
 });

@@ -22,6 +22,13 @@ export function NotificationDropdown({ initialUnreadCount = 0 }: { initialUnread
 
   useEffect(() => {
     fetchNotifications();
+    function onNotificationsChanged(event: Event) {
+      const unread = (event as CustomEvent<{ unreadCount?: unknown }>).detail?.unreadCount;
+      if (typeof unread === "number" && Number.isFinite(unread)) setUnreadCount(Math.max(0, unread));
+      fetchNotifications();
+    }
+    window.addEventListener("kc:notifications-changed", onNotificationsChanged);
+    return () => window.removeEventListener("kc:notifications-changed", onNotificationsChanged);
   }, []);
 
   useEffect(() => {
@@ -112,7 +119,7 @@ export function NotificationDropdown({ initialUnreadCount = 0 }: { initialUnread
               <p className="mt-1 line-clamp-2 text-sm leading-6 text-kc-muted">{notification.message}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full border px-2 py-0.5 text-[0.68rem] font-black ${severityClass[notification.severity]}`}>{notificationSeverityLabels[notification.severity]}</span>
-                <span className="text-xs font-bold text-kc-muted">{notificationTypeLabels[notification.type] || notification.type}</span>
+                <span className="text-xs font-bold text-kc-muted">{notificationTypeLabels[notification.type] || "Actividad"}</span>
                 <span className="ml-auto text-xs font-bold text-kc-muted">{timeAgo(notification.createdAt)}</span>
               </div>
             </Link>

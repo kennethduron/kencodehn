@@ -162,8 +162,8 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks, canAssign = fa
             {assigneeOptions.map((member) => <option key={member.uid} value={member.uid}>{member.label}</option>)}
           </select> : null}
           <select value={sort} onChange={(event) => setSort(event.target.value as SortKey)} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text outline-none">
-            <option value="recent">Mas reciente</option>
-            <option value="oldest">Mas antiguo</option>
+            <option value="recent">Más reciente</option>
+            <option value="oldest">Más antiguo</option>
             <option value="high_priority">Prioridad alta</option>
             <option value="estimated_value">Valor estimado</option>
             <option value="next_followup">Seguimiento próximo</option>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Clock3, FolderKanban, TrendingUp, Users, WalletCards } from "lucide-react";
 import type { ActivityLog, AdminLead, AdminNotification, AdminTask } from "@/lib/admin/types";
-import { activityHref, mapActivityTone } from "@/lib/admin/activity";
+import { activityHref, formatActivityMessage, mapActivityTone } from "@/lib/admin/activity";
 import { leadStatusLabels, money, shortDate, timeAgo } from "./admin-labels";
 import { todayInHonduras } from "@/lib/time";
 import { AdminBarChart, AdminDonutMetric } from "./admin-chart";
@@ -54,7 +54,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Panel General</p>
           <h1 className="mt-1 font-display text-2xl font-black text-kc-text sm:text-3xl">{personalScope ? "Mi cartera comercial" : "Resumen comercial y operativo"}</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-kc-muted">{personalScope ? "Indicadores calculados unicamente con registros asignados a tu cuenta." : "Clientes, proyectos, cobros y tareas reales de Ken Code en una vista compacta."}</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-kc-muted">{personalScope ? "Indicadores calculados únicamente con registros asignados a tu cuenta." : "Clientes, proyectos, cobros y tareas reales de Ken Code en una vista compacta."}</p>
         </div>
         {canViewNotifications ? <Link href="/admin/notificaciones" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-kc-cyan/30 bg-kc-cyan/10 px-4 text-sm font-black text-kc-cyan transition hover:border-kc-cyan/60 hover:bg-kc-cyan/15">
           <Bell size={17} aria-hidden="true" />
@@ -67,14 +67,14 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1fr_0.78fr]">
-        <AdminBarChart title="Pipeline comercial" description="Distribucion actual de leads por estado." items={pipeline} />
+        <AdminBarChart title="Pipeline comercial" description="Distribución actual de leads por estado." items={pipeline} />
         <AdminDonutMetric title="Tasa de cierre" value={won} total={total} label={`${won} de ${total} leads convertidos`} />
       </section>
 
       {canViewTasks || canViewActivity ? <section className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
         {canViewTasks ? <article className="kc-admin-card p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-display text-xl font-black text-kc-text">Proximos seguimientos</h2>
+            <h2 className="font-display text-xl font-black text-kc-text">Próximos seguimientos</h2>
             <Link href="/admin/tareas" className="inline-flex items-center gap-1 text-sm font-black text-kc-cyan">
               Ver agenda <ArrowRight size={15} aria-hidden="true" />
             </Link>
@@ -105,7 +105,7 @@ export function AdminDashboard({ leads, tasks, notifications, activity, canEditL
                 <span className={`mt-1 h-2.5 w-2.5 rounded-full ${dot} shadow-[0_0_18px_rgba(0,217,255,0.35)]`} />
                 <span className="min-w-0">
                   <span className="block truncate font-bold text-kc-text">{item.title}</span>
-                  <span className="mt-1 block line-clamp-2 text-sm leading-6 text-kc-muted">{item.description}</span>
+                  <span className="mt-1 block line-clamp-2 text-sm leading-6 text-kc-muted">{formatActivityMessage(item)}</span>
                   <span className="mt-2 block text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">{timeAgo(item.createdAt)}</span>
                 </span>
               </Link>

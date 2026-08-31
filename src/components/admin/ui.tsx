@@ -1,7 +1,8 @@
 "use client";
 
 import { Loader2, X } from "lucide-react";
-import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 export function Toast({ message, variant = "success" }: { message: string; variant?: "success" | "error" | "info" }) {
   if (!message) return null;
@@ -25,17 +26,90 @@ export function Tooltip({
 }: {
   label: string;
   children: React.ReactNode;
-  placement?: "top" | "bottom";
+  placement?: "top" | "right" | "bottom" | "left";
 }) {
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const tooltipRef = useRef<HTMLSpanElement>(null);
+  const tooltipId = useId();
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [position, setPosition] = useState<{ left: number; top: number; side: "top" | "right" | "bottom" | "left" } | null>(null);
+
+  useEffect(() => setMounted(true), []);
+
+  const updatePosition = useCallback(() => {
+    const triggerElement = triggerRef.current;
+    const tooltipElement = tooltipRef.current;
+    if (!triggerElement || !tooltipElement) return;
+    const trigger = triggerElement.getBoundingClientRect();
+    const tooltip = tooltipElement.getBoundingClientRect();
+
+    const gap = 8;
+    const padding = 12;
+    const opposite = { top: "bottom", right: "left", bottom: "top", left: "right" } as const;
+    const candidates = [placement, opposite[placement], "right", "left", "bottom", "top"]
+      .filter((side, index, values) => values.indexOf(side) === index) as Array<"top" | "right" | "bottom" | "left">;
+
+    function coordinates(side: "top" | "right" | "bottom" | "left") {
+      if (side === "top") return { left: trigger.left + (trigger.width - tooltip.width) / 2, top: trigger.top - tooltip.height - gap };
+      if (side === "bottom") return { left: trigger.left + (trigger.width - tooltip.width) / 2, top: trigger.bottom + gap };
+      if (side === "left") return { left: trigger.left - tooltip.width - gap, top: trigger.top + (trigger.height - tooltip.height) / 2 };
+      return { left: trigger.right + gap, top: trigger.top + (trigger.height - tooltip.height) / 2 };
+    }
+
+    const fits = (point: { left: number; top: number }) =>
+      point.left >= padding &&
+      point.top >= padding &&
+      point.left + tooltip.width <= window.innerWidth - padding &&
+      point.top + tooltip.height <= window.innerHeight - padding;
+    const side = candidates.find((candidate) => fits(coordinates(candidate))) ?? placement;
+    const point = coordinates(side);
+    setPosition({
+      side,
+      left: Math.min(Math.max(point.left, padding), Math.max(padding, window.innerWidth - tooltip.width - padding)),
+      top: Math.min(Math.max(point.top, padding), Math.max(padding, window.innerHeight - tooltip.height - padding)),
+    });
+  }, [placement]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
   return (
-    <span className="group relative inline-flex">
+    <span
+      ref={triggerRef}
+      className="inline-flex"
+      aria-describedby={open ? tooltipId : undefined}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocusCapture={() => setOpen(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+      }}
+    >
       {children}
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute left-1/2 z-[80] hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-kc-bg-soft px-2.5 py-1.5 text-xs font-bold text-kc-text opacity-0 shadow-xl shadow-black/30 transition group-hover:block group-hover:opacity-100 group-focus-within:block group-focus-within:opacity-100 ${placement === "bottom" ? "top-full mt-2" : "bottom-full mb-2"}`}
-      >
-        {label}
-      </span>
+      {mounted && open
+        ? createPortal(
+            <span
+              ref={tooltipRef}
+              id={tooltipId}
+              role="tooltip"
+              data-placement={position?.side ?? placement}
+              className="pointer-events-none fixed z-[120] max-w-[min(18rem,calc(100vw-1.5rem))] rounded-lg border border-white/10 bg-kc-bg-soft px-2.5 py-1.5 text-center text-xs font-bold leading-5 text-kc-text shadow-xl shadow-black/30"
+              style={{ left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? "visible" : "hidden" }}
+            >
+              {label}
+            </span>,
+            document.body,
+          )
+        : null}
     </span>
   );
 }
@@ -65,13 +139,33 @@ export function ConfirmDialog({
   onConfirm,
   children,
 }: ConfirmDialogProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    confirmRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !loading) onCancel();
+      if (event.key === "Tab") {
+        const controls = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]') ?? []);
+        if (!controls.length) return;
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus();
+    };
   }, [loading, onCancel, open]);
 
   if (!open) return null;
@@ -79,7 +173,7 @@ export function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
       <button type="button" aria-label="Cancelar" className="absolute inset-0 cursor-pointer" onClick={loading ? undefined : onCancel} />
-      <div className="kc-admin-card kc-modal-viewport relative w-full max-w-md p-5">
+      <div ref={panelRef} className="kc-admin-card kc-modal-viewport relative w-full max-w-md p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id="confirm-title" className="font-display text-2xl font-black text-kc-text">{title}</h2>
@@ -94,7 +188,7 @@ export function ConfirmDialog({
           <button type="button" onClick={onCancel} disabled={loading} className="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-black text-kc-text transition hover:border-kc-cyan/35 disabled:cursor-not-allowed disabled:opacity-50">
             {cancelText}
           </button>
-          <button type="button" onClick={onConfirm} disabled={loading} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}>
+          <button ref={confirmRef} type="button" onClick={onConfirm} disabled={loading} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}>
             {loading ? <Loader2 size={16} className="animate-spin" /> : null}
             {confirmText}
           </button>

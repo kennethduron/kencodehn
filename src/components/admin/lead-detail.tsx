@@ -6,14 +6,14 @@ import { FormEvent, useMemo, useState } from "react";
 import { ArrowLeft, CalendarPlus, CheckCircle2, Copy, Mail, Plus, Tag, Trash2, X } from "lucide-react";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import type { ActivityLog, AdminLead, AdminNote, AdminTask, AssignableSalesAgent, LeadPriority, LeadStatus, PaymentStatus } from "@/lib/admin/types";
-import { mapActivityTone } from "@/lib/admin/activity";
+import { formatActivityMessage, mapActivityTone } from "@/lib/admin/activity";
 import { whatsappLink } from "@/lib/site";
 import { HONDURAS_TIME_ZONE, hondurasDateTimeToIso } from "@/lib/time";
 import { dateTime, leadPriorityLabels, leadStatusLabels, money, paymentStatusLabels, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge, TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 import { ConfirmDialog, Toast, Tooltip } from "./ui";
 
-const suggestedTags = ["urgente", "restaurante", "e-commerce", "seguimiento", "cotizacion", "interesado", "frio", "caliente"];
+const suggestedTags = ["urgente", "restaurante", "e-commerce", "seguimiento", "cotización", "interesado", "frío", "caliente"];
 
 export function LeadDetail({
   initialLead,
@@ -575,7 +575,7 @@ export function LeadDetail({
                   <p className="font-black text-kc-text">{item.title}</p>
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">{timeAgo(item.createdAt)}</p>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-kc-muted">{item.description}</p>
+                <p className="mt-2 text-sm leading-6 text-kc-muted">{formatActivityMessage(item)}</p>
                 <p className="mt-1 text-sm text-kc-muted">{item.userEmail || "Sistema"} - {dateTime(item.createdAt)}</p>
               </div>
             </div>

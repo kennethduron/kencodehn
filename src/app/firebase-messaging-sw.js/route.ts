@@ -30,8 +30,17 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/admin";
-  event.waitUntil(clients.openWindow(url));
+  const candidate = String(event.notification.data?.url || "/admin");
+  const url = /^\/admin(?:[/?#]|$)/.test(candidate) ? candidate : "/admin";
+  event.waitUntil((async () => {
+    const windows = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
+    if (existing) {
+      await existing.navigate(url);
+      return existing.focus();
+    }
+    return clients.openWindow(url);
+  })());
 });
 `;
   return new NextResponse(body, {

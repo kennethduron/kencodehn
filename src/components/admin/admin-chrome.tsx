@@ -69,7 +69,16 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
   }, [profileOpen]);
 
   function toggleCollapsed() { setCollapsed((current) => { const next = !current; localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next)); return next; }); }
-  async function logout() { await fetch("/api/admin/logout", { method: "POST" }); router.refresh(); }
+  async function logout() {
+    try {
+      const { unregisterCurrentPushDevice } = await import("@/lib/push/client");
+      await unregisterCurrentPushDevice();
+    } catch {
+      // Push cleanup is best-effort; account logout must remain available.
+    }
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.refresh();
+  }
   const userLabel = admin.preferredName || admin.displayName || (admin.role === "owner" ? "Owner" : admin.role.replace("_", " "));
 
   const nav = (compact = false) => <nav className="kc-admin-nav mt-3 grid gap-0.5" aria-label="Navegación principal del CRM">{visibleNavItems.map((item) => {

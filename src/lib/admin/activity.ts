@@ -8,7 +8,7 @@ const actionTitles: Record<string, string> = {
   lead_updated: "Lead actualizado",
   lead_status_changed: "Estado de lead actualizado",
   lead_priority_changed: "Prioridad de lead actualizada",
-  lead_value_updated: "Informacion comercial actualizada",
+  lead_value_updated: "Información comercial actualizada",
   lead_tags_updated: "Tags actualizados",
   lead_followup_updated: "Fecha de seguimiento actualizada",
   lead_assigned: "Lead asignado",
@@ -24,13 +24,13 @@ const actionTitles: Record<string, string> = {
   task_deleted: "Tarea eliminada",
   task_overdue: "Tarea vencida",
   reminder_processed: "Recordatorio procesado",
-  notification_created: "Notificacion creada",
-  notification_read: "Notificacion leida",
-  notification_unread: "Notificacion marcada como no leida",
-  notification_deleted: "Notificacion eliminada",
-  notifications_read_all: "Notificaciones leidas",
+  notification_created: "Notificación creada",
+  notification_read: "Notificación leída",
+  notification_unread: "Notificación marcada como no leída",
+  notification_deleted: "Notificación eliminada",
+  notifications_read_all: "Notificaciones leídas",
   user_invited: "Usuario invitado",
-  user_invitation_resent: "Invitacion reenviada",
+  user_invitation_resent: "Invitación reenviada",
   user_role_changed: "Rol de usuario actualizado",
   user_activated: "Usuario activado",
   user_deactivated: "Usuario desactivado",
@@ -45,9 +45,6 @@ function afterRecord(activity: ActivityLog) {
 }
 
 export function formatActivityMessage(activity: ActivityLog) {
-  if (activity.description) {
-    return activity.description;
-  }
   const after = afterRecord(activity);
   if (activity.action === "lead_status_changed" && after.status) {
     return `Estado cambiado a ${String(after.status)}.`;
@@ -65,13 +62,13 @@ export function formatActivityMessage(activity: ActivityLog) {
     if (after.estimatedValue !== undefined) {
       return `Valor estimado actualizado a ${String(after.estimatedValue)}.`;
     }
-    return "Informacion comercial del lead actualizada.";
+    return "Información comercial del lead actualizada.";
   }
   if (activity.action === "lead_followup_updated") {
     if (after.followUpAt) {
       return `Seguimiento programado para: ${formatHondurasDateTime(String(after.followUpAt))} ${HONDURAS_TIME_ZONE_LABEL}.`;
     }
-    return "Se actualizo la fecha de seguimiento.";
+    return "Se actualizó la fecha de seguimiento.";
   }
   if (activity.action === "lead_tags_updated") {
     return "Tags del lead actualizados.";
@@ -86,10 +83,10 @@ export function formatActivityMessage(activity: ActivityLog) {
     return "Lead dejado sin asignar.";
   }
   if (activity.action === "user_invited") {
-    return "Se preparo el acceso de un nuevo miembro del equipo.";
+    return "Se preparó el acceso de un nuevo miembro del equipo.";
   }
   if (activity.action === "user_invitation_resent") {
-    return "Se genero un nuevo enlace de acceso para el miembro del equipo.";
+    return "Se generó un nuevo enlace de acceso para el miembro del equipo.";
   }
   if (activity.action === "user_role_changed") {
     return `Rol cambiado de ${String(after.previousRole || "sin rol")} a ${String(after.newRole || "sin rol")}.`;
@@ -97,23 +94,24 @@ export function formatActivityMessage(activity: ActivityLog) {
   if (activity.action === "user_activated") return "El acceso del usuario fue activado.";
   if (activity.action === "user_deactivated") return "El acceso del usuario fue desactivado.";
   if (activity.action === "note_added") {
-    return "Se agrego una nota interna al lead.";
+    return "Se agregó una nota interna al lead.";
   }
   if (activity.action === "task_created") {
-    return "Se creo una tarea relacionada.";
+    return "Se creó una tarea relacionada.";
   }
   if (activity.action === "task_completed") {
     return "La tarea fue marcada como completada.";
   }
-  if (activity.action === "task_assigned" || activity.action === "task_reassigned") return "Se actualizo el responsable de la tarea.";
+  if (activity.action === "task_assigned" || activity.action === "task_reassigned") return "Se actualizó el responsable de la tarea.";
   if (activity.action === "task_cancelled") return "La tarea fue cancelada sin eliminar su historial.";
   if (activity.action === "task_deleted") {
     return "La tarea fue eliminada.";
   }
   if (activity.action === "task_overdue") {
-    return "La tarea vencio y requiere seguimiento.";
+    return "La tarea venció y requiere seguimiento.";
   }
-  if (activity.action === "reminder_processed") return "El procesador programado gestiono un recordatorio de tarea.";
+  if (activity.action === "reminder_processed") return "La automatización gestionó un recordatorio de tarea.";
+  if (activity.description) return activity.description;
   return "Cambio registrado en el CRM.";
 }
 

@@ -108,7 +108,7 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
               </button>
             </span>
           </label>
-          {authProvider === "supabase" ? <Link href="/recuperar-contrasena" prefetch={false} className="w-fit rounded-md text-sm font-black text-blue-700 underline decoration-2 decoration-blue-300 underline-offset-4 transition hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2">¿Olvidó su contraseña?</Link> : null}
+          {authProvider === "supabase" ? <Link href="/recuperar-contrasena" prefetch={false} className="inline-flex min-h-11 w-fit items-center rounded-md text-sm font-black text-blue-700 underline decoration-2 decoration-blue-300 underline-offset-4 transition hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2">¿Olvidó su contraseña?</Link> : null}
           {message ? <p role="alert" aria-live="polite" className="rounded-xl border border-rose-300/40 bg-rose-50 p-3 text-sm font-semibold text-rose-800">{message}</p> : null}
           <button
             type="submit"

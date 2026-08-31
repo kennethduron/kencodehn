@@ -253,7 +253,7 @@ export function TasksPanel({
         <select value={draft.priority} onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value as TaskPriority }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none">
           {Object.entries(taskPriorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
-        <textarea value={draft.description || ""} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} placeholder="Descripcion opcional" className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 py-3 text-sm text-kc-text outline-none lg:col-span-4" />
+        <textarea value={draft.description || ""} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} placeholder="Descripción opcional" className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 py-3 text-sm text-kc-text outline-none lg:col-span-4" />
       </form>
 
       <div className="kc-admin-card grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -307,9 +307,9 @@ export function TasksPanel({
 
       {editing ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-sm">
-          <form onSubmit={(event) => { event.preventDefault(); update(editing.id, editing); }} className="kc-admin-card grid max-h-[calc(100vh-2rem)] w-full max-w-2xl gap-3 overflow-y-auto p-5">
+          <form role="dialog" aria-modal="true" aria-labelledby="edit-task-title" onSubmit={(event) => { event.preventDefault(); update(editing.id, editing); }} className="kc-admin-card kc-modal-viewport grid w-full max-w-2xl gap-3 p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-2xl font-black text-kc-text">Editar tarea</h2>
+              <h2 id="edit-task-title" className="font-display text-2xl font-black text-kc-text">Editar tarea</h2>
               <Tooltip label="Cerrar">
                 <button type="button" onClick={() => setEditing(null)} title="Cerrar" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10" aria-label="Cerrar"><X size={17} /></button>
               </Tooltip>
@@ -347,7 +347,7 @@ export function TasksPanel({
         open={Boolean(confirmDelete)}
         title="Eliminar tarea"
         description={`¿Está seguro de que desea eliminar "${confirmDelete?.title ?? "esta tarea"}"? Esta acción no se puede deshacer.`}
-        confirmText="Si, eliminar"
+        confirmText="Sí, eliminar"
         cancelText="Cancelar"
         variant="danger"
         loading={isDeleting}

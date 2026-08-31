@@ -4,6 +4,7 @@ import { Bell, BellOff, CheckCircle2, Send, ShieldAlert, Smartphone } from "luci
 import { useEffect, useMemo, useState } from "react";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { getFirebaseClient } from "@/lib/firebase/client";
+import { getCurrentPushToken } from "@/lib/push/client";
 import { ConfirmDialog, Toast } from "./ui";
 
 type Device = {
@@ -56,7 +57,7 @@ export function PushSettings() {
       }
       if (!vapidKey || !messagingSenderId) {
         setState("missing_config");
-        setMessage("Faltan NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID y/o NEXT_PUBLIC_FIREBASE_VAPID_KEY en Vercel para activar FCM Web Push.");
+        setMessage("Las notificaciones todavía no están disponibles. Revise la configuración de la integración.");
         return;
       }
       const supported = await isSupported();
@@ -66,6 +67,16 @@ export function PushSettings() {
         return;
       }
       if (Notification.permission === "granted") {
+        const currentToken = await getCurrentPushToken();
+        setToken(currentToken);
+        if (currentToken) {
+          await fetch("/api/admin/push/devices", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ token: currentToken, userAgent: navigator.userAgent, platform: navigator.platform }),
+          });
+          await loadDevices();
+        }
         setState("active");
         setMessage("Este navegador tiene permiso para recibir push.");
       } else if (Notification.permission === "denied") {
@@ -73,7 +84,7 @@ export function PushSettings() {
         setMessage("El permiso está bloqueado. Actívelo desde la configuración del navegador.");
       } else {
         setState("pending");
-        setMessage("Puedes activar el permiso para recibir avisos aunque el CRM no este abierto.");
+        setMessage("Puede activar el permiso cuando desee recibir avisos aunque el CRM no esté abierto.");
       }
     }
     check();
@@ -168,7 +179,7 @@ export function PushSettings() {
             <p className="text-xs font-black uppercase tracking-[0.22em] text-kc-cyan">Avisos del sistema</p>
             <h1 className="mt-2 font-display text-3xl font-black text-kc-text">Notificaciones en navegador y celular</h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-kc-muted">
-              Activa este dispositivo para recibir avisos de leads y tareas aunque no tengas el CRM abierto. En iPhone requiere abrir la web desde la app instalada en pantalla de inicio.
+              Active este dispositivo para recibir avisos de leads y tareas aunque no tenga el CRM abierto. En iPhone o iPad, primero agregue Ken Code CRM a la pantalla de inicio y ábralo desde allí.
             </p>
           </div>
           <span className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-black ${status.className}`}>
@@ -181,7 +192,7 @@ export function PushSettings() {
             <Bell size={17} /> Activar notificaciones
           </button>
           <button type="button" onClick={sendTest} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-kc-text">
-            <Send size={17} /> Enviar notificacion de prueba
+            <Send size={17} /> Enviar notificación de prueba
           </button>
           <button type="button" onClick={() => setConfirmDeactivate(true)} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-300/25 bg-rose-400/10 px-4 text-sm font-bold text-rose-100">
             <BellOff size={17} /> Desactivar este dispositivo

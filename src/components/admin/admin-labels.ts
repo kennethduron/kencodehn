@@ -4,8 +4,8 @@ import { formatHondurasDate, formatHondurasDateTime } from "@/lib/time";
 export const leadStatusLabels: Record<LeadStatus, string> = {
   new: "Nuevo",
   contacted: "Contactado",
-  conversation: "En conversacion",
-  quoted: "Cotizacion enviada",
+  conversation: "En conversación",
+  quoted: "Cotización enviada",
   won: "Ganado",
   lost: "Perdido",
 };
@@ -43,7 +43,7 @@ export const taskTypeLabels: Record<TaskType, string> = {
   call: "Llamada",
   whatsapp: "WhatsApp",
   email: "Correo",
-  meeting: "Reunion",
+  meeting: "Reunión",
   proposal: "Propuesta",
   follow_up: "Seguimiento",
 };
@@ -96,7 +96,7 @@ export function timeAgo(value?: string | null) {
     if (days === 1) {
       return "Ayer";
     }
-    return `Hace ${days} dias`;
+    return `Hace ${days} días`;
   }
   return shortDate(value);
 }
@@ -114,12 +114,21 @@ export const notificationTypeLabels: Record<string, string> = {
   task_reminder: "Recordatorio",
   task_due: "Tarea en hora",
   task_overdue: "Tarea vencida",
+  payment_due_7_days: "Cobro próximo",
+  payment_due_3_days: "Cobro próximo",
+  payment_due_today: "Cobro para hoy",
+  payment_overdue: "Cobro vencido",
+  payment_received: "Pago recibido",
+  module: "Módulo",
+  mail_received: "Correo recibido",
+  mail_assigned: "Conversación asignada",
+  mail_follow_up: "Seguimiento de correo",
   system: "Sistema",
 };
 
 export const notificationSeverityLabels: Record<string, string> = {
   info: "Info",
-  success: "Exito",
-  warning: "Atencion",
+  success: "Éxito",
+  warning: "Atención",
   danger: "Urgente",
 };

@@ -40,6 +40,9 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
   async function refreshFromResult(result: { ok: boolean; notifications?: AdminNotification[]; message?: string }) {
     if (result.ok && result.notifications) {
       setNotifications(result.notifications);
+      window.dispatchEvent(new CustomEvent("kc:notifications-changed", {
+        detail: { unreadCount: result.notifications.filter((notification) => !notification.read).length },
+      }));
       return true;
     }
     showToast(result.message || "No se pudo completar la acción", "error");
@@ -54,7 +57,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
     });
     const result = await response.json();
     if (await refreshFromResult(result)) {
-      showToast(read ? "Notificacion marcada como leida." : "Notificacion marcada como no leida.");
+      showToast(read ? "Notificación marcada como leída." : "Notificación marcada como no leída.");
     }
   }
 
@@ -66,7 +69,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
     });
     const result = await response.json();
     if (await refreshFromResult(result)) {
-      showToast("Todas marcadas como leidas.");
+      showToast("Todas marcadas como leídas.");
     }
   }
 
@@ -111,12 +114,12 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
         </label>
         <select value={readFilter} onChange={(event) => setReadFilter(event.target.value)} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
           <option value="all">Todas</option>
-          <option value="unread">No leidas</option>
-          <option value="read">Leidas</option>
+          <option value="unread">No leídas</option>
+          <option value="read">Leídas</option>
         </select>
         <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
           <option value="all">Todos los tipos</option>
-          {types.map((type) => <option key={type} value={type}>{notificationTypeLabels[type] || type}</option>)}
+          {types.map((type) => <option key={type} value={type}>{notificationTypeLabels[type] || "Actividad"}</option>)}
         </select>
         <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text">
           <option value="all">Gravedad</option>
@@ -131,7 +134,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-full border px-3 py-1 text-xs font-black ${severityClass[notification.severity]}`}>{notificationSeverityLabels[notification.severity]}</span>
-                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-kc-muted">{notificationTypeLabels[notification.type] || notification.type}</span>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-kc-muted">{notificationTypeLabels[notification.type] || "Actividad"}</span>
                   {!notification.read ? <span className="rounded-full bg-rose-400 px-3 py-1 text-xs font-black text-white">Nueva</span> : null}
                 </div>
                 <p className="mt-4 font-display text-xl font-black text-kc-text">{notification.title}</p>
@@ -142,7 +145,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
                 {notification.actionUrl ? <Link href={notification.actionUrl} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-kc-electric px-4 text-sm font-black text-white">Abrir</Link> : null}
                 <button type="button" onClick={() => setRead(notification.id, !notification.read)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-black text-kc-text">
                   {notification.read ? <Undo2 size={16} /> : <Check size={16} />}
-                  {notification.read ? "No leida" : "Leida"}
+                  {notification.read ? "No leída" : "Leída"}
                 </button>
                 <button type="button" onClick={() => setConfirmDelete(notification)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-300/10 px-4 text-sm font-black text-rose-100">
                   <Trash2 size={16} /> Eliminar
@@ -154,7 +157,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
         {filtered.length === 0 ? (
           <div className="kc-admin-card p-8 text-center">
             <p className="font-display text-2xl font-black text-kc-text">No hay notificaciones</p>
-            <p className="mt-2 text-sm text-kc-muted">Cuando el CRM detecte actividad importante, aparecera aqui.</p>
+            <p className="mt-2 text-sm text-kc-muted">Cuando el CRM detecte actividad importante, aparecerá aquí.</p>
           </div>
         ) : null}
       </section>

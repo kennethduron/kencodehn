@@ -27,6 +27,11 @@ const pushPayloadSchema = z.object({
   idempotencyKey: z.string().trim().max(200).optional().nullable(),
 });
 
+export function safePushActionUrl(value?: string | null) {
+  const candidate = String(value || "").trim();
+  return /^\/admin(?:[/?#]|$)/.test(candidate) ? candidate : "/admin";
+}
+
 export async function registerDeviceToken(input: {
   uid: string;
   email: string;
@@ -104,11 +109,11 @@ export async function listDeviceTokens(email?: string) {
       if (!profile) return [];
       profileId = profile.id;
     }
-    let query = client.from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email)").limit(email ? 50 : 200);
+    let query = client.from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email,active)").limit(email ? 50 : 200);
     query = profileId ? query.eq("profile_id", profileId) : query.eq("active", true);
     const { data, error } = await query;
     if (error) throw new Error(`Supabase device query failed (${error.code ?? "unknown"}).`);
-    return (data ?? []).map((row: any) => ({
+    return (data ?? []).filter((row: any) => row.profiles?.active === true).map((row: any) => ({
       id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? email ?? ""), token: String(row.token ?? ""),
       userAgent: String(row.user_agent ?? ""), platform: String(row.platform ?? ""), active: row.active === true,
       createdAt: String(row.created_at ?? ""), updatedAt: String(row.updated_at ?? ""),
@@ -198,6 +203,7 @@ async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType
     return { sent: 0, failed: 0, reason: "firebase_messaging_not_configured" };
   }
   let activeDevices = devices.filter((device) => device.active && device.token);
+  const actionUrl = safePushActionUrl(parsed.data.actionUrl);
   if (activeDevices.length === 0) {
     await logPush(parsed.data, null, false, "no_active_devices");
     return { sent: 0, failed: 0, reason: "no_active_devices" };
@@ -230,12 +236,12 @@ async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType
           },
           webpush: {
             fcmOptions: {
-              link: parsed.data.actionUrl || "/admin",
+              link: actionUrl,
             },
           },
           data: {
             type: parsed.data.type,
-            actionUrl: parsed.data.actionUrl || "/admin",
+            actionUrl,
             leadId: parsed.data.relatedLeadId || "",
             taskId: parsed.data.relatedTaskId || "",
           },
@@ -265,9 +271,9 @@ export async function sendPushToAdmins(input: PushPayload) {
 
 export async function sendPushToUser(uid: string, input: PushPayload) {
   if (isSupabaseDataProviderEnabled()) {
-    const { data, error } = await createSupabaseAdminClient().from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email)").eq("profile_id", uid).eq("active", true).limit(50);
+    const { data, error } = await createSupabaseAdminClient().from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email,active)").eq("profile_id", uid).eq("active", true).limit(50);
     if (error) throw new Error(`Supabase user device query failed (${error.code ?? "unknown"}).`);
-    const devices = (data ?? []).map((row: any) => ({
+    const devices = (data ?? []).filter((row: any) => row.profiles?.active === true).map((row: any) => ({
       id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? ""), token: String(row.token ?? ""),
       userAgent: String(row.user_agent ?? ""), platform: String(row.platform ?? ""), active: true,
       createdAt: String(row.created_at ?? ""), updatedAt: String(row.updated_at ?? ""),

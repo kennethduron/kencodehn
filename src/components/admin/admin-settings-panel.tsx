@@ -32,7 +32,7 @@ const cleanupLabels: Record<keyof CleanupSummary, string> = {
   notifications: "Notificaciones",
   activityLogs: "Activity logs",
   emailLogs: "Email logs",
-  pushLogs: "Push logs",
+  pushLogs: "Historial de notificaciones push",
 };
 
 const groups: Array<{
@@ -100,27 +100,27 @@ const groups: Array<{
   },
   {
     title: "Apariencia",
-    description: "Preferencias visuales para trabajar rapido en pantallas pequenas.",
+    description: "Preferencias visuales para trabajar rápido en pantallas pequeñas.",
     icon: Palette,
     items: [
       {
         key: "compactModeEnabled",
         label: "Usar vista compacta en el CRM",
-        description: "Base preparada para interfaces mas densas en operaciones diarias.",
+        description: "Base preparada para interfaces más densas en operaciones diarias.",
       },
     ],
   },
 ];
 
 const sensitiveDisableMessages: Partial<Record<SettingKey, string>> = {
-  emailNotificationsEnabled: "Podrias dejar de recibir correos importantes cuando lleguen leads o tareas que requieren atencion.",
-  pushNotificationsEnabled: "Podrias dejar de recibir avisos en este dispositivo o navegador.",
-  internalNotificationsEnabled: "El CRM dejara de crear badges y avisos internos para eventos importantes.",
-  taskReminder1DayEnabled: "El cron no enviara recordatorios un dia antes de las tareas.",
-  taskReminder1HourEnabled: "El cron no enviara recordatorios una hora antes de las tareas.",
-  taskDueEnabled: "El cron no avisara cuando una tarea llegue a la hora exacta configurada.",
-  taskOverdueEnabled: "El cron no avisara automaticamente cuando una tarea este vencida.",
-  dailySummaryEnabled: "No recibiras el resumen diario cuando esa funcion se active por completo.",
+  emailNotificationsEnabled: "Podría dejar de recibir correos importantes cuando lleguen leads o tareas que requieren atención.",
+  pushNotificationsEnabled: "Podría dejar de recibir avisos en este dispositivo o navegador.",
+  internalNotificationsEnabled: "El CRM dejará de crear indicadores y avisos internos para eventos importantes.",
+  taskReminder1DayEnabled: "La automatización no enviará recordatorios un día antes de las tareas.",
+  taskReminder1HourEnabled: "La automatización no enviará recordatorios una hora antes de las tareas.",
+  taskDueEnabled: "La automatización no avisará cuando una tarea llegue a la hora exacta configurada.",
+  taskOverdueEnabled: "La automatización no avisará cuando una tarea esté vencida.",
+  dailySummaryEnabled: "No recibirá el resumen diario cuando esa función se active por completo.",
 };
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
@@ -192,7 +192,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.message || "No se pudo guardar.");
       setSettings(data.settings);
-      showToast("Configuracion actualizada correctamente.");
+      showToast("Configuración actualizada correctamente.");
     } catch {
       setSettings(settings);
       showToast("No se pudo guardar la configuración.", "error");
@@ -275,10 +275,10 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
         }}
       />
       <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-kc-cyan">Configuracion</p>
+        <p className="text-xs font-black uppercase tracking-[0.22em] text-kc-cyan">Configuración</p>
         <h1 className="mt-2 font-display text-3xl font-black text-kc-text">Preferencias del CRM</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-kc-muted">
-          Ajusta como Ken Code CRM envia avisos, correos, recordatorios y preferencias visuales. Los cambios se guardan en Supabase y se aplican en el servidor.
+          Ajuste cómo Ken Code CRM envía avisos, correos, recordatorios y preferencias visuales. Los cambios se guardan de forma segura y se aplican en todo el sistema.
         </p>
       </section>
 
@@ -412,7 +412,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
                 <p className="font-black">Verificación de seguridad</p>
                 <p className="mt-1">Conteos del backup: {cleanupVerification.countsMatchBackup ? "COINCIDEN" : "NO COINCIDEN"}</p>
                 <p>Owner activo: {cleanupVerification.activeOwnerCount}</p>
-                <p>Reminder events: {cleanupVerification.reminderEventCount}</p>
+                <p>Recordatorios procesados: {cleanupVerification.reminderEventCount}</p>
               </div>
             ) : null}
 
@@ -430,7 +430,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
                 />
               </label>
               <p className="mt-3 text-xs leading-5 text-rose-100/70">
-                Protegido: Owner, perfiles, adminSettings, deviceTokens, historial de migrations, variables de entorno, Resend, FCM y cron.
+                Protegido: propietario, perfiles, configuración, dispositivos, historial de cambios, integraciones y automatizaciones.
               </p>
             </div>
 
