@@ -86,27 +86,32 @@ export async function POST(request: NextRequest) {
     if (existingMessage.error) throw existingMessage.error;
     let messageId: string | null = existingMessage.data?.id || null;
     let threadId: string | null = existingMessage.data?.thread_id || null;
-    stage = "resolve_thread";
+    stage = "resolve_direct_parent";
     const replyIds = [...new Set([inReplyTo, ...references].filter((value): value is string => Boolean(value)))];
     if (replyIds.length) {
       const { data: directParent, error: directParentError } = await client.from("mail_messages").select("thread_id,provider_email_id,message_id").in("message_id", replyIds).order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (directParentError) throw directParentError;
       if (directParent?.provider_email_id && messageId) {
+        stage = "reconcile_direct_parent";
         const reconciled = await client.rpc("reconcile_mail_threading", { p_provider_email_id: directParent.provider_email_id, p_official_message_id: directParent.message_id, p_inbound_message_id: messageId });
         if (reconciled.error) throw reconciled.error;
         threadId = reconciled.data?.[0]?.target_thread_id || directParent.thread_id;
       } else if (directParent) threadId = directParent.thread_id;
       if (!directParent) {
+        stage = "resolve_identity_threads";
         const { data: identityThreads, error: identityThreadsError } = await client.from("mail_threads").select("id").eq("identity_id", identity.id).limit(100);
         if (identityThreadsError) throw identityThreadsError;
         const identityThreadIds = (identityThreads || []).map((item) => item.id);
         if (identityThreadIds.length) {
+          stage = "resolve_outbound_candidates";
           const { data: candidates, error: candidatesError } = await client.from("mail_messages").select("provider_email_id,thread_id").eq("direction", "outbound").in("thread_id", identityThreadIds).contains("to_addresses", [{ email: emailOnly(received.data.from) }]).not("provider_email_id", "is", null).order("created_at", { ascending: false }).limit(20);
           if (candidatesError) throw candidatesError;
           for (const candidate of candidates || []) {
             if (!candidate.provider_email_id) continue;
+            stage = "retrieve_provider_message_id";
             const officialMessageId = await officialProviderMessageId(resend, candidate.provider_email_id);
             if (!officialMessageId || !replyIds.includes(officialMessageId)) continue;
+            stage = "reconcile_provider_parent";
             const reconciled = await client.rpc("reconcile_mail_threading", { p_provider_email_id: candidate.provider_email_id, p_official_message_id: officialMessageId, p_inbound_message_id: messageId });
             if (reconciled.error) throw reconciled.error;
             threadId = reconciled.data?.[0]?.target_thread_id || candidate.thread_id;

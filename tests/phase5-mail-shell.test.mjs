@@ -37,6 +37,7 @@ const cases = [
  ["190 reconciliation never merges by subject",files.threadingMigration,/never merges by subject/],
  ["191 unresolved processed events are reopened",files.threadingMigration,/thread_reconciliation_pending/],
  ["192 delivery status updates remain narrowly mutable",files.threadingMigration,/auth\.role\(\) = 'service_role'[\s\S]*delivery_status'[\s\S]*provider_event_id/],
+ ["193 threading diagnostics are bounded stages only",files.webhook,/resolve_direct_parent[\s\S]*resolve_outbound_candidates[\s\S]*retrieve_provider_message_id[\s\S]*reconcile_provider_parent/],
 ];
 for (const [name, source, pattern] of cases) test(name, () => assert.match(source, pattern));
 
