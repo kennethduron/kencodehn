@@ -27,6 +27,7 @@
     "test:phase4:production-qa": "node --experimental-strip-types scripts/phase4-production-engine-qa.mts",
     "test:phase5": "node --experimental-strip-types --test tests/phase5-mail-shell.test.mjs",
     "test:phase5:local": "node --experimental-strip-types scripts/phase5-mail-local-e2e.mts",
+    "test:phase6": "node --experimental-strip-types --test tests/phase6-hardening.test.mjs",
     "migrate:supabase": "node --experimental-strip-types scripts/migrate-firebase-to-supabase.mts",
     "migrate:preflight": "node --experimental-strip-types scripts/m2a-firebase-preflight.mts",
     "migrate:scrypt-local": "node --experimental-strip-types scripts/m2a-scrypt-local.mts",
