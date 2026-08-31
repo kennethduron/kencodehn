@@ -65,6 +65,7 @@ for (const [engine, launcher] of engines) {
             overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
             marketingNavigation: /\b(?:Servicios|Paquetes|Cotizar)\b/.test(text),
             floatingSalesWidgets: Boolean(document.querySelector('[aria-label*="WhatsApp" i], [aria-label*="chat" i]')),
+            inputFonts: [...document.querySelectorAll("input")].filter(visible).map((input) => getComputedStyle(input).fontSize),
             inputZoomRisk: [...document.querySelectorAll("input")].filter(visible).some((input) => Number.parseFloat(getComputedStyle(input).fontSize) < 16),
             undersized,
           };
@@ -81,7 +82,7 @@ for (const [engine, launcher] of engines) {
         assert.equal(audit.overflow, false, `${engine} ${route} ${viewport.width} overflow`);
         assert.equal(audit.marketingNavigation, false, `${engine} ${route} inherited marketing navigation`);
         assert.equal(audit.floatingSalesWidgets, false, `${engine} ${route} inherited a floating public widget`);
-        if (viewport.width < 640) assert.equal(audit.inputZoomRisk, false, `${engine} ${route} has iOS input zoom risk`);
+        if (viewport.width < 640) assert.equal(audit.inputZoomRisk, false, `${engine} ${route} has iOS input zoom risk: ${JSON.stringify(audit)}`);
         assert.deepEqual(audit.undersized, [], `${engine} ${route} has undersized controls: ${audit.undersized.join(", ")}`);
         result.push({ engine, version, route, viewport: `${viewport.width}x${viewport.height}`, ...audit });
       }
