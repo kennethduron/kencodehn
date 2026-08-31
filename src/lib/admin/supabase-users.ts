@@ -8,7 +8,6 @@ import { buildCrmInvitationEmail } from "@/lib/admin/invitation";
 import { sendEmail } from "@/lib/email/service";
 
 const inviteRedirect = "https://kencodehn.com/auth/callback?next=%2Fadmin%2Frecovery%3Fmode%3Dinvite";
-const INVITATION_RESEND_COOLDOWN_MS = 60_000;
 
 function member(row: Record<string, any>, assignedLeadCount = 0): AdminMember {
   return { uid: String(row.id), name: String(row.display_name || row.name || ""), email: String(row.email ?? ""), role: row.role ?? null, active: row.active === true, createdAt: row.created_at ?? null, updatedAt: row.updated_at ?? null, lastLoginAt: row.last_login_at ?? null, invitedAt: row.invited_at ?? null, invitedByUid: row.invited_by ?? null, invitationStatus: row.invitation_status ?? null, invitationLastSentAt: row.invitation_last_sent_at ?? null, assignedLeadCount };
@@ -68,35 +67,63 @@ export async function resendSupabaseAdminInvitation(uid: string, actor: AdminUse
   const target = await getSupabaseAdminMember(uid);
   if (!target) throw new AdminUserManagementError(404, "Usuario no encontrado.");
   if (!canResendInvitation(target)) throw new AdminUserManagementError(409, "La invitación no puede reenviarse en su estado actual.");
-  const lastSentAt = target.invitationLastSentAt ? Date.parse(target.invitationLastSentAt) : 0;
-  if (Number.isFinite(lastSentAt) && lastSentAt > 0 && Date.now() - lastSentAt < INVITATION_RESEND_COOLDOWN_MS) {
-    throw new AdminUserManagementError(429, "Espere un minuto antes de solicitar otro enlace de acceso.");
-  }
   const authResult = await client.auth.admin.getUserById(uid);
   const authUser = authResult.data.user;
   if (authResult.error || !authUser || authUser.email?.trim().toLowerCase() !== target.email.trim().toLowerCase()) {
     throw new AdminUserManagementError(409, "La cuenta de acceso no coincide con este miembro del equipo.");
   }
-  if (authUser.last_sign_in_at || target.lastLoginAt || target.invitationStatus === "accepted") {
+  if (target.lastLoginAt || target.invitationStatus === "accepted") {
     throw new AdminUserManagementError(409, "El usuario ya completó su acceso y no necesita otra invitación.");
   }
-  const { data: linkData, error: linkError } = await client.auth.admin.generateLink({
-    type: "recovery",
-    email: target.email,
-    options: { redirectTo: inviteRedirect },
+  const claimedAt = new Date().toISOString();
+  const claim = await client.rpc("claim_invitation_resend", { p_target: uid, p_actor: actor.uid, p_now: claimedAt });
+  if (claim.error) {
+    if (claim.error.message.includes("cooldown")) throw new AdminUserManagementError(429, "Espere un minuto antes de solicitar otro enlace de acceso.");
+    if (claim.error.message.includes("not pending")) throw new AdminUserManagementError(409, "La invitación no puede reenviarse en su estado actual.");
+    throw new AdminUserManagementError(409, "No pudimos reservar un nuevo envío de forma segura.");
+  }
+  const complete = async (sent: boolean, reason?: string | null) => client.rpc("complete_invitation_resend", {
+    p_target: uid,
+    p_actor: actor.uid,
+    p_claimed_at: String(claim.data),
+    p_sent: sent,
+    p_error: reason ?? null,
   });
-  const actionLink = linkData?.properties?.action_link;
-  if (linkError || !actionLink) throw new AdminUserManagementError(502, "No pudimos preparar una nueva invitación.");
-  const template = buildCrmInvitationEmail(target.name, actionLink);
-  const delivery = await sendEmail({
-    ...template,
-    type: "user_invitation",
-    to: target.email,
-    relatedUserUid: uid,
-    idempotencyKey: `user-invitation-resend/${uid}/${target.invitationLastSentAt || target.invitedAt || "initial"}`,
-  });
-  if (!delivery.sent) throw new AdminUserManagementError(502, "No pudimos reenviar la invitación.");
-  const { error: recordError } = await client.rpc("record_invitation_resent", { p_target: uid, p_actor: actor.uid });
-  if (recordError) throw new AdminUserManagementError(500, "La invitación se envió pero no pudo registrarse.");
+
+  if (!authUser.email_confirmed_at) {
+    const invited = await client.auth.admin.inviteUserByEmail(target.email, {
+      data: { name: target.name },
+      redirectTo: inviteRedirect,
+    });
+    if (invited.error) {
+      await complete(false, "auth_invite_failed");
+      throw new AdminUserManagementError(502, "No pudimos preparar una nueva invitación.");
+    }
+  } else {
+    const { data: linkData, error: linkError } = await client.auth.admin.generateLink({
+      type: "magiclink",
+      email: target.email,
+      options: { redirectTo: inviteRedirect },
+    });
+    const actionLink = linkData?.properties?.action_link;
+    if (linkError || !actionLink) {
+      await complete(false, "auth_continuation_failed");
+      throw new AdminUserManagementError(502, "No pudimos preparar una nueva invitación.");
+    }
+    const template = buildCrmInvitationEmail(target.name, actionLink);
+    const delivery = await sendEmail({
+      ...template,
+      type: "user_invitation",
+      to: target.email,
+      relatedUserUid: uid,
+      idempotencyKey: `user-invitation-resend/${uid}/${String(claim.data)}`,
+    });
+    if (!delivery.sent) {
+      await complete(false, delivery.reason);
+      throw new AdminUserManagementError(502, "No pudimos reenviar la invitación.");
+    }
+  }
+  const completed = await complete(true);
+  if (completed.error) throw new AdminUserManagementError(500, "La invitación se envió pero no pudo registrarse.");
   return { member: await getSupabaseAdminMember(uid), emailSent: true, emailReason: null };
 }

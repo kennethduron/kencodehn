@@ -4,8 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 const apiUrl = process.env.SUPABASE_LOCAL_URL || "";
 const publishableKey = process.env.SUPABASE_LOCAL_PUBLISHABLE_KEY || "";
 const serviceKey = process.env.SUPABASE_LOCAL_SERVICE_KEY || "";
+const mailpitUrl = process.env.SUPABASE_LOCAL_MAILPIT_URL || "";
 const parsedUrl = new URL(apiUrl);
-if (!publishableKey || !serviceKey || !["127.0.0.1", "localhost"].includes(parsedUrl.hostname)) {
+const parsedMailpitUrl = new URL(mailpitUrl);
+if (!publishableKey || !serviceKey
+  || !["127.0.0.1", "localhost"].includes(parsedUrl.hostname)
+  || !["127.0.0.1", "localhost"].includes(parsedMailpitUrl.hostname)) {
   throw new Error("Final acceptance E2E refuses non-loopback services.");
 }
 
@@ -20,6 +24,39 @@ const profileEmail = `profile.${runId}@example.test`;
 const inactiveEmail = `inactive.${runId}@example.test`;
 const createdAuthIds: string[] = [];
 const photoPaths: string[] = [];
+
+type MailMessage = { ID?: string; Id?: string; Subject?: string };
+async function messages(): Promise<MailMessage[]> {
+  const response = await fetch(`${mailpitUrl}/api/v1/messages`);
+  if (!response.ok) throw new Error("Local email sink is unavailable.");
+  const body = await response.json() as { messages?: MailMessage[] } | MailMessage[];
+  return Array.isArray(body) ? body : body.messages ?? [];
+}
+async function waitForMessage(subjectFragment: string, previousIds: Set<string>) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const found = (await messages()).find((message) => {
+      const id = message.ID ?? message.Id ?? "";
+      return !previousIds.has(id) && String(message.Subject ?? "").includes(subjectFragment);
+    });
+    if (found) return found;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`Expected local email was not captured (${subjectFragment}).`);
+}
+async function invitationHash(message: MailMessage) {
+  const id = message.ID ?? message.Id;
+  if (!id) throw new Error("Local invitation email has no message ID.");
+  const response = await fetch(`${mailpitUrl}/api/v1/message/${id}`);
+  if (!response.ok) throw new Error("Local invitation email body is unavailable.");
+  const body = await response.json() as Record<string, unknown>;
+  const html = String(body.HTML ?? body.Html ?? body.Text ?? "").replaceAll("&amp;", "&");
+  const href = html.match(/href=["']([^"']+)["']/i)?.[1];
+  if (!href) throw new Error("Local invitation email has no confirmation URL.");
+  const url = new URL(href);
+  const tokenHash = url.searchParams.get("token") ?? url.searchParams.get("token_hash");
+  if (!tokenHash) throw new Error("Local invitation token hash is missing.");
+  return tokenHash;
+}
 
 async function createConfirmedUser(id: string, email: string) {
   const result = await service.auth.admin.createUser({ id, email, password, email_confirm: true });
@@ -87,10 +124,13 @@ try {
   if (storedProfile.error) throw storedProfile.error;
   assert.equal(storedProfile.data.profile_photo_path, null);
 
+  let beforeMail = new Set((await messages()).map((message) => message.ID ?? message.Id ?? ""));
   const invitation = await service.auth.admin.inviteUserByEmail(invitedEmail, {
     redirectTo: "http://127.0.0.1:3000/auth/callback?next=%2Fadmin%2Frecovery%3Fmode%3Dinvite",
   });
   if (invitation.error || !invitation.data.user) throw invitation.error ?? new Error("Local invitation was not created.");
+  const firstInviteMessage = await waitForMessage("Invitaci", beforeMail);
+  const firstInviteHash = await invitationHash(firstInviteMessage);
   createdAuthIds.push(invitation.data.user.id);
   const invitedProfile = await service.from("profiles").insert({
     id: invitation.data.user.id,
@@ -99,33 +139,71 @@ try {
     role: "sales_agent",
     active: true,
     invitation_status: "sent",
+    invited_at: new Date(Date.now() - 120_000).toISOString(),
   });
   if (invitedProfile.error) throw invitedProfile.error;
-  const confirmedWithoutLogin = await service.auth.admin.updateUserById(invitation.data.user.id, { email_confirm: true });
-  if (confirmedWithoutLogin.error) throw confirmedWithoutLogin.error;
-  assert.equal(confirmedWithoutLogin.data.user.last_sign_in_at, undefined);
-  const existingInvite = await service.auth.admin.generateLink({ type: "invite", email: invitedEmail });
-  assert.ok(existingInvite.error);
-  const recovery = await service.auth.admin.generateLink({
-    type: "recovery",
+
+  const claimedAt = new Date().toISOString();
+  const claim = await service.rpc("claim_invitation_resend", { p_target: invitation.data.user.id, p_actor: profileId, p_now: claimedAt });
+  if (claim.error) throw claim.error;
+  assert.ok((await service.rpc("claim_invitation_resend", { p_target: invitation.data.user.id, p_actor: profileId, p_now: claimedAt })).error);
+  beforeMail = new Set((await messages()).map((message) => message.ID ?? message.Id ?? ""));
+  const resend = await service.auth.admin.inviteUserByEmail(invitedEmail, {
+    redirectTo: "http://127.0.0.1:3000/auth/callback?next=%2Fadmin%2Frecovery%3Fmode%3Dinvite",
+  });
+  if (resend.error || resend.data.user?.id !== invitation.data.user.id) throw resend.error ?? new Error("Pending invitation was not renewed for the same user.");
+  const secondInviteMessage = await waitForMessage("Invitaci", beforeMail);
+  const secondInviteHash = await invitationHash(secondInviteMessage);
+  assert.notEqual(firstInviteHash, secondInviteHash);
+  const completed = await service.rpc("complete_invitation_resend", {
+    p_target: invitation.data.user.id,
+    p_actor: profileId,
+    p_claimed_at: String(claim.data),
+    p_sent: true,
+    p_error: null,
+  });
+  if (completed.error) throw completed.error;
+
+  const oldInviteClient = createClient(apiUrl, publishableKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  assert.ok((await oldInviteClient.auth.verifyOtp({ token_hash: firstInviteHash, type: "invite" })).error);
+  const invitedClient = createClient(apiUrl, publishableKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  const inviteVerification = await invitedClient.auth.verifyOtp({ token_hash: secondInviteHash, type: "invite" });
+  if (inviteVerification.error || !inviteVerification.data.session) throw inviteVerification.error ?? new Error("Newest invitation was not accepted.");
+  assert.ok((await invitedClient.auth.verifyOtp({ token_hash: secondInviteHash, type: "invite" })).error);
+  await invitedClient.auth.signOut();
+
+  const firstContinuation = await service.auth.admin.generateLink({
+    type: "magiclink",
     email: invitedEmail,
     options: { redirectTo: "http://127.0.0.1:3000/auth/callback?next=%2Fadmin%2Frecovery%3Fmode%3Dinvite" },
   });
-  if (recovery.error || !recovery.data.properties?.hashed_token) throw recovery.error ?? new Error("Recovery link was not generated for invited user.");
-  assert.equal(recovery.data.user.id, invitation.data.user.id);
-  const invitedClient = createClient(apiUrl, publishableKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-  const verification = await invitedClient.auth.verifyOtp({ token_hash: recovery.data.properties.hashed_token, type: "recovery" });
-  if (verification.error || !verification.data.session) throw verification.error ?? new Error("Recovery link was not accepted.");
+  const secondContinuation = await service.auth.admin.generateLink({
+    type: "magiclink",
+    email: invitedEmail,
+    options: { redirectTo: "http://127.0.0.1:3000/auth/callback?next=%2Fadmin%2Frecovery%3Fmode%3Dinvite" },
+  });
+  const firstContinuationHash = firstContinuation.data.properties?.hashed_token;
+  const secondContinuationHash = secondContinuation.data.properties?.hashed_token;
+  if (firstContinuation.error || secondContinuation.error || !firstContinuationHash || !secondContinuationHash) {
+    throw firstContinuation.error ?? secondContinuation.error ?? new Error("Pending account continuation links were not generated.");
+  }
+  assert.ok((await invitedClient.auth.verifyOtp({ token_hash: firstContinuationHash, type: "magiclink" })).error);
+  const verification = await invitedClient.auth.verifyOtp({ token_hash: secondContinuationHash, type: "magiclink" });
+  if (verification.error || !verification.data.session) throw verification.error ?? new Error("Newest continuation link was not accepted.");
   assert.equal((await invitedClient.auth.updateUser({ password: nextPassword })).error, null);
-  assert.ok((await invitedClient.auth.verifyOtp({ token_hash: recovery.data.properties.hashed_token, type: "recovery" })).error);
-  assert.ok(await login(invitedEmail, nextPassword));
+  assert.ok((await invitedClient.auth.verifyOtp({ token_hash: secondContinuationHash, type: "magiclink" })).error);
+  const completedLogin = await login(invitedEmail, nextPassword);
+  const claims = await completedLogin.auth.getClaims();
+  assert.equal(claims.error, null);
+  assert.ok(claims.data?.claims.amr?.some((entry) => typeof entry === "string" ? entry === "password" : entry.method === "password"));
   const loginRecord = await service.rpc("record_profile_login", { p_target: invitation.data.user.id });
   if (loginRecord.error) throw loginRecord.error;
   const acceptedProfile = await service.from("profiles").select("role,active,invitation_status").eq("id", invitation.data.user.id).single();
   if (acceptedProfile.error) throw acceptedProfile.error;
   assert.deepEqual(acceptedProfile.data, { role: "sales_agent", active: true, invitation_status: "accepted" });
+  assert.ok((await service.rpc("claim_invitation_resend", { p_target: invitation.data.user.id, p_actor: profileId, p_now: new Date(Date.now() + 120_000).toISOString() })).error);
 
-  console.log("Final product profile and invitation local E2E: PASS");
+  console.log("Final product profile, invitation renewal and one-time link local E2E: PASS");
 } finally {
   if (photoPaths.length) await service.storage.from("profile-photos").remove(photoPaths);
   if (createdAuthIds.length) await service.from("profiles").delete().in("id", createdAuthIds);

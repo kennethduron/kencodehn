@@ -30,7 +30,7 @@ test("CRM theme centralizes a light workspace palette without changing public ro
   }
   assert.match(css, /:root\s*\{[\s\S]*--kc-bg: #020617/);
   assert.match(chrome, /kc-admin-theme min-h-screen/);
-  assert.match(login, /kc-admin-theme/);
+  assert.match(login, /<AuthShell/);
   assert.match(authShell, /kc-admin-theme/);
   assert.match(verification, /kc-admin-theme/);
   assert.match(loading, /kc-admin-theme/);

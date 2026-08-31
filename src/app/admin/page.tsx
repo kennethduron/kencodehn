@@ -1,7 +1,6 @@
 import { AdminChrome } from "@/components/admin/admin-chrome";
 import { AdminDashboard } from "@/components/admin/dashboard";
-import { AdminLogin } from "@/components/admin/admin-login";
-import { getCurrentAdmin, getMissingAdminEnv, getMissingAuthClientEnv } from "@/lib/admin/auth";
+import { getCurrentAdmin } from "@/lib/admin/auth";
 import { getCrmAuthProvider } from "@/lib/auth/provider";
 import { createCrmRepositories } from "@/lib/data/repositories";
 import { hasPermission, leadDataScopeForAdmin } from "@/lib/admin/authorization";
@@ -14,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   const admin = await getCurrentAdmin();
   if (!admin) {
-    return <AdminLogin authProvider={getCrmAuthProvider()} missingServerEnv={getMissingAdminEnv()} missingClientEnv={getMissingAuthClientEnv()} />;
+    redirect("/admin/login");
   }
   if (!hasPermission(admin, "reports:view")) redirect("/admin/leads");
 

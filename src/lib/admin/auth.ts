@@ -188,21 +188,39 @@ export async function getCurrentAdmin() {
   return verifyCrmSession(cookieStore.get(CRM_SESSION_COOKIE)?.value);
 }
 
-async function getSupabaseCurrentAdmin(): Promise<AdminUser | null> {
+async function getSupabaseCurrentAdmin(
+  allowPendingInvitation = false,
+  requirePasswordAuthentication = false,
+): Promise<AdminUser | null> {
   try {
     const supabase = await createSupabaseServerClient();
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user?.email) return null;
+    if (requirePasswordAuthentication) {
+      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+      const methods = claimsData?.claims.amr ?? [];
+      const usedPassword = methods.some((entry) => typeof entry === "string" ? entry === "password" : entry.method === "password");
+      if (claimsError || !usedPassword) return null;
+    }
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id,email,name,role,active,display_name,preferred_name,job_title,profile_photo_path")
+      .select("id,email,name,role,active,display_name,preferred_name,job_title,profile_photo_path,invitation_status,last_login_at")
       .eq("id", authData.user.id)
       .maybeSingle();
     if (profileError || !profile || profile.active !== true) return null;
+    const invitationPending = profile.invitation_status === "pending"
+      || profile.invitation_status === "sent"
+      || profile.invitation_status === "failed";
+    if (invitationPending && !profile.last_login_at && !allowPendingInvitation) return null;
     return resolveAdminUserFromProfile({ uid: authData.user.id, email: authData.user.email, profile });
   } catch {
     return null;
   }
+}
+
+export async function requireAdminForLoginCompletion() {
+  if (getCrmAuthProvider() !== "supabase") return null;
+  return getSupabaseCurrentAdmin(true, true);
 }
 
 export async function requireAdminFromRequest(request: NextRequest) {

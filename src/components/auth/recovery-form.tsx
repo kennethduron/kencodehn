@@ -33,7 +33,7 @@ export function RecoveryForm({ invitation = false }: { invitation?: boolean }) {
     }
     setMessage(invitation ? "Cuenta configurada correctamente." : "Contraseña actualizada correctamente.");
     await supabase.auth.signOut({ scope: "local" });
-    router.replace("/admin");
+    router.replace("/admin/login");
   }
   return <form onSubmit={submit} className="grid gap-4">
     <PasswordField id="new-password" label="Nueva contraseña" value={password} onChange={setPassword} autoComplete="new-password" />

@@ -215,6 +215,14 @@ select:focus-visible {
     var(--kc-admin-workspace);
 }
 
+.kc-auth-layout {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding-top: max(2rem, env(safe-area-inset-top));
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+
 .kc-admin-workspace {
   display: grid;
   min-height: 100dvh;

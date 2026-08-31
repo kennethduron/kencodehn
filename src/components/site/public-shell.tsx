@@ -8,9 +8,11 @@ import { KenAiChat } from "@/components/site/kencode-ai-chat";
 
 export function PublicShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith("/admin");
+  const isPrivateOrAuth = pathname.startsWith("/admin")
+    || pathname === "/recuperar-contrasena"
+    || pathname.startsWith("/auth/");
 
-  if (isAdmin) {
+  if (isPrivateOrAuth) {
     return <>{children}</>;
   }
 

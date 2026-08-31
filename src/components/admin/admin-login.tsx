@@ -4,7 +4,8 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import Link from "next/link";
-import { Eye, EyeOff, LockKeyhole } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { getFirebaseClient } from "@/lib/firebase/client";
 import { loginErrorMessage } from "@/lib/auth/login-errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -40,7 +41,8 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
           setIsSubmitting(false);
           return;
         }
-        router.replace("/admin");
+        const profileResult = await profileResponse.json();
+        router.replace(profileResult.onboardingRequired ? "/admin/perfil?onboarding=1" : "/admin");
         router.refresh();
         return;
       }
@@ -71,21 +73,14 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
   }
 
   return (
-    <main className="kc-admin-theme grid min-h-screen place-items-center bg-kc-bg px-4 py-10">
-      <section className="w-full max-w-md overflow-hidden rounded-2xl border border-kc-cyan/20 bg-kc-bg-soft p-6 shadow-[0_24px_70px_rgba(15,35,63,0.14)]">
-        <div className="grid h-14 w-14 place-items-center rounded-2xl border border-kc-cyan/35 bg-kc-cyan/10 text-kc-cyan">
-          <LockKeyhole size={25} aria-hidden="true" />
-        </div>
-        <h1 className="mt-6 font-display text-3xl font-black text-kc-text">CRM Ken Code</h1>
-        <p className="mt-2 text-sm leading-6 text-kc-muted">Acceso privado para administrar leads, tareas y seguimientos. No hay registro publico.</p>
-
+    <AuthShell title="Acceso al CRM" description="Ingrese con su cuenta autorizada de Ken Code. No hay registro público." showBackLink={false}>
         {missing.length > 0 ? (
           <div className="mt-5 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100 [overflow-wrap:anywhere]">
             Faltan variables para probar el login: <strong>{missing.join(", ")}</strong>
           </div>
         ) : null}
 
-        <form className="mt-6 grid gap-4" onSubmit={onSubmit}>
+        <form className="grid gap-4" onSubmit={onSubmit}>
           <label className="grid gap-2 text-sm font-bold text-kc-text">
             Correo
             <input
@@ -123,7 +118,6 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
             {isSubmitting ? "Iniciando sesión…" : "Entrar al CRM"}
           </button>
         </form>
-      </section>
-    </main>
+    </AuthShell>
   );
 }
