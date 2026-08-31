@@ -39,6 +39,48 @@ function member(row: Record<string, any>, assignedLeadCount = 0): AdminMember {
 function ensureManager(actor: AdminUser) {
   if (!hasPermission(actor, "users:manage")) throw new AdminUserManagementError(403, "No tienes permiso para administrar usuarios.");
 }
+function ensureOwner(actor: AdminUser) {
+  if (actor.role !== "owner") throw new AdminUserManagementError(403, "Solo el Owner puede eliminar miembros definitivamente.");
+}
+
+export type MemberDeletionAssessment = {
+  canDelete: boolean;
+  reason: string;
+};
+
+export async function assessSupabaseAdminMemberDeletion(
+  uid: string,
+  actor: AdminUser,
+): Promise<MemberDeletionAssessment> {
+  ensureOwner(actor);
+  const client = createSupabaseAdminClient();
+  const result = await client.rpc("assess_member_permanent_deletion", {
+    p_target: uid,
+    p_actor: actor.uid,
+  });
+  if (result.error) throw new AdminUserManagementError(409, "No pudimos comprobar el historial del miembro de forma segura.");
+  const assessment = Array.isArray(result.data) ? result.data[0] : result.data;
+  if (!assessment) throw new AdminUserManagementError(404, "Miembro no encontrado.");
+  return {
+    canDelete: assessment.can_delete === true,
+    reason: String(assessment.reason || "No pudimos determinar si el miembro puede eliminarse."),
+  };
+}
+
+export async function deleteSupabaseAdminMemberWithoutHistory(uid: string, actor: AdminUser) {
+  ensureOwner(actor);
+  const assessment = await assessSupabaseAdminMemberDeletion(uid, actor);
+  if (!assessment.canDelete) throw new AdminUserManagementError(409, assessment.reason);
+  const client = createSupabaseAdminClient();
+  const deleted = await client.auth.admin.deleteUser(uid, false);
+  if (deleted.error) {
+    throw new AdminUserManagementError(
+      409,
+      "Este miembro tiene actividad registrada y debe conservarse para mantener el historial de Ken Code. Puede desactivar su acceso.",
+    );
+  }
+  return { uid };
+}
 
 export async function listSupabaseAdminMembers() {
   const client = createSupabaseAdminClient();

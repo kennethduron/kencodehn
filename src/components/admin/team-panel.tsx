@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MailPlus, RefreshCw, ShieldCheck, UserCheck, UserX } from "lucide-react";
+import { Loader2, MailPlus, RefreshCw, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { AdminMember } from "@/lib/admin/types";
 import type { ManageableAdminRole } from "@/lib/admin/authorization";
@@ -37,6 +37,7 @@ function formatDate(value: string | null) {
 }
 
 type PendingStatusChange = { member: AdminMember; active: boolean } | null;
+type PendingDeletion = { member: AdminMember; reason: string } | null;
 
 export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: AdminMember[]; currentUserUid: string }) {
   const [members, setMembers] = useState(initialMembers);
@@ -45,6 +46,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
   const [savingUid, setSavingUid] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<PendingStatusChange>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" | "info" }>({ message: "", variant: "success" });
 
   const activeCount = useMemo(() => members.filter((member) => member.active && !invitationPending(member)).length, [members]);
@@ -114,6 +116,42 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
       });
     } catch (error) {
       setToast({ message: error instanceof Error ? error.message : "No se pudo reenviar la invitación.", variant: "error" });
+    } finally {
+      setSavingUid(null);
+    }
+  }
+
+  async function preparePermanentDeletion(member: AdminMember) {
+    setSavingUid(member.uid);
+    setToast({ message: "", variant: "success" });
+    try {
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(member.uid)}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || !payload.assessment) throw new Error(payload.message || "No pudimos comprobar el historial del miembro.");
+      if (!payload.assessment.canDelete) {
+        setToast({ message: payload.assessment.reason, variant: "info" });
+        return;
+      }
+      setPendingDeletion({ member, reason: payload.assessment.reason });
+    } catch (error) {
+      setToast({ message: error instanceof Error ? error.message : "No pudimos comprobar el historial del miembro.", variant: "error" });
+    } finally {
+      setSavingUid(null);
+    }
+  }
+
+  async function permanentlyDeleteMember(member: AdminMember) {
+    setSavingUid(member.uid);
+    setToast({ message: "", variant: "success" });
+    try {
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(member.uid)}`, { method: "DELETE" });
+      const payload = await response.json();
+      if (!response.ok || !payload.deleted) throw new Error(payload.message || "No pudimos eliminar el miembro.");
+      setMembers((current) => current.filter((item) => item.uid !== member.uid));
+      setPendingDeletion(null);
+      setToast({ message: "Miembro eliminado definitivamente.", variant: "success" });
+    } catch (error) {
+      setToast({ message: error instanceof Error ? error.message : "No pudimos eliminar el miembro.", variant: "error" });
     } finally {
       setSavingUid(null);
     }
@@ -212,6 +250,17 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
                   {busy ? <Loader2 size={16} className="animate-spin" /> : member.active ? <UserX size={16} /> : <UserCheck size={16} />}
                   {member.active ? "Desactivar" : "Activar"}
                 </button>
+                {!immutableOwner && !isSelf ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void preparePermanentDeletion(member)}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300/25 px-4 text-sm font-black text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {busy ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} aria-hidden="true" />}
+                    Eliminar definitivamente
+                  </button>
+                ) : null}
               </div>
             </article>
           );
@@ -232,6 +281,18 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
           if (!pendingStatus) return;
           await patchMember(pendingStatus.member.uid, { active: pendingStatus.active });
           setPendingStatus(null);
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingDeletion)}
+        title="Eliminar miembro definitivamente"
+        description={pendingDeletion ? `${pendingDeletion.reason} Se eliminarán su cuenta de acceso y su invitación pendiente. Esta acción no podrá recuperarse.` : ""}
+        confirmText="Eliminar definitivamente"
+        variant="danger"
+        loading={Boolean(pendingDeletion && savingUid === pendingDeletion.member.uid)}
+        onCancel={() => setPendingDeletion(null)}
+        onConfirm={async () => {
+          if (pendingDeletion) await permanentlyDeleteMember(pendingDeletion.member);
         }}
       />
     </div>

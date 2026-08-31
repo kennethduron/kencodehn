@@ -32,7 +32,7 @@ import {
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
-import { Toast } from "./ui";
+import { ConfirmDialog, Toast, Tooltip } from "./ui";
 import { RichTextEditor } from "./rich-text-editor";
 
 type Identity = { id?: string; email: string; display_name: string };
@@ -67,6 +67,7 @@ type Thread = {
   subject: string;
   snippet: string;
   latest_message_at: string;
+  last_outbound_at?: string | null;
   state: string;
   assigned_to?: string | null;
   is_important: boolean;
@@ -84,8 +85,11 @@ type Thread = {
   mail_identities?: Identity | Identity[];
   mail_messages?: Array<{
     direction: string;
+    delivery_status?: Message["delivery_status"];
     from_address: { email?: string };
     to_addresses: Array<{ email?: string }>;
+    sent_at?: string | null;
+    created_at: string;
   }>;
 };
 type Message = {
@@ -167,6 +171,27 @@ function relation(value: Relation | Relation[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+const deliveryLabels: Record<Message["delivery_status"], string> = {
+  received: "Recibido",
+  queued: "En cola",
+  sent: "Enviado",
+  delayed: "Entrega demorada",
+  delivered: "Entregado",
+  failed: "Error",
+  bounced: "Rebotado",
+  complained: "Marcado como spam",
+};
+
+function latestOutbound(thread: Thread) {
+  return [...(thread.mail_messages || [])]
+    .filter((message) => message.direction === "outbound")
+    .sort((left, right) =>
+      String(right.sent_at || right.created_at).localeCompare(
+        String(left.sent_at || left.created_at),
+      ),
+    )[0];
+}
+
 export function MailWorkspace({
   admin,
   initial,
@@ -199,6 +224,7 @@ export function MailWorkspace({
   const [followDue, setFollowDue] = useState("");
   const [followTitle, setFollowTitle] = useState("Dar seguimiento al correo");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmPermanentDelete, setConfirmPermanentDelete] = useState(false);
   const signatureApplied = useRef(false);
   const sendRequestId = useRef<string | null>(null);
   const selected = initial.selected;
@@ -345,6 +371,13 @@ export function MailWorkspace({
     if (!response.ok) {
       const body = await response.json();
       return setError(body.error);
+    }
+    if (action === "hard_delete") {
+      setConfirmPermanentDelete(false);
+      setNotice("Conversación eliminada definitivamente.");
+      router.push(folderHref("trash"));
+      router.refresh();
+      return;
     }
     router.refresh();
   }
@@ -610,13 +643,16 @@ export function MailWorkspace({
           </h1>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/admin/mail/configuracion"
-            className="grid h-11 w-11 place-items-center rounded-xl border bg-white"
-            aria-label="Configurar Mail"
-          >
-            <Settings size={19} />
-          </Link>
+          <Tooltip label="Configuración">
+            <Link
+              href="/admin/mail/configuracion"
+              className="grid h-11 w-11 place-items-center rounded-xl border bg-white"
+              aria-label="Configuración de Mail"
+              title="Configuración de Mail"
+            >
+              <Settings size={19} aria-hidden="true" />
+            </Link>
+          </Tooltip>
           <button
             type="button"
             onClick={() => setCompose(true)}
@@ -675,8 +711,9 @@ export function MailWorkspace({
               type="button"
               onClick={() => setMobileFolders(false)}
               className="grid h-10 w-10 place-items-center"
+              aria-label="Cerrar carpetas"
             >
-              <X size={18} />
+              <X size={18} aria-hidden="true" />
             </button>
           </div>
           {folderItems.map(({ id, label, icon: Icon }) => (
@@ -749,12 +786,25 @@ export function MailWorkspace({
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="truncate text-xs font-black text-blue-700">
-                        {identityOf(thread)?.email || "Ken Code"}
+                        {initial.folder === "sent"
+                          ? `Para: ${latestOutbound(thread)?.to_addresses
+                              .map((address) => address.email)
+                              .filter(Boolean)
+                              .join(", ") || "Sin destinatario"}`
+                          : identityOf(thread)?.email || "Ken Code"}
                       </span>
                       <time className="shrink-0 text-[.68rem] text-kc-muted">
-                        {new Date(thread.latest_message_at).toLocaleDateString(
-                          "es-HN",
-                        )}
+                        {new Date(
+                          initial.folder === "sent"
+                            ? thread.last_outbound_at ||
+                                latestOutbound(thread)?.sent_at ||
+                                latestOutbound(thread)?.created_at ||
+                                thread.latest_message_at
+                            : thread.latest_message_at,
+                        ).toLocaleString("es-HN", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
                       </time>
                     </div>
                     <div className="mt-1 flex items-center gap-2">
@@ -766,6 +816,17 @@ export function MailWorkspace({
                           size={14}
                           className="fill-amber-400 text-amber-600"
                         />
+                      ) : null}
+                      {initial.folder === "sent" &&
+                      latestOutbound(thread)?.delivery_status ? (
+                        <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[.65rem] font-black text-slate-700">
+                          {
+                            deliveryLabels[
+                              latestOutbound(thread)!
+                                .delivery_status as Message["delivery_status"]
+                            ]
+                          }
+                        </span>
                       ) : null}
                     </div>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-kc-muted">
@@ -806,8 +867,9 @@ export function MailWorkspace({
                   <Link
                     href={folderHref(initial.folder)}
                     className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border lg:hidden"
+                    aria-label="Volver a conversaciones"
                   >
-                    <ArrowLeft size={18} />
+                    <ArrowLeft size={18} aria-hidden="true" />
                   </Link>
                   <div className="min-w-0 flex-1">
                     <h2 className="break-words font-display text-lg font-black">
@@ -817,61 +879,89 @@ export function MailWorkspace({
                       {identityOf(selected.thread)?.email}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      act(
-                        "important",
-                        selected.thread.id,
-                        !selected.thread.is_important,
-                      )
-                    }
-                    className="grid h-10 w-10 place-items-center rounded-xl border"
-                    aria-label="Marcar importante"
-                  >
-                    <Star size={17} />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => act("unread", selected.thread.id)}
-                    className="grid h-10 w-10 place-items-center rounded-xl border"
-                    aria-label="Marcar no leído"
-                  >
-                    <MailOpen size={17} />
-                  </button>
+                  <Tooltip label={selected.thread.is_important ? "Quitar importante" : "Marcar como importante"} placement="bottom">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        act(
+                          "important",
+                          selected.thread.id,
+                          !selected.thread.is_important,
+                        )
+                      }
+                      className="grid h-10 w-10 place-items-center rounded-xl border"
+                      aria-label={selected.thread.is_important ? "Quitar importante" : "Marcar como importante"}
+                      title={selected.thread.is_important ? "Quitar importante" : "Marcar como importante"}
+                    >
+                      <Star size={17} aria-hidden="true" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip label="Marcar como no leído" placement="bottom">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => act("unread", selected.thread.id)}
+                      className="grid h-10 w-10 place-items-center rounded-xl border"
+                      aria-label="Marcar como no leído"
+                      title="Marcar como no leído"
+                    >
+                      <MailOpen size={17} aria-hidden="true" />
+                    </button>
+                  </Tooltip>
                   {selected.thread.state !== "inbox" ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => act("restore", selected.thread.id)}
-                      className="grid h-10 w-10 place-items-center rounded-xl border"
-                      aria-label="Restaurar"
-                    >
-                      <Inbox size={17} />
-                    </button>
+                    <Tooltip label="Restaurar" placement="bottom">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => act("restore", selected.thread.id)}
+                        className="grid h-10 w-10 place-items-center rounded-xl border"
+                        aria-label="Restaurar"
+                        title="Restaurar"
+                      >
+                        <Inbox size={17} aria-hidden="true" />
+                      </button>
+                    </Tooltip>
                   ) : (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => act("archive", selected.thread.id)}
-                      className="grid h-10 w-10 place-items-center rounded-xl border"
-                      aria-label="Archivar"
-                    >
-                      <Archive size={17} />
-                    </button>
+                    <Tooltip label="Archivar" placement="bottom">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => act("archive", selected.thread.id)}
+                        className="grid h-10 w-10 place-items-center rounded-xl border"
+                        aria-label="Archivar"
+                        title="Archivar"
+                      >
+                        <Archive size={17} aria-hidden="true" />
+                      </button>
+                    </Tooltip>
                   )}
                   {selected.thread.state !== "trash" ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => act("trash", selected.thread.id)}
-                      className="grid h-10 w-10 place-items-center rounded-xl border text-rose-700"
-                      aria-label="Mover a papelera"
-                    >
-                      <Trash2 size={17} />
-                    </button>
+                    <Tooltip label="Mover a Papelera" placement="bottom">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => act("trash", selected.thread.id)}
+                        className="grid h-10 w-10 place-items-center rounded-xl border text-rose-700"
+                        aria-label="Mover a Papelera"
+                        title="Mover a Papelera"
+                      >
+                        <Trash2 size={17} aria-hidden="true" />
+                      </button>
+                    </Tooltip>
+                  ) : admin.role === "owner" ? (
+                    <Tooltip label="Eliminar definitivamente" placement="bottom">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setConfirmPermanentDelete(true)}
+                        className="grid h-10 w-10 place-items-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700"
+                        aria-label="Eliminar definitivamente"
+                        title="Eliminar definitivamente"
+                      >
+                        <Trash2 size={17} aria-hidden="true" />
+                      </button>
+                    </Tooltip>
                   ) : null}
                 </div>
               </header>
@@ -1250,6 +1340,18 @@ export function MailWorkspace({
           </form>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmPermanentDelete}
+        title="Eliminar conversación definitivamente"
+        description="Esta conversación se eliminará de Ken Code Mail y no podrá recuperarse. Las conversaciones vinculadas a actividad comercial, seguimientos o adjuntos protegidos no pueden eliminarse."
+        confirmText="Eliminar definitivamente"
+        variant="danger"
+        loading={busy}
+        onCancel={() => setConfirmPermanentDelete(false)}
+        onConfirm={() => {
+          if (selected) void act("hard_delete", selected.thread.id);
+        }}
+      />
     </div>
   );
 }

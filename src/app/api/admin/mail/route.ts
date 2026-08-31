@@ -8,6 +8,7 @@ import {
   loadDraft,
   loadThread,
   mayAccessThread,
+  permanentlyDeleteMailThread,
   sendMail,
   type MailFolder,
 } from "@/lib/mail/service";
@@ -86,6 +87,9 @@ const stateSchema = z
     value: z.boolean().optional(),
   })
   .strict();
+const permanentDeleteSchema = z
+  .object({ action: z.literal("hard_delete"), threadId: uuidSchema })
+  .strict();
 const assignSchema = z
   .object({
     action: z.literal("assign"),
@@ -113,6 +117,19 @@ function mailError(reason: unknown) {
     return NextResponse.json(
       { error: "Espera un momento antes de enviar otro correo." },
       { status: 429 },
+    );
+  if (message.includes("RETENTION_REQUIRED"))
+    return NextResponse.json(
+      {
+        error:
+          "Esta conversación debe conservarse porque está vinculada a actividad, seguimiento o adjuntos de Ken Code.",
+      },
+      { status: 409 },
+    );
+  if (message.includes("NOT_FOUND"))
+    return NextResponse.json(
+      { error: "La conversación ya no está disponible." },
+      { status: 404 },
     );
   if (message.includes("PROVIDER"))
     return NextResponse.json(
@@ -334,6 +351,18 @@ export async function POST(request: NextRequest) {
       thread_id: state.data.threadId,
     });
     return NextResponse.json({ ok: true });
+  }
+  const permanentDelete = permanentDeleteSchema.safeParse(body);
+  if (permanentDelete.success) {
+    try {
+      await permanentlyDeleteMailThread(
+        auth.admin,
+        permanentDelete.data.threadId,
+      );
+      return NextResponse.json({ ok: true });
+    } catch (error) {
+      return mailError(error);
+    }
   }
   const assign = assignSchema.safeParse(body);
   if (assign.success) {

@@ -18,13 +18,21 @@ export function Toast({ message, variant = "success" }: { message: string; varia
   );
 }
 
-export function Tooltip({ label, children }: { label: string; children: React.ReactNode }) {
+export function Tooltip({
+  label,
+  children,
+  placement = "top",
+}: {
+  label: string;
+  children: React.ReactNode;
+  placement?: "top" | "bottom";
+}) {
   return (
     <span className="group relative inline-flex">
       {children}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-[80] mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-kc-bg-soft px-2.5 py-1.5 text-xs font-bold text-kc-text opacity-0 shadow-xl shadow-black/30 transition group-hover:block group-hover:opacity-100 group-focus-within:block group-focus-within:opacity-100"
+        className={`pointer-events-none absolute left-1/2 z-[80] hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-kc-bg-soft px-2.5 py-1.5 text-xs font-bold text-kc-text opacity-0 shadow-xl shadow-black/30 transition group-hover:block group-hover:opacity-100 group-focus-within:block group-focus-within:opacity-100 ${placement === "bottom" ? "top-full mt-2" : "bottom-full mb-2"}`}
       >
         {label}
       </span>

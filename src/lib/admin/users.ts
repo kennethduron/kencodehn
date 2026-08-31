@@ -128,6 +128,20 @@ export async function getAdminMember(uid: string) {
   return mapAdminMember(snapshot as QueryDocumentSnapshot<DocumentData>, count);
 }
 
+export async function assessAdminMemberDeletion(uid: string, actor: AdminUser) {
+  if (getCrmAuthProvider() === "supabase") {
+    return (await import("@/lib/admin/supabase-users")).assessSupabaseAdminMemberDeletion(uid, actor);
+  }
+  throw new AdminUserManagementError(409, "La eliminación definitiva solo está disponible con el proveedor de acceso activo.");
+}
+
+export async function deleteAdminMemberWithoutHistory(uid: string, actor: AdminUser) {
+  if (getCrmAuthProvider() === "supabase") {
+    return (await import("@/lib/admin/supabase-users")).deleteSupabaseAdminMemberWithoutHistory(uid, actor);
+  }
+  throw new AdminUserManagementError(409, "La eliminación definitiva solo está disponible con el proveedor de acceso activo.");
+}
+
 function ensureUsersManager(actor: AdminUser) {
   if (!hasPermission(actor, "users:manage")) {
     throw new AdminUserManagementError(403, "No tienes permiso para administrar usuarios.");

@@ -203,8 +203,9 @@ test("mail exposes pending and provider-confirmed delivery states", () => {
     assert.match(mail, new RegExp(label));
   }
   assert.match(mail, /sendRequestId\.current/);
-  assert.match(mailService, /folder === "sent".*neq\("state", "trash"\)/);
-  assert.match(mailService, /folder !== "sent" \|\| thread\.mail_messages\?\.some/);
+  assert.match(mailService, /folder === "sent".*neq\("state", "trash"\)/s);
+  assert.match(mailService, /mail_messages!inner/);
+  assert.match(mailService, /eq\("mail_messages\.direction", "outbound"\)/);
 });
 
 test("audited business labels avoid confirmed technical wording", () => {

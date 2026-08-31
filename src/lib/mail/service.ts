@@ -35,15 +35,19 @@ export async function listMail(admin: AdminUser, folder: MailFolder, search: str
     const { data: drafts, error } = await draftsQuery; if (error) throw error;
     return { folder, drafts: drafts || [], threads: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], assignees: assignees || [], nextCursor: drafts?.length === 26 ? drafts.at(-1)?.updated_at : null };
   }
-  let query = client.from("mail_threads").select("id,subject,state,assigned_to,is_important,follow_up_at,snippet,latest_message_at,identity_id,lead_id,client_id,project_id,add_on_id,proposal_id,mail_identities(email,display_name),mail_read_states(unread),mail_messages(id,direction,from_address,to_addresses,created_at)").order("latest_message_at", { ascending: false }).limit(26);
+  const messageSelection = folder === "sent"
+    ? "mail_messages!inner(id,direction,delivery_status,from_address,to_addresses,sent_at,created_at)"
+    : "mail_messages(id,direction,delivery_status,from_address,to_addresses,sent_at,created_at)";
+  let query = client.from("mail_threads").select(`id,subject,state,assigned_to,is_important,follow_up_at,snippet,latest_message_at,last_outbound_at,identity_id,lead_id,client_id,project_id,add_on_id,proposal_id,mail_identities(email,display_name),mail_read_states(unread),${messageSelection}`).limit(26);
   if (!maySuperviseMail(admin)) query = identities.length ? query.or(`assigned_to.eq.${admin.uid},identity_id.in.(${identities.join(",")})`) : query.eq("assigned_to", admin.uid);
-  if (folder === "sent") query = query.neq("state", "trash"); else if (folder === "archived") query = query.eq("state", "archived"); else if (folder === "trash") query = query.eq("state", "trash"); else query = query.eq("state", "inbox");
+  if (folder === "sent") query = query.neq("state", "trash").not("last_outbound_at", "is", null).eq("mail_messages.direction", "outbound"); else if (folder === "archived") query = query.eq("state", "archived"); else if (folder === "trash") query = query.eq("state", "trash"); else query = query.eq("state", "inbox");
   if (folder === "follow-up") query = query.not("follow_up_at", "is", null);
   if (search) query = query.or(`subject.ilike.%${search.replace(/[%_,()]/g, "")}%,snippet.ilike.%${search.replace(/[%_,()]/g, "")}%`);
-  if (cursor) query = query.lt("latest_message_at", cursor);
+  const cursorColumn = folder === "sent" ? "last_outbound_at" : "latest_message_at";
+  query = query.order(cursorColumn, { ascending: false });
+  if (cursor) query = query.lt(cursorColumn, cursor);
   const { data, error } = await query; if (error) throw error;
-  const threads = (data || []).filter((thread) => folder !== "sent" || thread.mail_messages?.some((message: { direction: string }) => message.direction === "outbound"));
-  return { folder, threads, drafts: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], assignees: assignees || [], nextCursor: data?.length === 26 ? data.at(-1)?.latest_message_at : null };
+  return { folder, threads: data || [], drafts: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], assignees: assignees || [], nextCursor: data?.length === 26 ? data.at(-1)?.[cursorColumn] : null };
 }
 
 export async function loadDraft(admin: AdminUser, draftId: string) {
@@ -61,6 +65,22 @@ export async function loadThread(admin: AdminUser, threadId: string) {
   const { data: messages, error: messageError } = await client.from("mail_messages").select("id,direction,delivery_status,from_address,to_addresses,cc_addresses,bcc_addresses,subject,body_html,body_text,sender_snapshot,sent_at,received_at,created_at,has_remote_images").eq("thread_id", threadId).order("created_at"); if (messageError) throw messageError;
   await client.from("mail_read_states").upsert({ thread_id: threadId, profile_id: admin.uid, unread: false, last_read_at: new Date().toISOString() });
   return { thread, messages: messages || [] };
+}
+
+export async function permanentlyDeleteMailThread(admin: AdminUser, threadId: string) {
+  if (admin.role !== "owner") throw new Error("MAIL_HARD_DELETE_FORBIDDEN");
+  if (!(await mayAccessThread(admin, threadId))) throw new Error("MAIL_FORBIDDEN");
+  const client = createSupabaseAdminClient();
+  const { data, error } = await client.rpc("permanently_delete_mail_thread", {
+    p_thread: threadId,
+    p_actor: admin.uid,
+  });
+  if (error) {
+    if (error.code === "55000" || error.code === "22023") throw new Error("MAIL_RETENTION_REQUIRED");
+    if (error.code === "P0002") throw new Error("MAIL_NOT_FOUND");
+    throw error;
+  }
+  return { removedAttachmentPaths: Array.isArray(data) ? data : [] };
 }
 
 export async function sendMail(admin: AdminUser, input: { requestId: string; threadId?: string; draftId?: string; identityId: string; to: string[]; cc: string[]; bcc: string[]; subject: string; html: string }) {
