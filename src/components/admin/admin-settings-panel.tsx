@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Bell, LockKeyhole, Mail, MonitorSmartphone, Palette, ShieldCheck, Smartphone, Trash2, X } from "lucide-react";
 import type { AdminSettings } from "@/lib/admin/types";
-import { PushSettings } from "./push-settings";
 import { ConfirmDialog, Toast } from "./ui";
 
 type SettingKey = keyof Omit<AdminSettings, "updatedAt" | "updatedByUid" | "updatedBy">;
@@ -360,7 +359,11 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
         </section> : null}
       </div>
 
-      <PushSettings />
+      <section className="rounded-2xl border border-kc-border bg-white p-5 shadow-sm">
+        <h2 className="font-display text-xl font-black text-kc-heading">Preferencias personales de notificación</h2>
+        <p className="mt-2 text-sm leading-6 text-kc-muted">Administre sus dispositivos y elija cómo desea recibir cada tipo de aviso.</p>
+        <Link href="/admin/configuracion/notificaciones" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-kc-electric px-4 text-sm font-black text-white">Abrir mis notificaciones</Link>
+      </section>
 
       {cleanupOpen ? (
         <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="cleanup-title">

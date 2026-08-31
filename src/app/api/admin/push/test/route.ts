@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermissionsFromRequest } from "@/lib/admin/auth";
-import { sendPushToAdmins } from "@/lib/push/service";
+import { z } from "zod";
+import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { sendTestPushToDevice } from "@/lib/push/service";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const access = await requirePermissionsFromRequest(request, "push:manage");
-  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
-  const result = await sendPushToAdmins({
-    type: "system",
-    title: "Prueba Ken Code CRM",
-    message: "Las notificaciones push están activas en este dispositivo.",
-    actionUrl: "/admin/configuracion",
-  });
-  return NextResponse.json({ ok: true, result });
+  const admin = await requireAdminFromRequest(request);
+  if (!admin) return NextResponse.json({ ok: false, message: "Su sesión ya no está disponible." }, { status: 401 });
+  const parsed = z.object({ deviceId: z.string().uuid() }).strict().safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ ok: false, message: "Active primero las notificaciones en este dispositivo." }, { status: 400 });
+  const result = await sendTestPushToDevice(admin.uid, parsed.data.deviceId);
+  if (result.sent !== 1 || result.failed !== 0) {
+    return NextResponse.json({ ok: false, message: "No pudimos entregar la prueba a este dispositivo." }, { status: 409 });
+  }
+  return NextResponse.json({ ok: true, message: "La prueba fue aceptada para este dispositivo." });
 }

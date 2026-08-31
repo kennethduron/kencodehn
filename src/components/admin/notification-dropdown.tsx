@@ -29,7 +29,11 @@ export function NotificationDropdown({ initialUnreadCount = 0 }: { initialUnread
       if (Array.isArray(detail?.notifications)) setNotifications(detail.notifications as AdminNotification[]);
     }
     window.addEventListener("kc:notifications-changed", onNotificationsChanged);
-    return () => window.removeEventListener("kc:notifications-changed", onNotificationsChanged);
+    window.addEventListener("kc:push-received", fetchNotifications);
+    return () => {
+      window.removeEventListener("kc:notifications-changed", onNotificationsChanged);
+      window.removeEventListener("kc:push-received", fetchNotifications);
+    };
   }, []);
 
   useEffect(() => {

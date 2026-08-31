@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Ken Code CRM",
     description: "Aplicación comercial y operativa de Ken Code.",
     start_url: "/admin",
+    id: "/admin",
     scope: "/",
     display: "standalone",
     background_color: "#f3f6fb",

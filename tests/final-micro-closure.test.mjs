@@ -141,7 +141,7 @@ test("mobile composer keeps header and actions accessible", () => {
 });
 
 test("FCM device queries select the intended profile relationship", () => {
-  const explicitRelationships = pushService.match(/profiles!device_tokens_profile_id_fkey\(email,active\)/g) || [];
-  assert.equal(explicitRelationships.length, 2);
+  const explicitRelationships = pushService.match(/profiles!device_tokens_profile_id_fkey\(email,active,role\)/g) || [];
+  assert.equal(explicitRelationships.length, 3);
   assert.doesNotMatch(pushService, /select\("\*,profiles\(email\)"\)/);
 });

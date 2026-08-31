@@ -9,6 +9,7 @@ import { hasPermission } from "@/lib/admin/authorization";
 import { NotificationDropdown } from "./notification-dropdown";
 import { Tooltip } from "./ui";
 import type { CrmAuthProvider } from "@/lib/auth/provider";
+import { subscribeToForegroundPush } from "@/lib/push/client";
 
 const SIDEBAR_STORAGE_KEY = "kc-crm-sidebar-collapsed";
 const navItems: Array<{ href: string; label: string; icon: typeof BarChart3; permission?: AdminPermission }> = [
@@ -24,11 +25,15 @@ const navItems: Array<{ href: string; label: string; icon: typeof BarChart3; per
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell, permission: "notifications:view" },
   { href: "/admin/mail", label: "Mail", icon: Mail, permission: "mail:use" },
   { href: "/admin/equipo", label: "Equipo", icon: UserRoundCog, permission: "users:manage" },
+  { href: "/admin/configuracion/notificaciones", label: "Mis notificaciones", icon: Bell },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings, permission: "settings:view" },
   { href: "/admin/seguridad", label: "Seguridad", icon: ShieldCheck },
 ];
 
-function isActive(pathname: string, href: string) { return pathname === href || (href !== "/admin" && pathname.startsWith(href)); }
+function isActive(pathname: string, href: string) {
+  if (href === "/admin/configuracion" && pathname.startsWith("/admin/configuracion/notificaciones")) return false;
+  return pathname === href || (href !== "/admin" && pathname.startsWith(href));
+}
 
 function Avatar({ admin, className }: { admin: AdminUser; className: string }) {
   const initials = (admin.displayName || admin.email).split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "K";
@@ -67,6 +72,26 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
     document.addEventListener("mousedown", onOutside); addEventListener("keydown", onKey);
     return () => { document.removeEventListener("mousedown", onOutside); removeEventListener("keydown", onKey); };
   }, [profileOpen]);
+  useEffect(() => {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    let active = true;
+    let unsubscribe: () => void = () => undefined;
+    subscribeToForegroundPush(async (payload) => {
+      if (!active) return;
+      window.dispatchEvent(new Event("kc:push-received"));
+      if ("setAppBadge" in navigator && typeof navigator.setAppBadge === "function") navigator.setAppBadge().catch(() => undefined);
+      if (payload.data?.type === "system" && "serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification(payload.data.title || "Ken Code CRM", {
+          body: payload.data.message || "Las notificaciones están activas en este dispositivo.",
+          icon: "/images/fav-icon.jpg",
+          badge: "/images/fav-icon.jpg",
+          data: { url: payload.data.actionUrl || "/admin/configuracion/notificaciones" },
+        });
+      }
+    }).then((next) => { unsubscribe = next; }).catch(() => undefined);
+    return () => { active = false; unsubscribe(); };
+  }, []);
 
   function toggleCollapsed() { setCollapsed((current) => { const next = !current; localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next)); return next; }); }
   async function logout() {

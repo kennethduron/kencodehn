@@ -80,8 +80,9 @@ test("notification center updates the global unread badge immediately", () => {
 
 test("push deep links are restricted to CRM routes", () => {
   assert.match(pushService, /safePushActionUrl/);
-  assert.match(pushService, /\^\\\/admin/);
-  assert.match(serviceWorker, /\^\\\/admin/);
+  assert.match(pushService, /candidate\.startsWith\("\/admin\/"\)/);
+  assert.match(serviceWorker, /candidate\.startsWith\(\"\/admin\/\"\)/);
+  assert.doesNotMatch(serviceWorker, /\[\/?#\]/);
 });
 
 test("background notification click focuses an existing CRM window", () => {

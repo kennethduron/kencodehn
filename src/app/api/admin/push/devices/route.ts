@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requirePermissionsFromRequest } from "@/lib/admin/auth";
+import { requireAdminFromRequest } from "@/lib/admin/auth";
 import { deactivateDeviceToken, listDeviceTokens, registerDeviceToken } from "@/lib/push/service";
 
 export const runtime = "nodejs";
@@ -12,9 +12,8 @@ const deviceSchema = z.object({
 }).strict();
 
 export async function GET(request: NextRequest) {
-  const access = await requirePermissionsFromRequest(request, "push:manage");
-  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
-  const admin = access.admin;
+  const admin = await requireAdminFromRequest(request);
+  if (!admin) return NextResponse.json({ ok: false, message: "Su sesión ya no está disponible." }, { status: 401 });
   const devices = await listDeviceTokens(admin.email);
   return NextResponse.json({
     ok: true,
@@ -23,9 +22,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const access = await requirePermissionsFromRequest(request, "push:manage");
-  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
-  const admin = access.admin;
+  const admin = await requireAdminFromRequest(request);
+  if (!admin) return NextResponse.json({ ok: false, message: "Su sesión ya no está disponible." }, { status: 401 });
   const parsed = deviceSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Datos invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
@@ -35,9 +33,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const access = await requirePermissionsFromRequest(request, "push:manage");
-  if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
-  const admin = access.admin;
+  const admin = await requireAdminFromRequest(request);
+  if (!admin) return NextResponse.json({ ok: false, message: "Su sesión ya no está disponible." }, { status: 401 });
   const parsed = deviceSchema.pick({ token: true }).safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ ok: false, message: "Token requerido.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });

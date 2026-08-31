@@ -4,8 +4,9 @@ import { getAdminDb, getAdminMessaging, getAdminServerTimestamp } from "@/lib/fi
 import { getAdminSettings } from "@/lib/admin/settings";
 import { isSupabaseDataProviderEnabled } from "@/lib/data/provider";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getPersonalNotificationPreferences, notificationChannelEnabled, type NotificationEventType } from "@/lib/notifications/preferences";
 
-export type PushType = "lead_new" | "task_reminder" | "task_due" | "task_overdue" | "system";
+export type PushType = "lead_new" | "task_assigned" | "task_reminder" | "task_due" | "task_overdue" | "mail_received" | "billing" | "proposal_activity" | "team_activity" | "system";
 
 export type PushPayload = {
   type: PushType;
@@ -18,7 +19,7 @@ export type PushPayload = {
 };
 
 const pushPayloadSchema = z.object({
-  type: z.enum(["lead_new", "task_reminder", "task_due", "task_overdue", "system"]),
+  type: z.enum(["lead_new", "task_assigned", "task_reminder", "task_due", "task_overdue", "mail_received", "billing", "proposal_activity", "team_activity", "system"]),
   title: z.string().trim().min(2).max(120),
   message: z.string().trim().min(2).max(500),
   actionUrl: z.string().trim().max(240).optional().nullable(),
@@ -29,7 +30,20 @@ const pushPayloadSchema = z.object({
 
 export function safePushActionUrl(value?: string | null) {
   const candidate = String(value || "").trim();
-  return /^\/admin(?:[/?#]|$)/.test(candidate) ? candidate : "/admin";
+  const isAdminRoute = candidate === "/admin"
+    || candidate.startsWith("/admin/")
+    || candidate.startsWith("/admin?")
+    || candidate.startsWith("/admin#");
+  return isAdminRoute ? candidate : "/admin";
+}
+
+export function notificationEventForPushType(type: PushType): NotificationEventType {
+  if (type === "mail_received") return "mail_received";
+  if (type === "task_assigned") return "task_assigned";
+  if (type === "task_reminder" || type === "task_due" || type === "task_overdue") return "follow_up";
+  if (type === "billing") return "billing";
+  if (type === "lead_new" || type === "proposal_activity") return "proposal_activity";
+  return "team_activity";
 }
 
 export async function registerDeviceToken(input: {
@@ -42,8 +56,9 @@ export async function registerDeviceToken(input: {
   if (isSupabaseDataProviderEnabled()) {
     const client = createSupabaseAdminClient();
     const tokenHash = createHash("sha256").update(input.token).digest("hex");
-    const { data: existing, error: findError } = await client.from("device_tokens").select("id,created_at").eq("token_hash", tokenHash).maybeSingle();
+    const { data: existing, error: findError } = await client.from("device_tokens").select("id,profile_id,active,created_at").eq("token_hash", tokenHash).maybeSingle();
     if (findError) throw new Error(`Supabase device lookup failed (${findError.code ?? "unknown"}).`);
+    if (existing?.active === true && existing.profile_id !== input.uid) throw new Error("Device already belongs to another active account.");
     const id = existing?.id ?? randomUUID();
     const now = new Date().toISOString();
     const { error } = await client.from("device_tokens").upsert({
@@ -109,12 +124,13 @@ export async function listDeviceTokens(email?: string) {
       if (!profile) return [];
       profileId = profile.id;
     }
-    let query = client.from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email,active)").limit(email ? 50 : 200);
+    let query = client.from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email,active,role)").limit(email ? 50 : 200);
     query = profileId ? query.eq("profile_id", profileId) : query.eq("active", true);
     const { data, error } = await query;
     if (error) throw new Error(`Supabase device query failed (${error.code ?? "unknown"}).`);
     return (data ?? []).filter((row: any) => row.profiles?.active === true).map((row: any) => ({
       id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? email ?? ""), token: String(row.token ?? ""),
+      role: String(row.profiles?.role ?? ""),
       userAgent: String(row.user_agent ?? ""), platform: String(row.platform ?? ""), active: row.active === true,
       createdAt: String(row.created_at ?? ""), updatedAt: String(row.updated_at ?? ""),
     }));
@@ -132,6 +148,7 @@ export async function listDeviceTokens(email?: string) {
       id: doc.id,
       uid: String(data.uid ?? ""),
       email: String(data.email ?? ""),
+      role: String(data.role ?? ""),
       token: String(data.token ?? ""),
       userAgent: String(data.userAgent ?? ""),
       platform: String(data.platform ?? ""),
@@ -230,10 +247,6 @@ async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType
       try {
         await messaging.send({
           token: device.token,
-          notification: {
-            title: parsed.data.title,
-            body: parsed.data.message,
-          },
           webpush: {
             fcmOptions: {
               link: actionUrl,
@@ -241,6 +254,8 @@ async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType
           },
           data: {
             type: parsed.data.type,
+            title: parsed.data.title,
+            message: parsed.data.message,
             actionUrl,
             leadId: parsed.data.relatedLeadId || "",
             taskId: parsed.data.relatedTaskId || "",
@@ -266,15 +281,27 @@ async function sendPushToDevices(input: PushPayload, devices: Awaited<ReturnType
 }
 
 export async function sendPushToAdmins(input: PushPayload) {
-  return sendPushToDevices(input, await listDeviceTokens());
+  const devices = (await listDeviceTokens()).filter((device) => device.role === "owner" || device.role === "admin" || device.role === "manager");
+  let sent = 0;
+  let failed = 0;
+  for (const uid of [...new Set(devices.map((device) => device.uid))]) {
+    if (!(await notificationChannelEnabled(uid, notificationEventForPushType(input.type), "push"))) continue;
+    const result = await sendPushToDevices(input, devices.filter((device) => device.uid === uid));
+    sent += result.sent;
+    failed += result.failed;
+  }
+  return { sent, failed, ...(sent === 0 && failed === 0 ? { reason: "no_eligible_devices" } : {}) };
 }
 
 export async function sendPushToUser(uid: string, input: PushPayload) {
+  if (!(await notificationChannelEnabled(uid, notificationEventForPushType(input.type), "push"))) {
+    return { sent: 0, failed: 0, reason: "user_push_disabled" };
+  }
   if (isSupabaseDataProviderEnabled()) {
-    const { data, error } = await createSupabaseAdminClient().from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email,active)").eq("profile_id", uid).eq("active", true).limit(50);
+    const { data, error } = await createSupabaseAdminClient().from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email,active,role)").eq("profile_id", uid).eq("active", true).limit(50);
     if (error) throw new Error(`Supabase user device query failed (${error.code ?? "unknown"}).`);
     const devices = (data ?? []).filter((row: any) => row.profiles?.active === true).map((row: any) => ({
-      id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? ""), token: String(row.token ?? ""),
+      id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? ""), role: String(row.profiles?.role ?? ""), token: String(row.token ?? ""),
       userAgent: String(row.user_agent ?? ""), platform: String(row.platform ?? ""), active: true,
       createdAt: String(row.created_at ?? ""), updatedAt: String(row.updated_at ?? ""),
     }));
@@ -289,6 +316,7 @@ export async function sendPushToUser(uid: string, input: PushPayload) {
       id: doc.id,
       uid: String(data.uid ?? ""),
       email: String(data.email ?? ""),
+      role: String(data.role ?? ""),
       token: String(data.token ?? ""),
       userAgent: String(data.userAgent ?? ""),
       platform: String(data.platform ?? ""),
@@ -298,4 +326,30 @@ export async function sendPushToUser(uid: string, input: PushPayload) {
     };
   });
   return sendPushToDevices(input, devices);
+}
+
+export async function sendTestPushToDevice(uid: string, deviceId: string) {
+  const preferences = await getPersonalNotificationPreferences(uid);
+  if (!preferences.pushEnabled) return { sent: 0, failed: 0, reason: "user_push_disabled" };
+  if (!isSupabaseDataProviderEnabled()) return { sent: 0, failed: 0, reason: "unsupported_data_provider" };
+  const { data, error } = await createSupabaseAdminClient()
+    .from("device_tokens")
+    .select("*,profiles!device_tokens_profile_id_fkey(email,active,role)")
+    .eq("id", deviceId)
+    .eq("profile_id", uid)
+    .eq("active", true)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase current device query failed (${error.code ?? "unknown"}).`);
+  if (!data || data.profiles?.active !== true) return { sent: 0, failed: 0, reason: "current_device_unavailable" };
+  return sendPushToDevices({
+    type: "system",
+    title: "Prueba Ken Code CRM",
+    message: "Las notificaciones están activas en este dispositivo.",
+    actionUrl: "/admin/configuracion/notificaciones",
+    idempotencyKey: `push-test:${uid}:${deviceId}:${new Date().toISOString().slice(0, 16)}`,
+  }, [{
+    id: String(data.id), uid: String(data.profile_id), email: String(data.profiles.email ?? ""),
+    role: String(data.profiles.role ?? ""), token: String(data.token ?? ""), userAgent: String(data.user_agent ?? ""),
+    platform: String(data.platform ?? ""), active: true, createdAt: String(data.created_at ?? ""), updatedAt: String(data.updated_at ?? ""),
+  }]);
 }

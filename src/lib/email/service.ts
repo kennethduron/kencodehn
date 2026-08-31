@@ -7,6 +7,7 @@ import { isSupabaseDataProviderEnabled } from "@/lib/data/provider";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { LeadRecord } from "@/lib/leads";
 import { site } from "@/lib/site";
+import { getAuthoritativeNotificationRecipient, notificationChannelEnabled, type NotificationEventType } from "@/lib/notifications/preferences";
 import {
   dailySummaryTemplate,
   clientLeadConfirmationTemplate,
@@ -33,7 +34,8 @@ export type EmailType =
   | "payment_due_today"
   | "payment_due_time"
   | "payment_overdue_1_day"
-  | "payment_received";
+  | "payment_received"
+  | "operational_notification";
 
 export type EmailSendResult = {
   sent: boolean;
@@ -65,7 +67,7 @@ export type SendEmailInput = EmailTemplate & {
 let resend: Resend | null = null;
 
 const sendEmailSchema = z.object({
-  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary", "user_invitation", "owner_email_verification", "payment_schedule_created", "payment_schedule_updated", "payment_due_7_days", "payment_due_3_days", "payment_due_today", "payment_due_time", "payment_overdue_1_day", "payment_received"]),
+  type: z.enum(["admin_new_lead_notification", "client_lead_confirmation", "task_reminder", "task_overdue", "status_update", "daily_summary", "user_invitation", "owner_email_verification", "payment_schedule_created", "payment_schedule_updated", "payment_due_7_days", "payment_due_3_days", "payment_due_today", "payment_due_time", "payment_overdue_1_day", "payment_received", "operational_notification"]),
   to: z.string().email().optional().nullable(),
   subject: z.string().trim().min(3).max(180),
   text: z.string().trim().min(10).max(10000),
@@ -183,6 +185,7 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
     || input.type === "task_overdue"
     || input.type === "user_invitation"
     || input.type === "owner_email_verification"
+    || input.type === "operational_notification"
     || input.type.startsWith("payment_");
   const to = requiresExplicitRecipient ? input.to : input.to || getEmailTarget();
   if (requiresExplicitRecipient && !to) {
@@ -249,11 +252,15 @@ export async function sendClientLeadConfirmationEmail(lead: LeadRecord | Partial
 }
 
 export async function sendTaskReminderEmail(task: Partial<AdminTask>, reminderLabel?: string, idempotencyKey?: string) {
+  const recipient = task.assignedToUid ? await getAuthoritativeNotificationRecipient(task.assignedToUid) : null;
+  if (!task.assignedToUid || !recipient || !(await notificationChannelEnabled(task.assignedToUid, "follow_up", "email"))) {
+    return { sent: false, reason: "email_notifications_disabled" as const };
+  }
   const template = taskReminderTemplate(task, reminderLabel);
   return sendEmail({
     ...template,
     type: "task_reminder",
-    to: task.assignedToEmail ?? null,
+    to: recipient.email,
     relatedLeadId: task.leadId ?? null,
     relatedTaskId: task.id ?? null,
     relatedUserUid: task.assignedToUid ?? null,
@@ -262,15 +269,52 @@ export async function sendTaskReminderEmail(task: Partial<AdminTask>, reminderLa
 }
 
 export async function sendTaskOverdueEmail(task: Partial<AdminTask>, idempotencyKey?: string) {
+  const recipient = task.assignedToUid ? await getAuthoritativeNotificationRecipient(task.assignedToUid) : null;
+  if (!task.assignedToUid || !recipient || !(await notificationChannelEnabled(task.assignedToUid, "follow_up", "email"))) {
+    return { sent: false, reason: "email_notifications_disabled" as const };
+  }
   const template = taskOverdueTemplate(task);
   return sendEmail({
     ...template,
     type: "task_overdue",
-    to: task.assignedToEmail ?? null,
+    to: recipient.email,
     relatedLeadId: task.leadId ?? null,
     relatedTaskId: task.id ?? null,
     relatedUserUid: task.assignedToUid ?? null,
     idempotencyKey: idempotencyKey ?? null,
+  });
+}
+
+function escapeNotificationText(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+export async function sendOperationalNotificationEmail(input: {
+  profileId: string;
+  event: NotificationEventType;
+  subject: string;
+  message: string;
+  actionUrl: string;
+  idempotencyKey: string;
+}) {
+  const recipient = await getAuthoritativeNotificationRecipient(input.profileId);
+  if (!recipient || !(await notificationChannelEnabled(input.profileId, input.event, "email"))) {
+    return { sent: false, reason: "email_notifications_disabled" as const };
+  }
+  if (recipient.email.endsWith(`@${site.domain}`)) {
+    return { sent: false, reason: "email_notifications_disabled" as const };
+  }
+  const absoluteUrl = new URL(input.actionUrl, `https://${site.domain}`).toString();
+  const safeSubject = escapeNotificationText(input.subject);
+  const safeMessage = escapeNotificationText(input.message);
+  return sendEmail({
+    type: "operational_notification",
+    to: recipient.email,
+    subject: input.subject,
+    text: `${input.message}\n\nAbrir en Ken Code CRM: ${absoluteUrl}`,
+    html: `<div style="font-family:Arial,sans-serif;color:#14243d"><h1 style="font-size:20px">${safeSubject}</h1><p>${safeMessage}</p><p><a href="${absoluteUrl}">Abrir en Ken Code CRM</a></p><p style="color:#5f6f85;font-size:12px">Este aviso fue enviado según sus preferencias personales.</p></div>`,
+    relatedUserUid: input.profileId,
+    idempotencyKey: input.idempotencyKey,
   });
 }
 

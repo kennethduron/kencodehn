@@ -11,36 +11,55 @@ export async function GET() {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "",
   };
   const body = `
-importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js");
+const WORKER_VERSION = "20260902000900";
+importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-compat.js");
 
 firebase.initializeApp(${JSON.stringify(config)});
 const messaging = firebase.messaging();
 
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
 messaging.onBackgroundMessage((payload) => {
   const notification = payload.notification || {};
   const data = payload.data || {};
-  self.registration.showNotification(notification.title || "Ken Code CRM", {
-    body: notification.body || "Nueva actividad en el CRM.",
+  const title = data.title || notification.title || "Ken Code CRM";
+  const body = data.message || notification.body || "Nueva actividad en el CRM.";
+  const actionUrl = data.actionUrl || "/admin";
+  if (self.navigator && typeof self.navigator.setAppBadge === "function" && data.badgeCount) {
+    self.navigator.setAppBadge(Number(data.badgeCount)).catch(() => undefined);
+  }
+  return self.registration.showNotification(title, {
+    body,
     icon: "/images/fav-icon.jpg",
     badge: "/images/fav-icon.jpg",
-    data: { url: data.actionUrl || "/admin" },
+    data: { url: actionUrl, workerVersion: WORKER_VERSION },
   });
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const candidate = String(event.notification.data?.url || "/admin");
-  const url = /^\/admin(?:[/?#]|$)/.test(candidate) ? candidate : "/admin";
+  const notificationData = event.notification.data || {};
+  const candidate = String(notificationData.url || "/admin");
+  const isAdminRoute = candidate === "/admin"
+    || candidate.startsWith("/admin/")
+    || candidate.startsWith("/admin?")
+    || candidate.startsWith("/admin#");
+  const url = isAdminRoute ? candidate : "/admin";
   event.waitUntil((async () => {
-    const windows = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
     if (existing) {
       await existing.navigate(url);
       return existing.focus();
     }
-    return clients.openWindow(url);
+    return self.clients.openWindow(url);
   })());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 `;
   return new NextResponse(body, {

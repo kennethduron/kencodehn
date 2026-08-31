@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend, type EmailReceivedEvent } from "resend";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseHeaderReferences, sanitizeMailHtml, textFromHtml } from "@/lib/mail/security";
+import { sendPushToUser } from "@/lib/push/service";
+import { sendOperationalNotificationEmail } from "@/lib/email/service";
+import { notificationChannelEnabled } from "@/lib/notifications/preferences";
 
 export const runtime = "nodejs";
 const allowedAttachments = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain"]);
@@ -152,8 +155,14 @@ export async function POST(request: NextRequest) {
       const profile = profilesById.get(assignment.profile_id);
       const readState = await client.from("mail_read_states").upsert({ thread_id: threadId, profile_id: assignment.profile_id, unread: true, last_read_at: now });
       if (readState.error) throw readState.error;
-      const notification = await client.from("notifications").upsert({ firebase_id: `mail:${eventId}:${assignment.profile_id}`, recipient_id: assignment.profile_id, recipient_name: profile?.display_name || profile?.name || "", recipient_email: profile?.email || "", type: "mail_received", severity: "info", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, action_url: `/admin/mail?thread=${threadId}`, is_read: false, created_at: now, updated_at: now }, { onConflict: "firebase_id", ignoreDuplicates: true });
-      if (notification.error) throw notification.error;
+      if (await notificationChannelEnabled(assignment.profile_id, "mail_received", "crm")) {
+        const notification = await client.from("notifications").upsert({ firebase_id: `mail:${eventId}:${assignment.profile_id}`, recipient_id: assignment.profile_id, recipient_name: profile?.display_name || profile?.name || "", recipient_email: profile?.email || "", type: "mail_received", severity: "info", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, action_url: `/admin/mail?thread=${threadId}`, is_read: false, created_at: now, updated_at: now }, { onConflict: "firebase_id", ignoreDuplicates: true });
+        if (notification.error) throw notification.error;
+      }
+      await Promise.all([
+        sendPushToUser(assignment.profile_id, { type: "mail_received", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, actionUrl: `/admin/mail?thread=${threadId}`, idempotencyKey: `mail:${eventId}:${assignment.profile_id}:push` }),
+        sendOperationalNotificationEmail({ profileId: assignment.profile_id, event: "mail_received", subject: "Nuevo correo en Ken Code CRM", message: `Recibió un nuevo mensaje en ${identity.email}.`, actionUrl: `/admin/mail?thread=${threadId}`, idempotencyKey: `mail:${eventId}:${assignment.profile_id}:email` }),
+      ]);
     }
     stage = "complete_event";
     const existingAudit = await client.from("mail_audit_events").select("id").eq("action", "mail_message_received").eq("message_id", messageId).maybeSingle();
