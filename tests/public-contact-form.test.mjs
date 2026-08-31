@@ -127,6 +127,7 @@ test("lead detail presents business origin and source page labels", () => {
 
 test("field validation remains associated and preserves entered values", () => {
   assert.ok((form.match(/aria-describedby=/g) ?? []).length >= 5);
+  assert.match(form, /querySelector<HTMLElement>\('\[aria-invalid="true"\]'\)\?\.focus\(\)/);
   assert.match(form, /setErrors\(result\.fieldErrors\)/);
   assert.doesNotMatch(form.slice(form.indexOf("response.status === 400"), form.indexOf("setSubmitState(\"success\")")), /setForm\(/);
 });

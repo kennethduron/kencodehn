@@ -24,6 +24,7 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
   const [errors, setErrors] = useState<FormErrors>({});
   const submittingRef = useRef(false);
   const submissionIdRef = useRef("");
+  const formRef = useRef<HTMLFormElement>(null);
   const [form, setForm] = useState({
     name: "",
     business: "",
@@ -128,6 +129,9 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
     setFeedback("");
     if (!validateForm()) {
       setSubmitState("idle");
+      window.requestAnimationFrame(() => {
+        formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      });
       return;
     }
 
@@ -182,7 +186,7 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
 
   return (
     <>
-      <form onSubmit={handleSubmit} noValidate className="kc-card min-w-0 max-w-full rounded-2xl p-5 sm:p-6" aria-label={text.aria}>
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="kc-card min-w-0 max-w-full rounded-2xl p-5 sm:p-6" aria-label={text.aria}>
         <input name="website" tabIndex={-1} autoComplete="off" className="sr-only" aria-hidden="true" />
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
           <label className="grid min-w-0 gap-2 text-sm font-bold text-kc-text">
