@@ -605,6 +605,20 @@ export function MailWorkspace({
     );
     if (signature) applySignature(signature.id);
   }, [compose, html, identityId, initial.signatures]);
+
+  useEffect(() => {
+    if (!compose) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCompose(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [compose]);
   async function attachProposalPdf() {
     if (!composeContext.proposalId || !composeContext.addOnId) return;
     setBusy(true);
@@ -1119,7 +1133,7 @@ export function MailWorkspace({
       </div>
       {compose ? (
         <div
-          className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[80] flex h-[100dvh] items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label="Redactar correo"
@@ -1131,17 +1145,21 @@ export function MailWorkspace({
           />
           <form
             onSubmit={send}
-            className="kc-mail-composer relative flex max-h-[100dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
+            className="kc-mail-composer relative flex h-[100dvh] max-h-[100dvh] w-full max-w-3xl flex-col overflow-hidden overscroll-contain bg-white shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
           >
-            <header className="flex items-center justify-between bg-slate-900 px-4 py-3 text-white">
+            <header className="flex shrink-0 items-center justify-between bg-slate-900 px-4 pb-3 pt-[max(.75rem,env(safe-area-inset-top))] text-white sm:py-3">
               <strong>Nuevo mensaje</strong>
-              <button
-                type="button"
-                onClick={() => setCompose(false)}
-                className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white/10"
-              >
-                <X size={18} />
-              </button>
+              <Tooltip label="Cerrar redacción" placement="bottom">
+                <button
+                  type="button"
+                  onClick={() => setCompose(false)}
+                  className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white/10"
+                  aria-label="Cerrar redacción"
+                  title="Cerrar redacción"
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              </Tooltip>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
               <div className="grid gap-3">
@@ -1277,7 +1295,7 @@ export function MailWorkspace({
                 </div>
               </div>
             </div>
-            <footer className="flex flex-wrap items-center justify-between gap-3 border-t p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
+            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
               <div className="flex flex-wrap gap-2">
                 <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-bold">
                   <Paperclip size={16} /> Adjuntar

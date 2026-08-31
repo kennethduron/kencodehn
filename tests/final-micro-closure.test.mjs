@@ -122,3 +122,17 @@ test("unused-member deletion removes Auth and profile atomically", () => {
   assert.match(users, /auth\.admin\.deleteUser\(uid, false\)/);
   assert.match(userRoute, /export async function DELETE/);
 });
+
+test("mobile composer is a full-height dynamic viewport sheet", () => {
+  assert.match(mailUi, /h-\[100dvh\] max-h-\[100dvh\]/);
+  assert.match(mailUi, /overscroll-contain/);
+  assert.match(mailUi, /safe-area-inset-top/);
+  assert.match(mailUi, /safe-area-inset-bottom/);
+});
+
+test("mobile composer keeps header and actions accessible", () => {
+  assert.match(mailUi, /aria-label="Cerrar redacción"/);
+  assert.match(mailUi, /<footer className="flex shrink-0/);
+  assert.match(mailUi, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(mailUi, /event\.key === "Escape"/);
+});
