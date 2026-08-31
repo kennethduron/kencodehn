@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AdminPermission, AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
 import { NotificationDropdown } from "./notification-dropdown";
-import { Tooltip } from "./ui";
+import { ToastViewport, Tooltip } from "./ui";
 import type { CrmAuthProvider } from "@/lib/auth/provider";
 import { subscribeToForegroundPush } from "@/lib/push/client";
 
@@ -113,7 +113,7 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
   })}</nav>;
   const mobilePrimary = visibleNavItems.filter((item) => ["/admin", "/admin/clientes", "/admin/proyectos", "/admin/mail"].includes(item.href));
 
-  return <main className="kc-admin-theme min-h-screen bg-kc-bg text-kc-text"><div className={`kc-admin-workspace ${collapsed ? "is-collapsed" : ""}`}>
+  return <main className="kc-admin-theme min-h-screen bg-kc-bg text-kc-text"><ToastViewport /><div className={`kc-admin-workspace ${collapsed ? "is-collapsed" : ""}`}>
     <aside className="kc-admin-sidebar sticky top-0 hidden h-[100dvh] border-r border-white/10 px-3 py-3 lg:flex lg:flex-col" aria-label="Barra lateral">
       <Link href="/admin" className={`flex min-h-12 items-center rounded-xl ${collapsed ? "justify-center px-2" : "gap-3 px-3"}`}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-600 font-display text-lg font-black text-white">K</span>{!collapsed ? <span className="min-w-0"><strong className="block truncate font-display text-base font-black text-white">KEN CODE</strong><small className="block text-[0.65rem] font-black tracking-[.18em] text-sky-300">CRM</small></span> : null}</Link>
       <Tooltip label={collapsed ? "Expandir menú" : "Colapsar menú"}><button type="button" onClick={toggleCollapsed} aria-label={collapsed ? "Expandir menú" : "Colapsar menú"} aria-expanded={!collapsed} className="kc-sidebar-toggle absolute -right-3 top-5 z-10 grid h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-md">{collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}</button></Tooltip>

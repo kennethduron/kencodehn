@@ -1,21 +1,155 @@
 "use client";
 
 import { Loader2, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 
-export function Toast({ message, variant = "success" }: { message: string; variant?: "success" | "error" | "info" }) {
-  if (!message) return null;
-  const tone =
-    variant === "error"
-      ? "border-rose-300/30 bg-rose-950/95 text-rose-50"
-      : variant === "info"
-        ? "border-kc-cyan/30 bg-kc-bg-soft/95 text-kc-text"
-        : "border-emerald-300/30 bg-kc-bg-soft/95 text-kc-text";
-  return (
-    <div role="status" aria-live="polite" className={`fixed right-4 top-20 z-[70] rounded-xl border px-4 py-3 text-sm font-bold shadow-2xl shadow-black/30 ${tone}`}>
-      {message}
-    </div>
+export type ToastVariant = "success" | "info" | "warning" | "error";
+
+export const TOAST_DURATIONS: Record<ToastVariant, number> = {
+  success: 3000,
+  info: 3000,
+  warning: 4500,
+  error: 8000,
+};
+
+type ToastItem = {
+  id: number;
+  message: string;
+  variant: ToastVariant;
+  createdAt: number;
+  closing: boolean;
+  sources: string[];
+  pathname: string;
+};
+
+let toastSequence = 0;
+let toastItems: ToastItem[] = [];
+const EMPTY_TOASTS: ToastItem[] = [];
+const toastListeners = new Set<() => void>();
+
+function emitToastStore() {
+  toastListeners.forEach((listener) => listener());
+}
+
+function subscribeToastStore(listener: () => void) {
+  toastListeners.add(listener);
+  return () => toastListeners.delete(listener);
+}
+
+function getToastSnapshot() {
+  return toastItems;
+}
+
+function publishToast(source: string, message: string, variant: ToastVariant) {
+  const normalized = message.trim();
+  if (!normalized) return;
+  const now = Date.now();
+  const pathname = window.location.pathname;
+  const duplicate = toastItems.find((item) => item.pathname === pathname && item.message === normalized && item.variant === variant);
+  if (duplicate) {
+    toastItems = toastItems.map((item) => item.id === duplicate.id
+      ? { ...item, sources: item.sources.includes(source) ? item.sources : [...item.sources, source], createdAt: now, closing: false }
+      : item);
+    emitToastStore();
+    return;
+  }
+  toastItems = toastItems
+    .map((item) => ({ ...item, sources: item.sources.filter((candidate) => candidate !== source) }))
+    .filter((item) => item.sources.length > 0);
+  toastItems = [...toastItems, { id: ++toastSequence, message: normalized, variant, createdAt: now, closing: false, sources: [source], pathname }];
+  emitToastStore();
+}
+
+function releaseToastSource(source: string) {
+  toastItems = toastItems
+    .map((item) => ({ ...item, sources: item.sources.filter((candidate) => candidate !== source) }))
+    .filter((item) => item.sources.length > 0);
+  emitToastStore();
+}
+
+function beginToastDismiss(id: number) {
+  toastItems = toastItems.map((item) => item.id === id ? { ...item, closing: true } : item);
+  emitToastStore();
+}
+
+function finishToastDismiss(id: number) {
+  toastItems = toastItems.filter((item) => item.id !== id);
+  emitToastStore();
+}
+
+function clearToastsOutsidePath(pathname: string) {
+  const nextItems = toastItems.filter((item) => item.pathname === pathname);
+  if (nextItems.length === toastItems.length) return;
+  toastItems = nextItems;
+  emitToastStore();
+}
+
+export function Toast({ message, variant = "success" }: { message: string; variant?: ToastVariant }) {
+  const source = useId();
+  useEffect(() => {
+    if (message.trim()) publishToast(source, message, variant);
+  }, [message, source, variant]);
+  useEffect(() => () => releaseToastSource(source), [source]);
+  return null;
+}
+
+export function ToastViewport() {
+  const pathname = usePathname();
+  const items = useSyncExternalStore(subscribeToastStore, getToastSnapshot, () => EMPTY_TOASTS);
+  const visibleItems = items.filter((item) => item.pathname === pathname);
+
+  useEffect(() => {
+    clearToastsOutsidePath(pathname);
+  }, [pathname]);
+
+  useEffect(() => {
+    const timers = visibleItems.map((item) => {
+      if (item.closing) return window.setTimeout(() => finishToastDismiss(item.id), 180);
+      const remaining = Math.max(0, TOAST_DURATIONS[item.variant] - (Date.now() - item.createdAt));
+      return window.setTimeout(() => beginToastDismiss(item.id), remaining);
+    });
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [visibleItems]);
+
+  if (!visibleItems.length) return null;
+  return createPortal(
+    <div
+      className="pointer-events-none fixed inset-x-3 bottom-[calc(4.75rem+max(.75rem,env(safe-area-inset-bottom)))] z-[130] flex max-h-[calc(100dvh-7rem)] flex-col gap-2 overflow-y-auto sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-[calc(4.5rem+env(safe-area-inset-top))] sm:w-[min(24rem,calc(100vw-2rem))]"
+      aria-label="Mensajes de la aplicación"
+    >
+      {visibleItems.map((item) => {
+        const tone = item.variant === "error"
+          ? "border-rose-300 bg-rose-950 text-rose-50"
+          : item.variant === "warning"
+            ? "border-amber-300 bg-amber-950 text-amber-50"
+            : item.variant === "info"
+              ? "border-sky-300 bg-slate-950 text-sky-50"
+              : "border-emerald-300 bg-slate-950 text-emerald-50";
+        return (
+          <div
+            key={item.id}
+            role={item.variant === "error" ? "alert" : "status"}
+            aria-live={item.variant === "error" ? "assertive" : "polite"}
+            aria-atomic="true"
+            data-closing={item.closing}
+            className={`pointer-events-none flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-sm font-bold shadow-2xl shadow-black/25 transition duration-200 motion-reduce:transition-none data-[closing=true]:translate-y-2 data-[closing=true]:opacity-0 ${tone}`}
+          >
+            <span className="min-w-0 flex-1 break-words leading-5">{item.message}</span>
+            <button
+              type="button"
+              onClick={() => beginToastDismiss(item.id)}
+              className="pointer-events-auto grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-current/20 text-current transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              aria-label="Cerrar mensaje"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        );
+      })}
+    </div>,
+    document.body,
   );
 }
 
