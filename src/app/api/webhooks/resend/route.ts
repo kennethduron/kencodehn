@@ -8,6 +8,10 @@ export const runtime = "nodejs";
 const allowedAttachments = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain"]);
 function emailOnly(value: string) { return (value.match(/<([^>]+)>/)?.[1] || value).trim().toLowerCase(); }
 function address(value: string) { const email = emailOnly(value); const name = value.includes("<") ? value.slice(0, value.lastIndexOf("<")).trim().replace(/^['"]|['"]$/g, "") : ""; return { email, ...(name ? { name } : {}) }; }
+async function officialProviderMessageId(resend: Resend, providerEmailId: string) {
+  const result = await resend.emails.get(providerEmailId);
+  return String((result.data as ({ message_id?: string } | null))?.message_id || "");
+}
 const outboundStatuses = {
   "email.sent": "sent",
   "email.delivered": "delivered",
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest) {
       if (applied.error) throw applied.error;
       const result = applied.data?.[0];
       if (result?.applied) await client.from("mail_audit_events").insert({ action: "mail_delivery_status_updated", identity_id: result.identity_id, thread_id: result.thread_id, message_id: result.message_id, safe_metadata: { provider: "resend", status: outboundStatuses[outbound.type] } });
-      await client.from("mail_webhook_events").update({ status: result ? "processed" : "ignored", processed_at: new Date().toISOString() }).eq("provider_event_id", eventId);
+      await client.from("mail_webhook_events").update({ status: result ? "processed" : "ignored", processed_at: new Date().toISOString(), error_category: null }).eq("provider_event_id", eventId);
       return NextResponse.json({ ok: true, applied: Boolean(result?.applied) });
     } catch (error) {
       await markFailed(client, eventId, event.type, stage, error);
@@ -83,8 +87,34 @@ export async function POST(request: NextRequest) {
     let messageId: string | null = existingMessage.data?.id || null;
     let threadId: string | null = existingMessage.data?.thread_id || null;
     stage = "resolve_thread";
-    if (!threadId && inReplyTo) { const { data: parent, error: parentError } = await client.from("mail_messages").select("thread_id").eq("message_id", inReplyTo).maybeSingle(); if (parentError) throw parentError; threadId = parent?.thread_id || null; }
-    if (!threadId && references.length) { const { data: parent, error: parentError } = await client.from("mail_messages").select("thread_id").in("message_id", references).order("created_at", { ascending: false }).limit(1).maybeSingle(); if (parentError) throw parentError; threadId = parent?.thread_id || null; }
+    const replyIds = [...new Set([inReplyTo, ...references].filter((value): value is string => Boolean(value)))];
+    if (replyIds.length) {
+      const { data: directParent, error: directParentError } = await client.from("mail_messages").select("thread_id,provider_email_id,message_id").in("message_id", replyIds).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (directParentError) throw directParentError;
+      if (directParent?.provider_email_id && messageId) {
+        const reconciled = await client.rpc("reconcile_mail_threading", { p_provider_email_id: directParent.provider_email_id, p_official_message_id: directParent.message_id, p_inbound_message_id: messageId });
+        if (reconciled.error) throw reconciled.error;
+        threadId = reconciled.data?.[0]?.target_thread_id || directParent.thread_id;
+      } else if (directParent) threadId = directParent.thread_id;
+      if (!directParent) {
+        const { data: identityThreads, error: identityThreadsError } = await client.from("mail_threads").select("id").eq("identity_id", identity.id).limit(100);
+        if (identityThreadsError) throw identityThreadsError;
+        const identityThreadIds = (identityThreads || []).map((item) => item.id);
+        if (identityThreadIds.length) {
+          const { data: candidates, error: candidatesError } = await client.from("mail_messages").select("provider_email_id,thread_id").eq("direction", "outbound").in("thread_id", identityThreadIds).contains("to_addresses", [{ email: emailOnly(received.data.from) }]).not("provider_email_id", "is", null).order("created_at", { ascending: false }).limit(20);
+          if (candidatesError) throw candidatesError;
+          for (const candidate of candidates || []) {
+            if (!candidate.provider_email_id) continue;
+            const officialMessageId = await officialProviderMessageId(resend, candidate.provider_email_id);
+            if (!officialMessageId || !replyIds.includes(officialMessageId)) continue;
+            const reconciled = await client.rpc("reconcile_mail_threading", { p_provider_email_id: candidate.provider_email_id, p_official_message_id: officialMessageId, p_inbound_message_id: messageId });
+            if (reconciled.error) throw reconciled.error;
+            threadId = reconciled.data?.[0]?.target_thread_id || candidate.thread_id;
+            break;
+          }
+        }
+      }
+    }
     const rawHtml = received.data.html || `<p>${(received.data.text || "").replace(/[&<>]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[character] || character)).replace(/\n/g, "<br>")}</p>`; const hasRemoteImages = /<img\b[^>]*\bsrc\s*=\s*["']https?:/i.test(rawHtml); const cleanHtml = sanitizeMailHtml(rawHtml); const cleanText = (received.data.text || textFromHtml(cleanHtml)).slice(0, 1_000_000); const now = received.data.created_at || new Date().toISOString();
     if (!threadId) { stage = "create_thread"; const { data: assignments, error: assignmentError } = await client.from("mail_identity_assignments").select("profile_id").eq("identity_id", identity.id).eq("active", true).order("is_primary", { ascending: false }).limit(1); if (assignmentError) throw assignmentError; const created = await client.from("mail_threads").insert({ identity_id: identity.id, subject: received.data.subject || "(Sin asunto)", assigned_to: assignments?.[0]?.profile_id || null, snippet: cleanText.slice(0, 500), latest_message_at: now }).select("id").single(); if (created.error) throw created.error; threadId = created.data.id; }
     if (!messageId) {
@@ -122,7 +152,7 @@ export async function POST(request: NextRequest) {
       const audit = await client.from("mail_audit_events").insert({ action: "mail_message_received", identity_id: identity.id, thread_id: threadId, message_id: messageId, safe_metadata: { provider: "resend", attachmentCount: attachmentList.data?.data.length || 0 } });
       if (audit.error) throw audit.error;
     }
-    const completedEvent = await client.from("mail_webhook_events").update({ status: "processed", processed_at: new Date().toISOString() }).eq("provider_event_id", eventId);
+    const completedEvent = await client.from("mail_webhook_events").update({ status: "processed", processed_at: new Date().toISOString(), error_category: null }).eq("provider_event_id", eventId);
     if (completedEvent.error) throw completedEvent.error;
     return NextResponse.json({ ok: true });
   } catch (error) { await markFailed(client, eventId, event.type, stage, error); return NextResponse.json({ error: "No pudimos procesar el evento." }, { status: 500 }); }

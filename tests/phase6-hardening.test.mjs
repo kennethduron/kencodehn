@@ -65,6 +65,7 @@ test("production audit is pinned to the Ken Code project", () => {
 test("dump audit emits aggregate mail and scheduler evidence without message content", () => {
   assert.match(files.dumpAudit, /threadsWithoutMessages/);
   assert.match(files.dumpAudit, /duplicateProviderIds/);
+  assert.match(files.dumpAudit, /crossThreadStoredParentLinks/);
   assert.match(files.dumpAudit, /naturalJobs/);
   assert.doesNotMatch(files.dumpAudit, /body_html|body_text|recipient_email|from_address|to_addresses/);
 });

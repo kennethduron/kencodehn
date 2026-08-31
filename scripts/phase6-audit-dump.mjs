@@ -50,6 +50,10 @@ const audits = rows("mail_audit_events");
 const notifications = rows("notifications");
 const messagesPerThread = new Map(threads.map((thread) => [thread.id, 0]));
 for (const message of messages) messagesPerThread.set(message.thread_id, (messagesPerThread.get(message.thread_id) || 0) + 1);
+const messagesByMessageId = new Map(messages.filter((message) => message.message_id).map((message) => [message.message_id, message]));
+const storedParentLinks = messages
+  .filter((message) => message.in_reply_to && messagesByMessageId.has(message.in_reply_to))
+  .map((message) => ({ message, parent: messagesByMessageId.get(message.in_reply_to) }));
 
 console.log(JSON.stringify({
   scheduler: scheduler.map(({ provider, generation_schedule, delivery_schedule }) => ({ provider, generation_schedule, delivery_schedule })),
@@ -71,6 +75,11 @@ console.log(JSON.stringify({
     uniqueMessageThreads: new Set(messages.map((message) => message.thread_id)).size,
     repliesWithParent: messages.filter((message) => message.in_reply_to).length,
     repliesWithReferences: messages.filter((message) => message.reference_ids && message.reference_ids !== "{}").length,
+    storedParentLinks: storedParentLinks.length,
+    storedParentLinksByDirection: group(storedParentLinks.map(({ message }) => message), "direction"),
+    crossThreadStoredParentLinks: storedParentLinks.filter(({ message, parent }) => message.thread_id !== parent.thread_id).length,
+    messagesInMultiMessageThreads: messages.filter((message) => (messagesPerThread.get(message.thread_id) || 0) > 1).length,
+    threadMessageCounts: [...messagesPerThread.values()].sort((left, right) => right - left),
     duplicateProviderIds: duplicates(messages, "provider_email_id"),
     duplicateMessageIds: duplicates(messages, "message_id"),
   },

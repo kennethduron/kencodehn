@@ -66,8 +66,7 @@ export async function loadThread(admin: AdminUser, threadId: string) {
 export async function sendMail(admin: AdminUser, input: { requestId: string; threadId?: string; draftId?: string; identityId: string; to: string[]; cc: string[]; bcc: string[]; subject: string; html: string }) {
   if (!(await mayUseIdentity(admin, input.identityId))) throw new Error("MAIL_IDENTITY_FORBIDDEN");
   const client = createSupabaseAdminClient();
-  const outgoingMessageId = `<${input.requestId}@mail.kencodehn.com>`;
-  const { data: completed } = await client.from("mail_messages").select("id,thread_id,sender_identity_id").eq("message_id", outgoingMessageId).maybeSingle();
+  const { data: completed } = await client.from("mail_messages").select("id,thread_id,sender_identity_id").eq("client_request_id", input.requestId).maybeSingle();
   if (completed) {
     if (completed.sender_identity_id !== input.identityId || !(await mayAccessThread(admin, completed.thread_id))) throw new Error("MAIL_FORBIDDEN");
     return { threadId: completed.thread_id, messageId: completed.id };
@@ -90,12 +89,19 @@ export async function sendMail(admin: AdminUser, input: { requestId: string; thr
     if ((attachments || []).reduce((sum, item) => sum + Number(item.size_bytes), 0) > 25 * 1024 * 1024) throw new Error("MAIL_ATTACHMENT_LIMIT");
     for (const attachment of attachments || []) { const file = await client.storage.from("mail-attachments").download(attachment.storage_path); if (file.error || !file.data) throw new Error("MAIL_ATTACHMENT_MISSING"); providerAttachments.push({ filename: attachment.filename, content: Buffer.from(await file.data.arrayBuffer()) }); }
   }
-  const headers: Record<string, string> = { "Message-ID": outgoingMessageId }; if (previous?.message_id) { headers["In-Reply-To"] = previous.message_id; headers.References = [...(previous.reference_ids || []), previous.message_id].slice(-50).join(" "); }
+  const headers: Record<string, string> = {}; if (previous?.message_id) { headers["In-Reply-To"] = previous.message_id; headers.References = [...(previous.reference_ids || []), previous.message_id].slice(-50).join(" "); }
   const resend = new Resend(process.env.RESEND_API_KEY);
   const delivery = await resend.emails.send({ from: `${identity.display_name} <${identity.email}>`, to: input.to, cc: input.cc.length ? input.cc : undefined, bcc: input.bcc.length ? input.bcc : undefined, subject: input.subject || "(Sin asunto)", html: cleanHtml || "<p></p>", text: cleanText, headers, attachments: providerAttachments.length ? providerAttachments : undefined }, { idempotencyKey: `mail/${admin.uid}/${input.requestId}` });
   if (delivery.error || !delivery.data?.id) throw new Error("MAIL_PROVIDER_FAILED");
+  let providerMessageId = "";
+  for (let attempt = 0; attempt < 4 && !providerMessageId; attempt += 1) {
+    const providerEmail = await resend.emails.get(delivery.data.id);
+    providerMessageId = String((providerEmail.data as ({ message_id?: string } | null))?.message_id || "");
+    if (!providerMessageId && attempt < 3) await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)));
+  }
+  if (!providerMessageId) throw new Error("MAIL_PROVIDER_METADATA_PENDING");
   const now = new Date().toISOString();
-  const inserted = await client.from("mail_messages").insert({ thread_id: threadId, direction: "outbound", delivery_status: "sent", provider_email_id: delivery.data.id, message_id: outgoingMessageId, in_reply_to: previous?.message_id || null, reference_ids: previous?.message_id ? [...(previous.reference_ids || []), previous.message_id].slice(-50) : [], from_address: { email: identity.email, name: identity.display_name }, to_addresses: input.to.map((email) => ({ email })), cc_addresses: input.cc.map((email) => ({ email })), bcc_addresses: input.bcc.map((email) => ({ email })), subject: input.subject || "(Sin asunto)", body_html: cleanHtml, body_text: cleanText, sent_by: admin.uid, sender_identity_id: identity.id, sender_snapshot: { userId: admin.uid, name: admin.displayName || admin.email, identity: identity.email }, sent_at: now }).select("id").single();
+  const inserted = await client.from("mail_messages").insert({ thread_id: threadId, direction: "outbound", delivery_status: "sent", provider_email_id: delivery.data.id, client_request_id: input.requestId, message_id: providerMessageId, in_reply_to: previous?.message_id || null, reference_ids: previous?.message_id ? [...(previous.reference_ids || []), previous.message_id].slice(-50) : [], from_address: { email: identity.email, name: identity.display_name }, to_addresses: input.to.map((email) => ({ email })), cc_addresses: input.cc.map((email) => ({ email })), bcc_addresses: input.bcc.map((email) => ({ email })), subject: input.subject || "(Sin asunto)", body_html: cleanHtml, body_text: cleanText, sent_by: admin.uid, sender_identity_id: identity.id, sender_snapshot: { userId: admin.uid, name: admin.displayName || admin.email, identity: identity.email }, sent_at: now }).select("id").single();
   if (inserted.error) throw inserted.error;
   if (input.draftId) { await client.from("mail_attachments").update({ draft_id: null, message_id: inserted.data.id }).eq("draft_id", input.draftId); await client.from("mail_drafts").delete().eq("id", input.draftId).eq("owner_id", admin.uid); }
   await Promise.all([client.from("mail_threads").update({ state: "inbox", subject: input.subject || "(Sin asunto)", snippet: cleanText.slice(0, 500), latest_message_at: now, updated_at: now }).eq("id", threadId), client.from("mail_audit_events").insert({ action: "mail_message_sent", actor_id: admin.uid, identity_id: identity.id, thread_id: threadId, message_id: inserted.data.id, safe_metadata: { provider: "resend" } })]);
