@@ -185,6 +185,10 @@ export function PushSettings({ availableEvents = eventLabels.map((event) => even
       const nextToken = await createCurrentPushToken();
       if (!nextToken) throw new Error("token_unavailable");
       await registerToken(nextToken);
+      if (preferences && !preferences.pushEnabled) {
+        const saved = await savePreferences({ ...preferences, pushEnabled: true }, false);
+        if (!saved) throw new Error("push_preference_unavailable");
+      }
       reportDiagnostic("registration", "success");
       setToken(nextToken);
       setState("active");
@@ -255,7 +259,7 @@ export function PushSettings({ availableEvents = eventLabels.map((event) => even
     }
   }
 
-  async function savePreferences(next: Preferences) {
+  async function savePreferences(next: Preferences, announce = true) {
     const previous = preferences;
     setPreferences(next);
     setSavingPreference(true);
@@ -268,10 +272,12 @@ export function PushSettings({ availableEvents = eventLabels.map((event) => even
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) throw new Error("preferences_save_failed");
       setPreferences(data.preferences);
-      showToast("Preferencias actualizadas.");
+      if (announce) showToast("Preferencias actualizadas.");
+      return true;
     } catch {
       setPreferences(previous);
-      showToast("No pudimos guardar las preferencias.", "error");
+      if (announce) showToast("No pudimos guardar las preferencias.", "error");
+      return false;
     } finally {
       setSavingPreference(false);
     }

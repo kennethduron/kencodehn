@@ -12,6 +12,8 @@ const testRoute = read("src/app/api/admin/push/test/route.ts");
 const preferencesRoute = read("src/app/api/admin/notification-preferences/route.ts");
 const preferences = read("src/lib/notifications/preferences.ts");
 const migration = read("supabase/migrations/20260902000900_cross_platform_notification_preferences.sql");
+const servicePrivileges = read("supabase/migrations/20260902001000_notification_delivery_service_privileges.sql");
+const optInMigration = read("supabase/migrations/20260902001100_notification_channels_opt_in.sql");
 const manifest = read("src/app/manifest.ts");
 const shell = read("src/components/admin/admin-chrome.tsx");
 
@@ -94,10 +96,26 @@ test("security emails remain outside optional notification preferences", () => {
   assert.match(settings, /invitaciones, la recuperación de contraseña y los avisos críticos de seguridad no dependen/);
 });
 
+test("optional push and email channels default off and require explicit activation", () => {
+  assert.match(preferences, /pushEnabled: false/);
+  assert.match(preferences, /emailEnabled: false/);
+  assert.match(optInMigration, /alter column push_enabled set default false/);
+  assert.match(optInMigration, /alter column email_enabled set default false/);
+  assert.match(settings, /savePreferences\(\{ \.\.\.preferences, pushEnabled: true \}, false\)/);
+});
+
 test("preferences table is forced-RLS and self-scoped", () => {
   assert.match(migration, /alter table public\.user_notification_preferences force row level security/);
   assert.match(migration, /profile_id = auth\.uid\(\)/g);
   assert.doesNotMatch(migration, /grant delete/);
+});
+
+test("notification delivery has least-privilege server writes without delete", () => {
+  assert.match(servicePrivileges, /grant select, insert, update on table public\.user_notification_preferences to service_role/);
+  assert.match(servicePrivileges, /grant select, insert, update on table public\.device_tokens to service_role/);
+  assert.match(servicePrivileges, /grant select, insert, update on table public\.push_logs to service_role/);
+  assert.match(servicePrivileges, /grant select, insert, update on table public\.email_logs to service_role/);
+  assert.doesNotMatch(servicePrivileges, /grant[^;]*delete/i);
 });
 
 test("device lifecycle refreshes tokens and cleans them on logout", () => {

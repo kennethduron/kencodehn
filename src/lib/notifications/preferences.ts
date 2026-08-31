@@ -38,8 +38,8 @@ export type PersonalNotificationPreferences = z.infer<typeof personalNotificatio
 
 export const defaultPersonalNotificationPreferences: PersonalNotificationPreferences = {
   internalEnabled: true,
-  pushEnabled: true,
-  emailEnabled: true,
+  pushEnabled: false,
+  emailEnabled: false,
   events: {
     mail_received: { crm: true, push: true, email: true },
     task_assigned: { crm: true, push: true, email: true },
@@ -61,8 +61,8 @@ function mapPreferences(row: Record<string, unknown> | null | undefined): Person
   const events = eventChannelPreferencesSchema.safeParse(row?.event_preferences);
   return {
     internalEnabled: row?.internal_enabled !== false,
-    pushEnabled: row?.push_enabled !== false,
-    emailEnabled: row?.email_enabled !== false,
+    pushEnabled: row?.push_enabled === true,
+    emailEnabled: row?.email_enabled === true,
     events: events.success ? events.data : defaultPersonalNotificationPreferences.events,
   };
 }
