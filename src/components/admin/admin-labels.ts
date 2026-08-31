@@ -70,6 +70,16 @@ export function dateTime(value?: string | null) {
   return formatHondurasDateTime(value);
 }
 
+export function leadSourceLabel(source?: string | null) {
+  return source === "public_website" ? "Formulario web" : source || "Sin origen";
+}
+
+export function leadSourcePageLabel(sourcePath?: string | null) {
+  if (sourcePath === "/contacto" || sourcePath === "/en/contact") return "Contacto";
+  if (sourcePath === "/cotizar" || sourcePath === "/en/quote") return "Cotización";
+  return sourcePath || "Sin página registrada";
+}
+
 export function timeAgo(value?: string | null) {
   if (!value) {
     return "Sin fecha";

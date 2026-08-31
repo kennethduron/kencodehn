@@ -6,7 +6,7 @@ import { CalendarPlus, Copy, ExternalLink, Mail, Search, SlidersHorizontal } fro
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import type { AdminLead, AssignableSalesAgent, LeadPriority, LeadStatus } from "@/lib/admin/types";
 import { whatsappLink } from "@/lib/site";
-import { leadPriorityLabels, leadStatusLabels, money, shortDate } from "./admin-labels";
+import { leadPriorityLabels, leadSourcePageLabel, leadStatusLabels, money, shortDate } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge } from "./status-badge";
 import { Toast, Tooltip } from "./ui";
 
@@ -154,7 +154,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks, canAssign = fa
           </select>
           <select value={source} onChange={(event) => setSource(event.target.value)} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text outline-none">
             <option value="all">Origen</option>
-            {sources.map((value) => <option key={value} value={value}>{value}</option>)}
+            {sources.map((value) => <option key={value} value={value}>{leadSourcePageLabel(value)}</option>)}
           </select>
           {canAssign ? <select value={assignee} onChange={(event) => setAssignee(event.target.value)} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-3 text-sm font-bold text-kc-text outline-none">
             <option value="all">Todos los vendedores</option>

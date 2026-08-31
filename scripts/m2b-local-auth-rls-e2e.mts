@@ -123,12 +123,25 @@ const mutationAgentB = await authenticated(identities[3].email);
 const mutationManager = await authenticated(identities[5].email);
 const publicLeadPayload = {
   name: "Sanitized local lead", business: "Example fixture", email: "lead.m2b@example.test", phone: "+504 0000-0000",
-  project: "Local readiness", budget: "USD", message: "Sanitized local-only mutation fixture", locale: "es", sourcePath: "/local-test",
+  project: "Local readiness", budget: "USD", message: "Sanitized local-only mutation fixture", locale: "es", sourcePath: "/contacto",
+  submissionId: "40000000-0000-4000-8000-000000000001",
   metadata: { fixture: true }, createdAt: now, updatedAt: now,
 };
 const publicLead = await service.rpc("create_public_lead", { p_payload: publicLeadPayload });
 if (publicLead.error || !publicLead.data) throw publicLead.error ?? new Error("Local public lead was not created.");
 const leadId = String(publicLead.data);
+const duplicatePublicLead = await service.rpc("create_public_lead", { p_payload: publicLeadPayload });
+if (duplicatePublicLead.error) throw duplicatePublicLead.error;
+assert.equal(String(duplicatePublicLead.data), leadId);
+const publicLeadCount = await service.from("leads").select("id", { count: "exact", head: true }).eq("public_submission_key", publicLeadPayload.submissionId);
+if (publicLeadCount.error) throw publicLeadCount.error;
+assert.equal(publicLeadCount.count, 1);
+const publicLeadNotifications = await service.from("notifications").select("recipient_id,action_url").eq("lead_id", leadId).eq("type", "lead_new");
+if (publicLeadNotifications.error) throw publicLeadNotifications.error;
+assert.deepEqual(new Set(publicLeadNotifications.data.map((row) => row.recipient_id)), new Set([identities[0].id, identities[1].id, identities[5].id]));
+assert.ok(publicLeadNotifications.data.every((row) => row.action_url === `/admin/leads/${leadId}`));
+assert.equal((await mutationManager.from("notifications").select("id").eq("lead_id", leadId)).data?.length, 1);
+assert.equal((await mutationAgentA.from("notifications").select("id").eq("lead_id", leadId)).data?.length, 0);
 const assignment = await mutationOwner.rpc("crm_write", { p_operation: "lead_assign", p_payload: { id: leadId, assignedToUid: identities[2].id } });
 if (assignment.error) throw assignment.error;
 assert.equal(assignment.data.changed, true);

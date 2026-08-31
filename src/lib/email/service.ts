@@ -243,12 +243,12 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
 
 export async function sendNewLeadEmail(lead: LeadRecord | Partial<AdminLead>, leadId: string) {
   const template = newLeadTemplate(lead, leadId);
-  return sendEmail({ ...template, type: "admin_new_lead_notification", relatedLeadId: leadId });
+  return sendEmail({ ...template, type: "admin_new_lead_notification", relatedLeadId: leadId, idempotencyKey: `public-lead:${leadId}:admin-email` });
 }
 
 export async function sendClientLeadConfirmationEmail(lead: LeadRecord | Partial<AdminLead>, leadId: string) {
   const template = clientLeadConfirmationTemplate(lead);
-  return sendEmail({ ...template, type: "client_lead_confirmation", to: lead.email, relatedLeadId: leadId });
+  return sendEmail({ ...template, type: "client_lead_confirmation", to: lead.email, relatedLeadId: leadId, idempotencyKey: `public-lead:${leadId}:confirmation` });
 }
 
 export async function sendTaskReminderEmail(task: Partial<AdminTask>, reminderLabel?: string, idempotencyKey?: string) {

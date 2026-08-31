@@ -11,6 +11,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
   const isPrivateOrAuth = pathname.startsWith("/admin")
     || pathname === "/recuperar-contrasena"
     || pathname.startsWith("/auth/");
+  const isLeadForm = ["/contacto", "/en/contact", "/cotizar", "/en/quote"].includes(pathname);
 
   if (isPrivateOrAuth) {
     return <>{children}</>;
@@ -21,8 +22,8 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       <Header />
       {children}
       <Footer />
-      <KenAiChat />
-      <FloatingContact />
+      {isLeadForm ? null : <KenAiChat />}
+      {isLeadForm ? null : <FloatingContact />}
     </>
   );
 }

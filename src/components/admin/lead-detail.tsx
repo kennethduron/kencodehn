@@ -9,7 +9,7 @@ import type { ActivityLog, AdminLead, AdminNote, AdminTask, AssignableSalesAgent
 import { formatActivityMessage, mapActivityTone } from "@/lib/admin/activity";
 import { whatsappLink } from "@/lib/site";
 import { HONDURAS_TIME_ZONE, hondurasDateTimeToIso } from "@/lib/time";
-import { dateTime, leadPriorityLabels, leadStatusLabels, money, paymentStatusLabels, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
+import { dateTime, leadPriorityLabels, leadSourceLabel, leadSourcePageLabel, leadStatusLabels, money, paymentStatusLabels, shortDate, taskTypeLabels, timeAgo } from "./admin-labels";
 import { LeadPriorityBadge, LeadStatusBadge, TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 import { ConfirmDialog, Toast, Tooltip } from "./ui";
 
@@ -317,7 +317,8 @@ export function LeadDetail({
               ["Telefono", lead.phone],
               ["Correo", lead.email],
               ["Idioma", lead.locale.toUpperCase()],
-              ["Origen", lead.sourcePath],
+              ["Origen", leadSourceLabel(lead.source)],
+              ["Página de origen", leadSourcePageLabel(lead.sourcePath)],
               ["Ultimo contacto", lead.lastContactAt ? dateTime(lead.lastContactAt) : "Sin registrar"],
               ["Seguimiento", lead.followUpAt ? dateTime(lead.followUpAt) : "Sin fecha"],
               ["Estado de pago", paymentStatusLabels[lead.paymentStatus]],

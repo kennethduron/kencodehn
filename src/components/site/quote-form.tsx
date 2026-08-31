@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Send, XCircle } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { CheckCircle2, Loader2, Send, X, XCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/lib/site";
 
@@ -11,18 +11,25 @@ type QuoteFormProps = {
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
 type FormErrors = Partial<Record<"name" | "email" | "phone" | "project" | "message", string>>;
+type LeadResponse = { ok?: boolean; persisted?: boolean; message?: string; fieldErrors?: FormErrors };
+
+function newSubmissionId() {
+  return crypto.randomUUID();
+}
 
 export function QuoteForm({ locale = "es" }: QuoteFormProps) {
   const pathname = usePathname();
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [feedback, setFeedback] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
+  const submittingRef = useRef(false);
+  const submissionIdRef = useRef("");
   const [form, setForm] = useState({
     name: "",
     business: "",
     email: "",
     phone: "",
-    project: locale === "es" ? "Pagina de aterrizaje" : "Landing Page",
+    project: locale === "es" ? "Página de aterrizaje" : "Landing Page",
     message: "",
   });
 
@@ -35,22 +42,23 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
       businessPlaceholder: "Nombre de tu negocio",
       email: "Correo",
       emailPlaceholder: "tu@email.com",
-      phone: "Telefono o WhatsApp",
+      phone: "Teléfono o WhatsApp",
       phonePlaceholder: "+504 0000-0000",
       project: "Proyecto",
       details: "Detalles del proyecto",
       detailsPlaceholder: "Cuéntame qué necesitas, qué procesos quieres controlar y cuándo quieres lanzar.",
       submit: "Enviar solicitud",
       submitting: "Enviando solicitud",
-      note: "Tu solicitud quedara registrada para seguimiento interno. WhatsApp sigue disponible para contacto directo.",
-      success: "Hemos recibido tu solicitud correctamente. Muy pronto nos comunicaremos contigo.",
+      note: "Tu solicitud quedará registrada para seguimiento interno. WhatsApp sigue disponible para contacto directo.",
+      success: "Hemos recibido tu solicitud. Nuestro equipo revisará la información y se pondrá en contacto contigo.",
       error: "No pudimos enviar la solicitud en este momento. Intenta nuevamente o usa WhatsApp directo.",
-      invalidEmail: "Ingresa un correo valido.",
-      invalidPhone: "Ingresa un numero de WhatsApp valido.",
+      invalidEmail: "Ingresa un correo válido.",
+      requiredEmail: "Ingresa tu correo para recibir la confirmación.",
+      invalidPhone: "Ingresa un número de WhatsApp válido.",
       requiredName: "Ingresa tu nombre.",
-      requiredPhone: "Ingresa tu telefono o WhatsApp.",
+      requiredPhone: "Ingresa tu teléfono o WhatsApp.",
       requiredProject: "Selecciona el tipo de proyecto.",
-      requiredMessage: "Cuentame brevemente que necesitas.",
+      requiredMessage: "Cuéntame brevemente qué necesitas.",
     },
     en: {
       aria: "Quote form",
@@ -68,9 +76,10 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
       submit: "Send request",
       submitting: "Sending request",
       note: "Your request will be registered for internal follow-up. WhatsApp remains available for direct contact.",
-      success: "We have received your request successfully. We will contact you very soon.",
+      success: "We have received your request. Our team will review the information and contact you.",
       error: "We could not send the request right now. Please try again or use direct WhatsApp.",
       invalidEmail: "Enter a valid email.",
+      requiredEmail: "Enter your email to receive confirmation.",
       invalidPhone: "Enter a valid WhatsApp number.",
       requiredName: "Enter your name.",
       requiredPhone: "Enter your phone or WhatsApp.",
@@ -101,7 +110,8 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
     const phoneDigits = form.phone.replace(/[^\d]/g, "");
 
     if (form.name.trim().length < 2) nextErrors.name = text.requiredName;
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = text.invalidEmail;
+    if (!email) nextErrors.email = text.requiredEmail;
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = text.invalidEmail;
     if (phoneDigits.length < 8) nextErrors.phone = form.phone.trim() ? text.invalidPhone : text.requiredPhone;
     if (!form.project.trim()) nextErrors.project = text.requiredProject;
     if (form.message.trim().length < 3) nextErrors.message = text.requiredMessage;
@@ -112,12 +122,17 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
+    const website = String(new FormData(event.currentTarget).get("website") || "");
     setSubmitState("submitting");
     setFeedback("");
     if (!validateForm()) {
       setSubmitState("idle");
       return;
     }
+
+    submittingRef.current = true;
+    submissionIdRef.current ||= newSubmissionId();
 
     try {
       const response = await fetch("/api/leads", {
@@ -129,123 +144,143 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
           ...form,
           locale,
           sourcePath: pathname,
+          submissionId: submissionIdRef.current,
+          website,
         }),
       });
 
-      const result = (await response.json().catch(() => null)) as { ok?: boolean; persisted?: boolean; message?: string } | null;
+      const result = (await response.json().catch(() => null)) as LeadResponse | null;
 
       if (!response.ok || !result?.ok || result.persisted !== true) {
-        if (response.status === 400) {
-          throw new Error(result?.message || text.error);
+        if (response.status === 400 && result?.fieldErrors) {
+          setErrors(result.fieldErrors);
+          setSubmitState("error");
+          setFeedback(result.message || text.error);
+          return;
         }
         throw new Error("Lead request failed");
       }
 
       setSubmitState("success");
       setFeedback(text.success);
+      submissionIdRef.current = newSubmissionId();
       setForm({
         name: "",
         business: "",
         email: "",
         phone: "",
-        project: locale === "es" ? "Pagina de aterrizaje" : "Landing Page",
+        project: locale === "es" ? "Página de aterrizaje" : "Landing Page",
         message: "",
       });
     } catch (error) {
       setSubmitState("error");
       setFeedback(error instanceof Error && error.message !== "Lead request failed" ? error.message : text.error);
+    } finally {
+      submittingRef.current = false;
     }
   }
 
   return (
     <>
-      <form onSubmit={handleSubmit} noValidate className="kc-card rounded-2xl p-5 sm:p-6" aria-label={text.aria}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-bold text-kc-text">
+      <form onSubmit={handleSubmit} noValidate className="kc-card min-w-0 max-w-full rounded-2xl p-5 sm:p-6" aria-label={text.aria}>
+        <input name="website" tabIndex={-1} autoComplete="off" className="sr-only" aria-hidden="true" />
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
+          <label className="grid min-w-0 gap-2 text-sm font-bold text-kc-text">
             {text.name}
             <input
               value={form.name}
               onChange={(event) => updateField("name", event.target.value)}
-              className="min-h-12 rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
+              className="min-h-12 w-full min-w-0 max-w-full rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
               placeholder={text.namePlaceholder}
               autoComplete="name"
+              maxLength={120}
               required
               aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? "quote-name-error" : undefined}
             />
-            {errors.name ? <span className="text-xs font-bold text-red-300">{errors.name}</span> : null}
+            {errors.name ? <span id="quote-name-error" className="text-xs font-bold text-red-300">{errors.name}</span> : null}
           </label>
-          <label className="grid gap-2 text-sm font-bold text-kc-text">
+          <label className="grid min-w-0 gap-2 text-sm font-bold text-kc-text">
             {text.business}
             <input
               value={form.business}
               onChange={(event) => updateField("business", event.target.value)}
-              className="min-h-12 rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
+              className="min-h-12 w-full min-w-0 max-w-full rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
               placeholder={text.businessPlaceholder}
               autoComplete="organization"
-              required
+              maxLength={160}
             />
           </label>
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-bold text-kc-text">
+        <div className="mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
+          <label className="grid min-w-0 gap-2 text-sm font-bold text-kc-text">
             {text.email}
             <input
               value={form.email}
               onChange={(event) => updateField("email", event.target.value)}
-              className="min-h-12 rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
+              className="min-h-12 w-full min-w-0 max-w-full rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
               placeholder={text.emailPlaceholder}
               autoComplete="email"
               type="email"
+              maxLength={180}
+              required
               aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "quote-email-error" : undefined}
             />
-            {errors.email ? <span className="text-xs font-bold text-red-300">{errors.email}</span> : null}
+            {errors.email ? <span id="quote-email-error" className="text-xs font-bold text-red-300">{errors.email}</span> : null}
           </label>
-          <label className="grid gap-2 text-sm font-bold text-kc-text">
+          <label className="grid min-w-0 gap-2 text-sm font-bold text-kc-text">
             {text.phone}
             <input
               value={form.phone}
               onChange={(event) => updateField("phone", event.target.value)}
-              className="min-h-12 rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
+              className="min-h-12 w-full min-w-0 max-w-full rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text placeholder:text-kc-muted/70"
               placeholder={text.phonePlaceholder}
               autoComplete="tel"
+              type="tel"
+              maxLength={40}
               required
               aria-invalid={Boolean(errors.phone)}
+              aria-describedby={errors.phone ? "quote-phone-error" : undefined}
             />
-            {errors.phone ? <span className="text-xs font-bold text-red-300">{errors.phone}</span> : null}
+            {errors.phone ? <span id="quote-phone-error" className="text-xs font-bold text-red-300">{errors.phone}</span> : null}
           </label>
         </div>
 
         <div className="mt-4">
-          <label className="grid gap-2 text-sm font-bold text-kc-text">
+          <label className="grid min-w-0 gap-2 text-sm font-bold text-kc-text">
             {text.project}
             <select
               value={form.project}
               onChange={(event) => updateField("project", event.target.value)}
-              className="min-h-12 rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text"
+              className="min-h-12 w-full min-w-0 max-w-full rounded-lg border border-kc-border bg-kc-bg/75 px-4 text-base font-medium text-kc-text"
               aria-invalid={Boolean(errors.project)}
+              aria-describedby={errors.project ? "quote-project-error" : undefined}
             >
-              <option>{locale === "es" ? "Pagina de aterrizaje" : "Landing Page"}</option>
+              <option>{locale === "es" ? "Página de aterrizaje" : "Landing Page"}</option>
               <option>{locale === "es" ? "Web para negocios" : "Web Business"}</option>
               <option>Web Pro + Panel</option>
               <option>{locale === "es" ? "Sistema administrativo, contable o de facturación" : "Administrative, accounting or invoicing system"}</option>
-              <option>{locale === "es" ? "Tienda en linea" : "E-commerce"}</option>
+              <option>{locale === "es" ? "Tienda en línea" : "E-commerce"}</option>
             </select>
-            {errors.project ? <span className="text-xs font-bold text-red-300">{errors.project}</span> : null}
+            {errors.project ? <span id="quote-project-error" className="text-xs font-bold text-red-300">{errors.project}</span> : null}
           </label>
         </div>
 
-        <label className="mt-4 grid gap-2 text-sm font-bold text-kc-text">
+        <label className="mt-4 grid min-w-0 gap-2 text-sm font-bold text-kc-text">
           {text.details}
           <textarea
             value={form.message}
             onChange={(event) => updateField("message", event.target.value)}
-            className="min-h-36 resize-y rounded-lg border border-kc-border bg-kc-bg/75 px-4 py-3 text-base font-medium leading-7 text-kc-text placeholder:text-kc-muted/70"
+            className="min-h-36 w-full min-w-0 max-w-full resize-y rounded-lg border border-kc-border bg-kc-bg/75 px-4 py-3 text-base font-medium leading-7 text-kc-text placeholder:text-kc-muted/70"
             placeholder={text.detailsPlaceholder}
+            maxLength={2000}
             required
             aria-invalid={Boolean(errors.message)}
+            aria-describedby={errors.message ? "quote-message-error" : undefined}
           />
-          {errors.message ? <span className="text-xs font-bold text-red-300">{errors.message}</span> : null}
+          {errors.message ? <span id="quote-message-error" className="text-xs font-bold text-red-300">{errors.message}</span> : null}
         </label>
 
         <button
@@ -278,7 +313,10 @@ export function QuoteForm({ locale = "es" }: QuoteFormProps) {
             ) : (
               <XCircle className="mt-0.5 shrink-0 text-red-300" size={22} aria-hidden="true" />
             )}
-            <p className="text-sm font-semibold leading-6">{feedback}</p>
+            <p className="min-w-0 flex-1 text-sm font-semibold leading-6">{feedback}</p>
+            <button type="button" onClick={() => { setFeedback(""); setSubmitState("idle"); }} aria-label={locale === "es" ? "Cerrar mensaje" : "Close message"} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-kc-muted transition hover:bg-white/10 hover:text-kc-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-kc-cyan">
+              <X size={17} aria-hidden="true" />
+            </button>
           </div>
         ) : null}
       </div>

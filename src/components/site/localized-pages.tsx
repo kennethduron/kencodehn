@@ -508,8 +508,8 @@ export function ContactView({ locale }: { locale: Locale }) {
         primaryLabel={locale === "es" ? "Ver opciones de contacto" : "View contact options"}
         primaryHref="#contacto"
       />
-      <section id="contacto" className="kc-shell grid scroll-mt-28 gap-8 py-12 sm:scroll-mt-32 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+      <section id="contacto" className="kc-shell grid min-w-0 grid-cols-[minmax(0,1fr)] scroll-mt-28 gap-8 py-12 sm:scroll-mt-32 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
           <h2 className="font-display text-2xl font-black text-kc-text">
             {locale === "es" ? "Contacto directo" : "Direct contact"}
           </h2>
@@ -527,14 +527,14 @@ export function ContactView({ locale }: { locale: Locale }) {
                 href={item.href}
                 target={item.href.startsWith("http") ? "_blank" : undefined}
                 rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                className="flex items-center gap-4 rounded-xl border border-white/10 bg-kc-bg/55 p-4 transition hover:border-kc-cyan/45"
+                className="flex min-w-0 items-center gap-4 rounded-xl border border-white/10 bg-kc-bg/55 p-4 transition hover:border-kc-cyan/45"
               >
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-kc-turquoise/25 bg-kc-turquoise/10 text-kc-turquoise">
                   <Icon size={20} aria-hidden="true" />
                 </span>
-                <span>
+                <span className="min-w-0 flex-1">
                   <span className="block text-sm font-black text-kc-text">{item.label}</span>
-                  <span className="block text-sm leading-6 text-kc-muted">{item.value}</span>
+                  <span className="block break-words text-sm leading-6 text-kc-muted">{item.value}</span>
                 </span>
               </Link>
             );
@@ -558,8 +558,8 @@ export function QuoteView({ locale }: { locale: Locale }) {
         primaryLabel={locale === "es" ? "Enviar mensaje" : "Send message"}
         primaryHref="#formulario"
       />
-      <section className="kc-shell grid gap-8 py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+      <section className="kc-shell grid min-w-0 grid-cols-[minmax(0,1fr)] gap-8 py-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
+        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-5 sm:p-6">
           <h2 className="font-display text-2xl font-black text-kc-text">{locale === "es" ? "Antes de enviar" : "Before sending"}</h2>
           <p className="mt-4 text-sm leading-7 text-kc-muted">
             {locale === "es"
@@ -572,7 +572,7 @@ export function QuoteView({ locale }: { locale: Locale }) {
             ))}
           </div>
         </div>
-        <div id="formulario" className="scroll-mt-28 sm:scroll-mt-32">
+        <div id="formulario" className="min-w-0 scroll-mt-28 sm:scroll-mt-32">
           <QuoteForm locale={locale} />
         </div>
       </section>

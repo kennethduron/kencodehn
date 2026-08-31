@@ -181,8 +181,8 @@ export function clientLeadConfirmationTemplate(lead: LeadEmailData): EmailTempla
   ];
   return {
     subject: "Hemos recibido tu solicitud | Ken Code",
-    text: `Ken Code\n\n${intro}\n\nMuy pronto nos comunicaremos contigo para conocer mejor tu proyecto y ayudarte con una solucion web profesional.\n\nWhatsApp: ${site.phone}\nCorreo: ${site.email}\nWeb: ${site.url}\n\nAtentamente,\nKen Code`,
-    html: renderLayout(title, `${intro} Muy pronto nos comunicaremos contigo para conocer mejor tu proyecto y ayudarte con una solucion web profesional.`, rows, "Visitar Ken Code", site.url, "client"),
+    text: `Ken Code\n\n${intro}\n\nNuestro equipo revisará la información y se pondrá en contacto contigo para conocer mejor tu proyecto.\n\nWhatsApp: ${site.phone}\nCorreo: ${site.email}\nWeb: ${site.url}\n\nAtentamente,\nKen Code`,
+    html: renderLayout(title, `${intro} Nuestro equipo revisará la información y se pondrá en contacto contigo para conocer mejor tu proyecto.`, rows, "Visitar Ken Code", site.url, "client"),
   };
 }
 
