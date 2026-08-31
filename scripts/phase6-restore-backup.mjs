@@ -1,7 +1,7 @@
 import { createDecipheriv, createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 
 const backupDirectory = process.argv[2];
@@ -50,6 +50,29 @@ const outputDir = resolve(restoreDirectory);
 mkdirSync(outputDir, { recursive: true });
 writeFileSync(join(outputDir, "schema.sql"), schema, { mode: 0o600 });
 writeFileSync(join(outputDir, "data.sql"), data, { mode: 0o600 });
+const restoredStorage = {};
+for (const bucket of ["profile-photos", "mail-attachments"]) {
+  const objects = payload.storage_files?.[bucket] || [];
+  restoredStorage[bucket] = { object_count: objects.length, total_bytes: 0 };
+  for (const object of objects) {
+    const objectPath = normalize(String(object.path || "")).replaceAll("\\", "/");
+    if (!objectPath || objectPath.startsWith("/") || objectPath.includes("../") || isAbsolute(objectPath)) {
+      throw new Error(`Unsafe restored Storage path for ${bucket}.`);
+    }
+    const bytes = Buffer.from(object.data_base64, "base64");
+    if (bytes.length !== object.size_bytes || sha256(bytes) !== object.sha256) {
+      throw new Error(`Restored Storage checksum mismatch for ${bucket}.`);
+    }
+    const destination = join(outputDir, "storage", bucket, objectPath);
+    mkdirSync(dirname(destination), { recursive: true });
+    writeFileSync(destination, bytes, { mode: 0o600 });
+    restoredStorage[bucket].total_bytes += bytes.length;
+  }
+  const expected = manifest.storage?.[bucket];
+  if (expected && (expected.object_count !== restoredStorage[bucket].object_count || expected.total_bytes !== restoredStorage[bucket].total_bytes)) {
+    throw new Error(`Restored Storage manifest mismatch for ${bucket}.`);
+  }
+}
 writeFileSync(join(outputDir, "restore-verification.json"), `${JSON.stringify({
   status: "PASS",
   source_captured_at: manifest.captured_at,
@@ -57,6 +80,7 @@ writeFileSync(join(outputDir, "restore-verification.json"), `${JSON.stringify({
   schema_sha256: sha256(schema),
   data_sha256: sha256(data),
   counts: manifest.counts,
+  storage: restoredStorage,
 }, null, 2)}\n`, { mode: 0o600 });
 key.fill(0);
 
@@ -65,4 +89,5 @@ console.log(JSON.stringify({
   output_directory: outputDir,
   artifact_sha256: manifest.artifact_sha256,
   counts: manifest.counts,
+  storage: restoredStorage,
 }, null, 2));

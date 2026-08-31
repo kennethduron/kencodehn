@@ -8,6 +8,7 @@ const files = {
   webhook: read("src/app/api/webhooks/resend/route.ts"),
   backup: read("scripts/phase6-create-backup.mjs"),
   restore: read("scripts/phase6-restore-backup.mjs"),
+  dumpAudit: read("scripts/phase6-audit-dump.mjs"),
   localE2e: read("scripts/phase6-local-e2e.ps1"),
   productionAudit: read("scripts/phase6-production-audit.mjs"),
   webhookConfig: read("scripts/phase6-resend-webhook-config.mjs"),
@@ -37,6 +38,20 @@ test("restore verifies encrypted and restored SQL checksums", () => {
   assert.match(files.restore, /Restored SQL checksum mismatch/);
 });
 
+test("backup encrypts exported private Storage objects and publishes checksums only", () => {
+  assert.match(files.backup, /storage_files: storageFiles/);
+  assert.match(files.backup, /data_base64: bytes\.toString\("base64"\)/);
+  assert.match(files.backup, /publicStorageManifest/);
+  assert.doesNotMatch(files.backup, /publicStorageManifest\[bucket\]\.objects\.push\([^\n]*data_base64/);
+});
+
+test("backup and restore reject unsafe Storage paths and verify object checksums", () => {
+  assert.match(files.backup, /objectPath\.includes\("\.\.\/"\)/);
+  assert.match(files.backup, /export integrity check failed/);
+  assert.match(files.restore, /Unsafe restored Storage path/);
+  assert.match(files.restore, /Restored Storage checksum mismatch/);
+});
+
 test("local E2E refuses a non-loopback target", () => {
   assert.match(files.localE2e, /127\.0\.0\.1/);
   assert.match(files.localE2e, /refuses non-loopback services/);
@@ -45,6 +60,13 @@ test("local E2E refuses a non-loopback target", () => {
 test("production audit is pinned to the Ken Code project", () => {
   assert.match(files.productionAudit, /nvtrgrltyzrkljarvwff/);
   assert.match(files.productionAudit, /refuses an unexpected Supabase target/);
+});
+
+test("dump audit emits aggregate mail and scheduler evidence without message content", () => {
+  assert.match(files.dumpAudit, /threadsWithoutMessages/);
+  assert.match(files.dumpAudit, /duplicateProviderIds/);
+  assert.match(files.dumpAudit, /naturalJobs/);
+  assert.doesNotMatch(files.dumpAudit, /body_html|body_text|recipient_email|from_address|to_addresses/);
 });
 
 test("webhook configuration requires one exact Production endpoint", () => {

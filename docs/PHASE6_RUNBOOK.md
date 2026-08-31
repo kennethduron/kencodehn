@@ -14,17 +14,17 @@ Nunca ejecutar `supabase db reset --linked`, incluir seeds en Production ni apli
 
 ## Backup y restauración
 
-El backup certificado contiene los esquemas `public` y `private`, datos de negocio y manifiesto de Storage. No incluye Auth, Vault, tokens de dispositivo ni secretos. El paquete se cifra con AES-256-GCM; su clave aleatoria queda protegida por Windows DPAPI para el usuario que lo creó.
+El backup certificado contiene los esquemas `public` y `private`, datos de negocio y los binarios de Storage privado enumerados en su manifiesto. No incluye Auth, Vault, tokens de dispositivo ni secretos. SQL y objetos privados viajan dentro del mismo paquete cifrado con AES-256-GCM; el manifiesto externo conserva solamente rutas relativas, tamaños y checksums. La clave aleatoria queda protegida por Windows DPAPI para el usuario que lo creó.
 
 Procedimiento:
 
-1. Obtener schema/data mediante el mecanismo oficial de Supabase y crear el manifiesto de los buckets privados.
+1. Obtener schema/data mediante el mecanismo oficial de Supabase, exportar temporalmente cada objeto privado y crear el manifiesto de los buckets con ruta relativa, tamaño, SHA-256 y `export_file` acotado al staging.
 2. Ejecutar `scripts/phase6-create-backup.mjs` fuera de Git.
 3. Conservar juntos `.kcbackup`, `.key.dpapi`, `manifest.json` y `storage-manifest.json` en almacenamiento privado con control de acceso.
 4. Verificar SHA-256 y descifrar con `scripts/phase6-restore-backup.mjs` en un entorno aislado.
-5. Restaurar primero esquema, luego datos, con constraints activas; ejecutar `scripts/phase6-validate-restore.sql` y reconciliar conteos/finanzas/correo.
+5. Restaurar primero esquema, luego datos, con constraints activas; restaurar los objetos recuperados bajo `storage/<bucket>/...`, ejecutar `scripts/phase6-validate-restore.sql` y reconciliar conteos/finanzas/correo.
 
-Nunca restaurar sobre Production. Los buckets con objetos requieren exportar los binarios además del manifiesto; restaurar cada objeto en su ruta original antes de validar las referencias.
+Nunca restaurar sobre Production. El staging de SQL y objetos sin cifrar debe eliminarse después de crear y comprobar el paquete; restaurar cada objeto en su ruta original solamente dentro del procedimiento aprobado.
 
 Capacidad actual: la recuperación fue ensayada localmente. El tiempo real dependerá del acceso a Supabase/Vercel/Resend, del volumen y de la disponibilidad del operador; no existe un RTO/RPO contractual medido. Crear un backup antes y después de cambios de Production reduce la pérdida potencial, pero la frecuencia operativa debe definirse y calendarizarse externamente.
 
