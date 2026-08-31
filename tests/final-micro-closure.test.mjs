@@ -12,6 +12,7 @@ const users = read("src/lib/admin/supabase-users.ts");
 const chrome = read("src/components/admin/admin-chrome.tsx");
 const ui = read("src/components/admin/ui.tsx");
 const migration = read("supabase/migrations/20260902000800_final_micro_closure.sql");
+const pushService = read("src/lib/push/service.ts");
 
 test("Sent filters outbound threads in SQL before pagination", () => {
   assert.match(service, /mail_messages!inner/);
@@ -135,4 +136,10 @@ test("mobile composer keeps header and actions accessible", () => {
   assert.match(mailUi, /<footer className="flex shrink-0/);
   assert.match(mailUi, /document\.body\.style\.overflow = "hidden"/);
   assert.match(mailUi, /event\.key === "Escape"/);
+});
+
+test("FCM device queries select the intended profile relationship", () => {
+  const explicitRelationships = pushService.match(/profiles!device_tokens_profile_id_fkey\(email\)/g) || [];
+  assert.equal(explicitRelationships.length, 2);
+  assert.doesNotMatch(pushService, /select\("\*,profiles\(email\)"\)/);
 });

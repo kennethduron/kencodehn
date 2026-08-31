@@ -104,7 +104,7 @@ export async function listDeviceTokens(email?: string) {
       if (!profile) return [];
       profileId = profile.id;
     }
-    let query = client.from("device_tokens").select("*,profiles(email)").limit(email ? 50 : 200);
+    let query = client.from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email)").limit(email ? 50 : 200);
     query = profileId ? query.eq("profile_id", profileId) : query.eq("active", true);
     const { data, error } = await query;
     if (error) throw new Error(`Supabase device query failed (${error.code ?? "unknown"}).`);
@@ -265,7 +265,7 @@ export async function sendPushToAdmins(input: PushPayload) {
 
 export async function sendPushToUser(uid: string, input: PushPayload) {
   if (isSupabaseDataProviderEnabled()) {
-    const { data, error } = await createSupabaseAdminClient().from("device_tokens").select("*,profiles(email)").eq("profile_id", uid).eq("active", true).limit(50);
+    const { data, error } = await createSupabaseAdminClient().from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email)").eq("profile_id", uid).eq("active", true).limit(50);
     if (error) throw new Error(`Supabase user device query failed (${error.code ?? "unknown"}).`);
     const devices = (data ?? []).map((row: any) => ({
       id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? ""), token: String(row.token ?? ""),
