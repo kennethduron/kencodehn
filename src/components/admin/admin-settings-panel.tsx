@@ -60,13 +60,13 @@ const groups: Array<{
   },
   {
     title: "Email",
-    description: "Controla los correos automaticos enviados al administrador.",
+    description: "Controla los correos automáticos enviados al administrador.",
     icon: Mail,
     items: [
       {
         key: "emailNotificationsEnabled",
         label: "Recibir notificaciones por email",
-        description: "Te enviaremos correos cuando lleguen nuevos leads o cuando una tarea requiera atencion.",
+        description: "Te enviaremos correos cuando lleguen nuevos leads o cuando una tarea requiera atención.",
       },
       {
         key: "dailySummaryEnabled",
@@ -89,13 +89,13 @@ const groups: Array<{
   },
   {
     title: "Recordatorios de tareas",
-    description: "Ajusta que recordatorios dispara el worker automatico cada 10 minutos.",
+    description: "Ajusta qué recordatorios revisa el sistema automáticamente cada 10 minutos.",
     icon: MonitorSmartphone,
     items: [
-      { key: "taskReminder1DayEnabled", label: "Recordarme 1 dia antes", description: "Recibe un aviso automatico antes de que venza una tarea." },
+      { key: "taskReminder1DayEnabled", label: "Recordarme 1 día antes", description: "Recibe un aviso automático antes de que venza una tarea." },
       { key: "taskReminder1HourEnabled", label: "Recordarme 1 hora antes", description: "Recibe un aviso cercano para preparar el seguimiento." },
-      { key: "taskDueEnabled", label: "Recordarme al momento exacto", description: "Avisa en la siguiente ejecucion del cron cuando llega la hora configurada." },
-      { key: "taskOverdueEnabled", label: "Avisarme si la tarea esta vencida", description: "Marca y avisa tareas que ya requieren atencion inmediata." },
+      { key: "taskDueEnabled", label: "Recordarme al momento exacto", description: "Avisa en la siguiente revisión programada cuando llega la hora configurada." },
+      { key: "taskOverdueEnabled", label: "Avisarme si la tarea está vencida", description: "Marca y avisa tareas que ya requieren atención inmediata." },
     ],
   },
   {
@@ -195,7 +195,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
       showToast("Configuracion actualizada correctamente.");
     } catch {
       setSettings(settings);
-      showToast("No se pudo guardar la configuracion.", "error");
+      showToast("No se pudo guardar la configuración.", "error");
     } finally {
       setSavingKey(null);
     }
@@ -315,8 +315,8 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
           );
         })}
         <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
-          <div className="flex items-start gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan"><Bell size={19}/></span><div><h2 className="font-display text-xl font-black text-kc-text">Recordatorios de cobro</h2><p className="mt-1 text-sm leading-6 text-kc-muted">Administra reglas de 7 días, 3 días, vencimiento y atraso sin ejecutar el scheduler manualmente.</p></div></div>
-          <Link href="/admin/configuracion/cobros" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-kc-electric px-4 text-sm font-black text-white">Configurar billing reminders</Link>
+          <div className="flex items-start gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan"><Bell size={19}/></span><div><h2 className="font-display text-xl font-black text-kc-text">Recordatorios de cobro</h2><p className="mt-1 text-sm leading-6 text-kc-muted">Administra reglas de 7 días, 3 días, vencimiento y atraso sin ejecutar las automatizaciones manualmente.</p></div></div>
+          <Link href="/admin/configuracion/cobros" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-kc-electric px-4 text-sm font-black text-white">Configurar recordatorios</Link>
         </section>
         <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
           <div className="flex items-start gap-3">
@@ -329,7 +329,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
             </div>
           </div>
           <div className="mt-5 grid gap-3 text-sm text-kc-muted">
-            {["ver leads", "editar leads", "eliminar tareas", "ver reportes", "administrar configuracion", "administrar usuarios"].map((permission) => (
+            {["ver leads", "editar leads", "eliminar tareas", "ver reportes", "administrar configuración", "administrar usuarios"].map((permission) => (
               <span key={permission} className="flex items-center gap-2 rounded-xl border border-white/10 bg-kc-bg/55 px-4 py-3">
                 <LockKeyhole size={15} className="text-kc-cyan" aria-hidden="true" />
                 {permission}
@@ -345,7 +345,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
             <div>
               <h2 className="font-display text-xl font-black text-rose-100">Zona de mantenimiento</h2>
               <p className="mt-1 text-sm leading-6 text-rose-100/75">
-                Establece el baseline limpio verificado sin tocar usuarios admin, configuracion, tokens reales, reglas ni variables de entorno.
+                Establece el estado inicial verificado sin tocar cuentas del equipo, configuración, credenciales, reglas ni servicios conectados.
               </p>
             </div>
           </div>
@@ -355,7 +355,7 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
             className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-black text-white transition hover:bg-rose-800"
           >
             <Trash2 size={16} aria-hidden="true" />
-            Establecer baseline limpio
+            Establecer estado inicial limpio
           </button>
         </section> : null}
       </div>
@@ -369,9 +369,9 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-rose-200">Mantenimiento</p>
-                <h2 id="cleanup-title" className="mt-2 font-display text-2xl font-black text-kc-text">Establecer baseline limpio del CRM?</h2>
+                <h2 id="cleanup-title" className="mt-2 font-display text-2xl font-black text-kc-text">¿Establecer el estado inicial limpio del CRM?</h2>
                 <p className="mt-2 text-sm leading-6 text-kc-muted">
-                  Esta accion usa el respaldo cifrado y sus conteos exactos para eliminar leads, tareas, notas, notificaciones y logs operativos. No se eliminaran usuarios admin ni configuracion del CRM.
+                  Esta acción usa el respaldo cifrado y sus conteos exactos para eliminar leads, tareas, notas, notificaciones e historial operativo. No se eliminarán las cuentas del equipo ni la configuración del CRM.
                 </p>
               </div>
               <button

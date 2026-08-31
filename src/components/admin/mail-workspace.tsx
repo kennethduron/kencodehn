@@ -13,15 +13,12 @@ import {
   FileText,
   Forward,
   Inbox,
-  Link2,
-  ListOrdered,
   Loader2,
   Mail,
   MailOpen,
   Menu,
   Paperclip,
   PenLine,
-  Quote,
   Reply,
   ReplyAll,
   Search,
@@ -29,7 +26,6 @@ import {
   Settings,
   Star,
   Trash2,
-  Underline,
   UserRound,
   X,
 } from "lucide-react";
@@ -37,6 +33,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import type { AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
 import { Toast } from "./ui";
+import { RichTextEditor } from "./rich-text-editor";
 
 type Identity = { id?: string; email: string; display_name: string };
 type Template = {
@@ -1161,90 +1158,7 @@ export function MailWorkspace({
                     <FileText size={16} /> Adjuntar PDF de propuesta
                   </button>
                 ) : null}
-                <div className="flex gap-1 rounded-t-xl border border-b-0 bg-slate-50 p-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setHtml((value) => `${value}<strong>texto</strong>`)
-                    }
-                    className="grid h-9 w-9 place-items-center rounded-lg font-black hover:bg-white"
-                    aria-label="Negrita"
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHtml((value) => `${value}<em>texto</em>`)}
-                    className="grid h-9 w-9 place-items-center rounded-lg italic hover:bg-white"
-                    aria-label="Cursiva"
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setHtml((value) => `${value}<ul><li>Elemento</li></ul>`)
-                    }
-                    className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white"
-                    aria-label="Lista con viñetas"
-                  >
-                    •
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHtml((value) => `${value}<u>texto</u>`)}
-                    className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white"
-                    aria-label="Subrayado"
-                  >
-                    <Underline size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setHtml((value) => `${value}<ol><li>Elemento</li></ol>`)
-                    }
-                    className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white"
-                    aria-label="Lista numerada"
-                  >
-                    <ListOrdered size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setHtml(
-                        (value) => `${value}<a href="https://">enlace</a>`,
-                      )
-                    }
-                    className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white"
-                    aria-label="Enlace"
-                  >
-                    <Link2 size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setHtml(
-                        (value) => `${value}<blockquote>cita</blockquote>`,
-                      )
-                    }
-                    className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white"
-                    aria-label="Cita"
-                  >
-                    <Quote size={16} />
-                  </button>
-                </div>
-                <label className="sr-only" htmlFor="mail-body">
-                  Mensaje
-                </label>
-                <textarea
-                  id="mail-body"
-                  value={html}
-                  onChange={(e) => setHtml(e.target.value)}
-                  required
-                  rows={10}
-                  placeholder="Escriba su mensaje…"
-                  className="min-h-52 resize-y rounded-b-xl border px-3 py-3 font-sans text-sm leading-6"
-                />
+                <RichTextEditor value={html} onChange={setHtml} label="Mensaje" required />
                 {attachments.length ? (
                   <div className="flex flex-wrap gap-2">
                     {attachments.map((item) => (

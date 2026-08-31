@@ -131,7 +131,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks, canAssign = fa
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar nombre, empresa, correo o telefono"
+              placeholder="Buscar nombre, empresa, correo o teléfono"
               className="min-h-12 w-full rounded-xl border border-white/10 bg-kc-bg pl-10 pr-4 text-sm text-kc-text outline-none focus:border-kc-cyan"
             />
           </label>
@@ -166,7 +166,7 @@ export function LeadList({ initialLeads, canEdit, canCreateTasks, canAssign = fa
             <option value="oldest">Mas antiguo</option>
             <option value="high_priority">Prioridad alta</option>
             <option value="estimated_value">Valor estimado</option>
-            <option value="next_followup">Seguimiento proximo</option>
+            <option value="next_followup">Seguimiento próximo</option>
           </select>
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-kc-muted">

@@ -7,5 +7,5 @@ const cases=[
 ];
 const source=chrome+css+dashboard+clients+expenses+reports+ui+kpi;for(const[name,pattern]of cases)test(name,()=>assert.match(source,pattern));
 test("UX36 ordinary finance UI hides technical implementation terms",()=>{const ordinary=dashboard+expenses+reports;for(const word of ["service role","foreign key","metadata","webhook","migration","RLS","Supabase","UUID"])assert.doesNotMatch(ordinary,new RegExp(`\\b${word}\\b`,"i"));});
-test("UX37 required widths are recorded as structural viewport targets",()=>{for(const width of [320,360,375,390,412,430,768,820,1024,1280,1440,1920])assert.ok(width>=320);assert.match(css,/overflow-x: hidden/);});
+test("UX37 required widths are recorded as structural viewport targets",()=>{for(const width of [320,360,375,390,412,430,768,820,1024,1280,1440,1920])assert.ok(width>=320);assert.match(css,/overflow-x: clip/);});
 test("UX38 optional notification refresh handles navigation cancellation",()=>{assert.match(notificationDropdown,/async function fetchNotifications\(\) \{\s*try \{/);assert.match(notificationDropdown,/catch \{/);});

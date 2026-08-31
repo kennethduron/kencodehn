@@ -33,12 +33,12 @@
 html {
   scroll-behavior: smooth;
   background: var(--kc-bg);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   background:
     radial-gradient(circle at 15% 10%, rgba(0, 109, 255, 0.22), transparent 28rem),
     radial-gradient(circle at 85% 8%, rgba(0, 217, 255, 0.18), transparent 24rem),
@@ -364,6 +364,28 @@ select:focus-visible {
 .kc-sidebar-scroll::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(203, 213, 225, 0.3); }
 .kc-sidebar-scroll.is-collapsed { scrollbar-width: none; }
 .kc-sidebar-scroll.is-collapsed::-webkit-scrollbar { display: none; }
+
+.kc-rich-text-editor {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  background: #fff;
+}
+.kc-rich-text-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #64748b;
+  pointer-events: none;
+}
+.kc-rich-text-editor p { margin-block: 0 0.65rem; }
+.kc-rich-text-editor ul { margin: 0.5rem 0 0.75rem 1.35rem; list-style: disc; }
+.kc-rich-text-editor ol { margin: 0.5rem 0 0.75rem 1.35rem; list-style: decimal; }
+.kc-rich-text-editor blockquote {
+  margin: 0.75rem 0;
+  border-left: 3px solid #94a3b8;
+  padding: 0.5rem 0 0.5rem 0.9rem;
+  color: #475569;
+  background: #f8fafc;
+}
+.kc-rich-text-editor a { color: #0759b8; text-decoration: underline; }
 
 .kc-mail-shell {
   display: grid;

@@ -144,7 +144,7 @@ export function LeadDetail({
     const resolvedTime = time || "09:00";
     const followUpAt = hondurasDateTimeToIso(date, resolvedTime);
     if (!followUpAt) {
-      showToast("Fecha u hora de seguimiento invalida.", "error");
+      showToast("Fecha u hora de seguimiento inválida.", "error");
       return;
     }
     setFollowUpTime(resolvedTime);
@@ -278,7 +278,7 @@ export function LeadDetail({
       <ConfirmDialog
         open={deleteLeadOpen}
         title="Eliminar este lead?"
-        description="Esta accion eliminara la solicitud, notas, tareas relacionadas, notificaciones relacionadas y actividad asociada. Esta accion no se puede deshacer."
+        description="Esta acción eliminará la solicitud, notas, tareas relacionadas, notificaciones relacionadas y actividad asociada. Esta acción no se puede deshacer."
         confirmText="Si, eliminar"
         cancelText="Cancelar"
         variant="danger"
@@ -428,7 +428,7 @@ export function LeadDetail({
                 <textarea value={lead.billingNotes} onChange={(event) => setLead((current) => ({ ...current, billingNotes: event.target.value }))} onBlur={(event) => updateLead({ billingNotes: event.target.value })} rows={3} className="rounded-xl border border-white/10 bg-kc-bg px-3 py-3 text-kc-text" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-kc-muted">
-                Proxima accion
+                Próxima acción
                 <input value={lead.nextAction} onChange={(event) => setLead((current) => ({ ...current, nextAction: event.target.value }))} onBlur={(event) => updateLead({ nextAction: event.target.value })} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg px-3 text-kc-text" />
               </label>
               <div className="grid gap-3 sm:grid-cols-2">

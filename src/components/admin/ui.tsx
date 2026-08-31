@@ -47,8 +47,8 @@ type ConfirmDialogProps = {
 
 export function ConfirmDialog({
   open,
-  title = "Confirmar accion",
-  description = "Esta accion no se puede deshacer.",
+  title = "Confirmar acción",
+  description = "Esta acción no se puede deshacer.",
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   variant = "default",

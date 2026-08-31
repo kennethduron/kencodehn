@@ -58,7 +58,7 @@ test("large lead tables switch to mobile cards and never become an uncontrolled 
   assert.match(leads, /kc-responsive-table hidden overflow-hidden[\s\S]*xl:block/);
   assert.match(leads, /kc-mobile-cards grid gap-4 xl:hidden/);
   assert.match(leads, /table-fixed/);
-  assert.match(css, /overflow-x: hidden/);
+  assert.match(css, /overflow-x: clip/);
 });
 
 test("mobile navigation remains horizontally controlled with touch-sized targets", () => {

@@ -87,16 +87,16 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
         body: JSON.stringify(invite),
       });
       const payload = await response.json();
-      if (!response.ok || !payload.member) throw new Error(payload.message || "No se pudo preparar la invitacion.");
+      if (!response.ok || !payload.member) throw new Error(payload.message || "No se pudo preparar la invitación.");
       setMembers((current) => [...current, payload.member].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email)));
       setInvite({ name: "", email: "", role: "sales_agent" });
       setInviteOpen(false);
       setToast({
-        message: payload.emailSent ? "Usuario creado e invitacion enviada." : "Usuario creado; el email fallo y puede reenviarse desde Equipo.",
+        message: payload.emailSent ? "Usuario creado e invitación enviada." : "Usuario creado; el correo falló y puede reenviarse desde Equipo.",
         variant: payload.emailSent ? "success" : "info",
       });
     } catch (error) {
-      setToast({ message: error instanceof Error ? error.message : "No se pudo preparar la invitacion.", variant: "error" });
+      setToast({ message: error instanceof Error ? error.message : "No se pudo preparar la invitación.", variant: "error" });
     } finally {
       setInviting(false);
     }
@@ -108,14 +108,14 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
     try {
       const response = await fetch(`/api/admin/users/${encodeURIComponent(member.uid)}/resend-invite`, { method: "POST" });
       const payload = await response.json();
-      if (!response.ok || !payload.member) throw new Error(payload.message || "No se pudo reenviar la invitacion.");
+      if (!response.ok || !payload.member) throw new Error(payload.message || "No se pudo reenviar la invitación.");
       replaceMember(payload.member);
       setToast({
         message: payload.emailSent ? "Invitacion reenviada." : "El reenvio fallo; puedes volver a intentarlo sin crear otro usuario.",
         variant: payload.emailSent ? "success" : "error",
       });
     } catch (error) {
-      setToast({ message: error instanceof Error ? error.message : "No se pudo reenviar la invitacion.", variant: "error" });
+      setToast({ message: error instanceof Error ? error.message : "No se pudo reenviar la invitación.", variant: "error" });
     } finally {
       setSavingUid(null);
     }
@@ -144,8 +144,8 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
       {inviteOpen ? (
         <form onSubmit={submitInvite} className="kc-admin-card grid gap-4 p-5 md:grid-cols-3">
           <div className="md:col-span-3">
-            <h2 className="font-display text-xl font-black text-kc-text">Nueva invitacion</h2>
-            <p className="mt-1 text-sm text-kc-muted">Firebase generara un enlace seguro para establecer la credencial. Nunca se crea ni se envia una contrasena temporal.</p>
+            <h2 className="font-display text-xl font-black text-kc-text">Nueva invitación</h2>
+            <p className="mt-1 text-sm text-kc-muted">El sistema enviará un enlace seguro para configurar el acceso. Nunca se crea ni se envía una contraseña temporal.</p>
           </div>
           <label className="grid gap-2 text-sm font-bold text-kc-text">Nombre
             <input required minLength={2} maxLength={120} value={invite.name} onChange={(event) => setInvite((value) => ({ ...value, name: event.target.value }))} className="min-h-11 rounded-xl border border-white/10 bg-white/[0.04] px-3 outline-none transition focus:border-kc-cyan/60" />
@@ -161,7 +161,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
           <div className="flex gap-2 md:col-span-3 md:justify-end">
             <button type="button" onClick={() => setInviteOpen(false)} disabled={inviting} className="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-black text-kc-text disabled:opacity-50">Cancelar</button>
             <button type="submit" disabled={inviting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-kc-cyan px-4 text-sm font-black text-kc-bg disabled:opacity-60">
-              {inviting ? <Loader2 size={16} className="animate-spin" /> : <MailPlus size={16} />} Preparar invitacion
+              {inviting ? <Loader2 size={16} className="animate-spin" /> : <MailPlus size={16} />} Enviar invitación
             </button>
           </div>
         </form>
@@ -197,7 +197,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
               <div className="grid gap-2">
                 {member.active && member.invitationStatus && ["pending", "sent", "failed"].includes(member.invitationStatus) ? (
                   <button type="button" disabled={busy || immutableOwner} onClick={() => resendInvite(member)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-kc-cyan/25 px-4 text-sm font-black text-kc-cyan transition hover:bg-kc-cyan/10 disabled:opacity-40">
-                    {busy ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} Reenviar invitacion
+                    {busy ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} Reenviar invitación
                   </button>
                 ) : null}
                 <button

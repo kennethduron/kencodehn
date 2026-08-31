@@ -42,7 +42,7 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
       setNotifications(result.notifications);
       return true;
     }
-    showToast(result.message || "No se pudo completar la accion", "error");
+    showToast(result.message || "No se pudo completar la acción", "error");
     return false;
   }
 
@@ -160,8 +160,8 @@ export function NotificationsPanel({ initialNotifications }: { initialNotificati
       </section>
       <ConfirmDialog
         open={Boolean(confirmDelete)}
-        title="Eliminar notificacion"
-        description="Estas seguro de que deseas eliminar esto? Esta accion no se puede deshacer."
+        title="Eliminar notificación"
+        description="¿Está seguro de que desea eliminarla? Esta acción no se puede deshacer."
         confirmText="Si, eliminar"
         cancelText="Cancelar"
         variant="danger"

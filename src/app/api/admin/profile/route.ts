@@ -42,7 +42,14 @@ export async function POST(request: NextRequest) {
   if (uploaded.error) return NextResponse.json({ error: "No pudimos guardar la imagen." }, { status: 500 });
   const updated = await client.from("profiles").update({ profile_photo_path: path, updated_at: new Date().toISOString() }).eq("id", admin.uid).eq("active", true);
   if (updated.error) { await client.storage.from("profile-photos").remove([path]); return NextResponse.json({ error: "No pudimos actualizar el perfil." }, { status: 500 }); }
-  if (current?.profile_photo_path && current.profile_photo_path !== path) await client.storage.from("profile-photos").remove([current.profile_photo_path]);
+  if (current?.profile_photo_path && current.profile_photo_path !== path) {
+    const removed = await client.storage.from("profile-photos").remove([current.profile_photo_path]);
+    if (removed.error) {
+      const rollback = await client.from("profiles").update({ profile_photo_path: current.profile_photo_path, updated_at: new Date().toISOString() }).eq("id", admin.uid).eq("profile_photo_path", path);
+      if (!rollback.error) await client.storage.from("profile-photos").remove([path]);
+      return NextResponse.json({ error: "No pudimos reemplazar la foto de forma segura. La imagen anterior se conservó." }, { status: 500 });
+    }
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -51,8 +58,15 @@ export async function DELETE(request: NextRequest) {
   if (!admin) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const client = createSupabaseAdminClient();
   const { data } = await client.from("profiles").select("profile_photo_path").eq("id", admin.uid).maybeSingle();
+  const previousPath = data?.profile_photo_path;
   const { error } = await client.from("profiles").update({ profile_photo_path: null, updated_at: new Date().toISOString() }).eq("id", admin.uid).eq("active", true);
   if (error) return NextResponse.json({ error: "No pudimos quitar la imagen." }, { status: 500 });
-  if (data?.profile_photo_path) await client.storage.from("profile-photos").remove([data.profile_photo_path]);
+  if (previousPath) {
+    const removed = await client.storage.from("profile-photos").remove([previousPath]);
+    if (removed.error) {
+      await client.from("profiles").update({ profile_photo_path: previousPath, updated_at: new Date().toISOString() }).eq("id", admin.uid).is("profile_photo_path", null);
+      return NextResponse.json({ error: "No pudimos quitar la foto de forma segura. Inténtelo nuevamente." }, { status: 500 });
+    }
+  }
   return NextResponse.json({ ok: true });
 }

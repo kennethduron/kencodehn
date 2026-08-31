@@ -33,7 +33,7 @@ export function PushSettings() {
     if (state === "active") return { label: "Activadas", className: "border-emerald-300/30 bg-emerald-400/10 text-emerald-200", icon: CheckCircle2 };
     if (state === "blocked") return { label: "Bloqueadas", className: "border-rose-300/30 bg-rose-400/10 text-rose-200", icon: BellOff };
     if (state === "unsupported") return { label: "No soportadas", className: "border-amber-300/30 bg-amber-400/10 text-amber-100", icon: ShieldAlert };
-    if (state === "missing_config") return { label: "Falta configuracion", className: "border-amber-300/30 bg-amber-400/10 text-amber-100", icon: ShieldAlert };
+    if (state === "missing_config") return { label: "Falta configuración", className: "border-amber-300/30 bg-amber-400/10 text-amber-100", icon: ShieldAlert };
     return { label: "Pendientes", className: "border-kc-cyan/30 bg-kc-cyan/10 text-kc-cyan", icon: Bell };
   }, [state]);
   const StatusIcon = status.icon;
@@ -62,7 +62,7 @@ export function PushSettings() {
       const supported = await isSupported();
       if (!supported) {
         setState("unsupported");
-        setMessage("Firebase Messaging no esta disponible en este navegador.");
+        setMessage("Las notificaciones no están disponibles en este navegador.");
         return;
       }
       if (Notification.permission === "granted") {
@@ -70,7 +70,7 @@ export function PushSettings() {
         setMessage("Este navegador tiene permiso para recibir push.");
       } else if (Notification.permission === "denied") {
         setState("blocked");
-        setMessage("El permiso esta bloqueado. Activalo desde configuracion del navegador.");
+        setMessage("El permiso está bloqueado. Actívelo desde la configuración del navegador.");
       } else {
         setState("pending");
         setMessage("Puedes activar el permiso para recibir avisos aunque el CRM no este abierto.");
@@ -83,7 +83,7 @@ export function PushSettings() {
     setBusy(true);
     setMessage("Solicitando permiso y registrando dispositivo...");
     try {
-      if (!vapidKey || !messagingSenderId) throw new Error("Faltan variables publicas de Firebase Messaging.");
+      if (!vapidKey || !messagingSenderId) throw new Error("La configuración de notificaciones está incompleta.");
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setState(permission === "denied" ? "blocked" : "pending");
@@ -95,7 +95,7 @@ export function PushSettings() {
       const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
       const messaging = getMessaging(firebase.app);
       const nextToken = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration });
-      if (!nextToken) throw new Error("Firebase no devolvio token para este dispositivo.");
+      if (!nextToken) throw new Error("No se pudo registrar este dispositivo.");
       const response = await fetch("/api/admin/push/devices", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -122,7 +122,7 @@ export function PushSettings() {
       const response = await fetch("/api/admin/push/test", { method: "POST" });
       const data = await response.json();
       setMessage(response.ok ? `Prueba enviada. Dispositivos: ${data.result?.sent ?? 0}.` : data.message || "No se pudo enviar prueba.");
-      showToast(response.ok ? "Notificacion de prueba enviada." : "No se pudo enviar. Intentalo nuevamente.", response.ok ? "success" : "error");
+      showToast(response.ok ? "Notificación de prueba enviada." : "No se pudo enviar. Inténtelo nuevamente.", response.ok ? "success" : "error");
     } finally {
       setBusy(false);
     }
@@ -130,7 +130,7 @@ export function PushSettings() {
 
   async function deactivate() {
     if (!token) {
-      setMessage("Activa primero este dispositivo para poder desactivarlo desde aqui.");
+      setMessage("Active primero este dispositivo para poder desactivarlo desde aquí.");
       return;
     }
     setBusy(true);
@@ -147,7 +147,7 @@ export function PushSettings() {
       showToast("Eliminado correctamente.");
       await loadDevices();
     } catch {
-      showToast("No se pudo eliminar. Intentalo nuevamente.", "error");
+      showToast("No se pudo eliminar. Inténtelo nuevamente.", "error");
     } finally {
       setBusy(false);
     }
@@ -165,7 +165,7 @@ export function PushSettings() {
       <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-kc-cyan">Push notifications</p>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-kc-cyan">Avisos del sistema</p>
             <h1 className="mt-2 font-display text-3xl font-black text-kc-text">Notificaciones en navegador y celular</h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-kc-muted">
               Activa este dispositivo para recibir avisos de leads y tareas aunque no tengas el CRM abierto. En iPhone requiere abrir la web desde la app instalada en pantalla de inicio.
@@ -192,7 +192,7 @@ export function PushSettings() {
       <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-6">
         <h2 className="font-display text-2xl font-black text-kc-text">Dispositivos registrados</h2>
         <div className="mt-4 grid gap-3">
-          {devices.length === 0 ? <p className="rounded-xl border border-white/10 bg-kc-bg/55 p-4 text-sm text-kc-muted">No hay dispositivos registrados todavia.</p> : null}
+          {devices.length === 0 ? <p className="rounded-xl border border-white/10 bg-kc-bg/55 p-4 text-sm text-kc-muted">No hay dispositivos registrados todavía.</p> : null}
           {devices.map((device) => (
             <div key={device.id} className="flex items-start gap-3 rounded-xl border border-white/10 bg-kc-bg/55 p-4">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-kc-cyan/10 text-kc-cyan"><Smartphone size={18} /></span>
@@ -208,8 +208,8 @@ export function PushSettings() {
       <ConfirmDialog
         open={confirmDeactivate}
         title="Desactivar dispositivo"
-        description="Estas seguro de que deseas eliminar este dispositivo de las notificaciones push? Esta accion no se puede deshacer."
-        confirmText="Si, eliminar"
+        description="¿Está seguro de que desea eliminar este dispositivo de las notificaciones? Esta acción no se puede deshacer."
+        confirmText="Sí, eliminar"
         cancelText="Cancelar"
         variant="danger"
         loading={busy}

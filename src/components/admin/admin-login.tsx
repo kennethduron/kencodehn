@@ -53,7 +53,7 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
       });
       const result = await response.json();
       if (!response.ok || !result.ok) {
-        setMessage(result.message || "No se pudo iniciar sesion.");
+        setMessage(result.message || "No se pudo iniciar sesión.");
         setIsSubmitting(false);
         return;
       }

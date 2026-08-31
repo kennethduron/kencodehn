@@ -112,7 +112,7 @@ export function TasksPanel({
       showToast("Tarea creada correctamente.");
       return;
     }
-    showToast(result.message || "No se pudo guardar. Intentalo nuevamente.", "error");
+    showToast(result.message || "No se pudo guardar. Inténtelo nuevamente.", "error");
   }
 
   async function update(id: string, updates: Partial<AdminTask>) {
@@ -153,7 +153,7 @@ export function TasksPanel({
       showToast("Eliminado correctamente.");
       return;
     }
-    showToast(result.message || "No se pudo eliminar. Intentalo nuevamente.", "error");
+    showToast(result.message || "No se pudo eliminar. Inténtelo nuevamente.", "error");
   }
 
   function showToast(message: string, variant: "success" | "error" | "info" = "success") {
@@ -234,7 +234,7 @@ export function TasksPanel({
       </section>
 
       <form onSubmit={create} className="kc-admin-card grid gap-3 p-4 lg:grid-cols-6">
-        <input value={draft.title || ""} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Titulo de la tarea" className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none lg:col-span-2" required />
+        <input value={draft.title || ""} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Título de la tarea" className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none lg:col-span-2" required />
         <select value={draft.leadId || ""} onChange={(event) => setDraft((current) => ({ ...current, leadId: event.target.value || null }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none">
           <option value="">Sin lead</option>
           {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name}</option>)}
@@ -273,7 +273,7 @@ export function TasksPanel({
           <option value="all">Todas las fechas</option>
           <option value="today">Hoy</option>
           <option value="overdue">Vencidas</option>
-          <option value="upcoming">Proximas</option>
+          <option value="upcoming">Próximas</option>
         </select>
       </div>
 
@@ -346,7 +346,7 @@ export function TasksPanel({
       <ConfirmDialog
         open={Boolean(confirmDelete)}
         title="Eliminar tarea"
-        description={`Estas seguro de que deseas eliminar "${confirmDelete?.title ?? "esta tarea"}"? Esta accion no se puede deshacer.`}
+        description={`¿Está seguro de que desea eliminar "${confirmDelete?.title ?? "esta tarea"}"? Esta acción no se puede deshacer.`}
         confirmText="Si, eliminar"
         cancelText="Cancelar"
         variant="danger"

@@ -6,7 +6,7 @@ import type { AdminMember } from "@/lib/admin/types";
 import type { ExpenseCategory, FinanceReportRow, FinanceReportType } from "@/lib/finance/types";
 import { financePeriodLabels } from "@/lib/finance/range";
 
-export const reportLabels: Record<FinanceReportType, string> = { collections: "Cobros recibidos", receivables: "Cuentas por cobrar", overdue: "Vencidos", expenses: "Gastos", cash_result: "Resultado de caja", project_sales: "Ventas por proyecto", seller: "Ventas y cobros por vendedor", module_sales: "Ventas de modulos", module_collected: "Cobrado por modulos", module_outstanding: "Pendiente por modulos", module_recurring: "Cargos mensuales de modulos" };
+export const reportLabels: Record<FinanceReportType, string> = { collections: "Cobros recibidos", receivables: "Cuentas por cobrar", overdue: "Vencidos", expenses: "Gastos", cash_result: "Resultado de caja", project_sales: "Ventas por proyecto", seller: "Ventas y cobros por vendedor", module_sales: "Ventas de módulos", module_collected: "Cobrado por módulos", module_outstanding: "Pendiente por módulos", module_recurring: "Cargos mensuales de módulos" };
 const typeLabels: Record<string, string> = { payment: "Pago recibido", expense: "Gasto", receivable: "Cuenta por cobrar", project_sale: "Venta de proyecto" };
 const methodLabels: Record<string, string> = { bank_transfer: "Transferencia", cash: "Efectivo", card: "Tarjeta", paypal: "PayPal", other: "Otro" };
 

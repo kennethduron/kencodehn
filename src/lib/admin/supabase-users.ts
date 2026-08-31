@@ -4,6 +4,8 @@ import { canAssignLead, canAssignTask, canResendInvitation, hasPermission, type 
 import type { AdminMember, AdminUser, AssignableSalesAgent, TaskAssignee } from "@/lib/admin/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AdminUserManagementError } from "@/lib/admin/users";
+import { buildCrmInvitationEmail } from "@/lib/admin/invitation";
+import { sendEmail } from "@/lib/email/service";
 
 const inviteRedirect = "https://kencodehn.com/auth/callback?next=%2Fadmin%2Frecovery%3Finvitation%3D1";
 
@@ -49,9 +51,9 @@ export async function inviteSupabaseAdminMember(input: { name: string; email: st
   const client = createSupabaseAdminClient();
   const email = input.email.trim().toLowerCase();
   const { data: existing } = await client.from("profiles").select("id").eq("email", email).maybeSingle();
-  if (existing) throw new AdminUserManagementError(409, "Ya existe un perfil CRM para este correo.");
+  if (existing) throw new AdminUserManagementError(409, "Ya existe un miembro del equipo con este correo.");
   const { data, error } = await client.auth.admin.inviteUserByEmail(email, { data: { name: input.name }, redirectTo: inviteRedirect });
-  if (error || !data.user) throw new AdminUserManagementError(error?.status === 422 ? 409 : 502, "Supabase Auth no pudo enviar la invitación.");
+  if (error || !data.user) throw new AdminUserManagementError(error?.status === 422 ? 409 : 502, "No pudimos enviar la invitación.");
   const { error: provisionError } = await client.rpc("provision_invited_profile", { p_id: data.user.id, p_email: email, p_name: input.name, p_role: input.role, p_actor: actor.uid });
   if (provisionError) {
     await client.auth.admin.deleteUser(data.user.id);
@@ -65,8 +67,22 @@ export async function resendSupabaseAdminInvitation(uid: string, actor: AdminUse
   const target = await getSupabaseAdminMember(uid);
   if (!target) throw new AdminUserManagementError(404, "Usuario no encontrado.");
   if (!canResendInvitation(target)) throw new AdminUserManagementError(409, "La invitación no puede reenviarse en su estado actual.");
-  const { error } = await client.auth.resend({ type: "signup", email: target.email, options: { emailRedirectTo: inviteRedirect } });
-  if (error) throw new AdminUserManagementError(502, "Supabase Auth no pudo reenviar la invitación.");
+  const { data: linkData, error: linkError } = await client.auth.admin.generateLink({
+    type: "invite",
+    email: target.email,
+    options: { data: { name: target.name }, redirectTo: inviteRedirect },
+  });
+  const actionLink = linkData?.properties?.action_link;
+  if (linkError || !actionLink) throw new AdminUserManagementError(502, "No pudimos preparar una nueva invitación.");
+  const template = buildCrmInvitationEmail(target.name, actionLink);
+  const delivery = await sendEmail({
+    ...template,
+    type: "user_invitation",
+    to: target.email,
+    relatedUserUid: uid,
+    idempotencyKey: `user-invitation-resend/${uid}/${target.invitationLastSentAt || target.invitedAt || "initial"}`,
+  });
+  if (!delivery.sent) throw new AdminUserManagementError(502, "No pudimos reenviar la invitación.");
   const { error: recordError } = await client.rpc("record_invitation_resent", { p_target: uid, p_actor: actor.uid });
   if (recordError) throw new AdminUserManagementError(500, "La invitación se envió pero no pudo registrarse.");
   return { member: await getSupabaseAdminMember(uid), emailSent: true, emailReason: null };
