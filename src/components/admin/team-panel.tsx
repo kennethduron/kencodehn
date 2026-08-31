@@ -23,8 +23,8 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const INVITATION_LABELS: Record<string, string> = {
-  pending: "Invitacion pendiente",
-  sent: "Invitacion enviada",
+  pending: "Invitación pendiente",
+  sent: "Invitación enviada",
   failed: "Fallo de envio",
   accepted: "Acceso configurado",
 };
@@ -111,7 +111,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
       if (!response.ok || !payload.member) throw new Error(payload.message || "No se pudo reenviar la invitación.");
       replaceMember(payload.member);
       setToast({
-        message: payload.emailSent ? "Invitacion reenviada." : "El reenvio fallo; puedes volver a intentarlo sin crear otro usuario.",
+        message: payload.emailSent ? "Invitación reenviada." : "El reenvío falló; puede volver a intentarlo sin crear otro usuario.",
         variant: payload.emailSent ? "success" : "error",
       });
     } catch (error) {
@@ -128,7 +128,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-kc-cyan">Equipo</p>
           <h1 className="mt-2 font-display text-3xl font-black text-kc-text sm:text-4xl">Usuarios del CRM</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-kc-muted">Administra membresia, roles y estado sin eliminar historial ni asignaciones.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-kc-muted">Administre membresías, roles y estado sin eliminar historial ni asignaciones.</p>
         </div>
         <button type="button" onClick={() => setInviteOpen((open) => !open)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-kc-cyan px-4 text-sm font-black text-kc-bg transition hover:bg-kc-turquoise">
           <MailPlus size={17} aria-hidden="true" /> Invitar usuario
@@ -138,7 +138,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="kc-admin-card p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">Miembros</p><p className="mt-2 text-3xl font-black text-kc-text">{members.length}</p></div>
         <div className="kc-admin-card p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">Activos</p><p className="mt-2 text-3xl font-black text-kc-lime">{activeCount}</p></div>
-        <div className="kc-admin-card p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">Sales Agents</p><p className="mt-2 text-3xl font-black text-kc-cyan">{agentCount}</p></div>
+        <div className="kc-admin-card p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">Agentes de ventas</p><p className="mt-2 text-3xl font-black text-kc-cyan">{agentCount}</p></div>
       </div>
 
       {inviteOpen ? (
@@ -181,8 +181,8 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
                   <span className={`rounded-full px-2 py-1 text-xs font-black ${member.active ? "bg-emerald-400/10 text-emerald-200" : "bg-rose-400/10 text-rose-200"}`}>{member.active ? "Activo" : "Inactivo"}</span>
                 </div>
                 <p className="mt-1 truncate text-sm text-kc-muted">{member.email || "Email no disponible"}</p>
-                <p className="mt-2 text-xs leading-5 text-kc-muted">Creado: {formatDate(member.createdAt)} · Ultimo acceso: {formatDate(member.lastLoginAt)} · Leads asignados: {member.assignedLeadCount}</p>
-                {member.invitationStatus ? <p className="mt-1 text-xs font-bold text-kc-cyan">{INVITATION_LABELS[member.invitationStatus]}{member.invitationLastSentAt ? ` · Ultimo envio: ${formatDate(member.invitationLastSentAt)}` : ""}</p> : null}
+                <p className="mt-2 text-xs leading-5 text-kc-muted">Creado: {formatDate(member.createdAt)} · Último acceso: {formatDate(member.lastLoginAt)} · Leads asignados: {member.assignedLeadCount}</p>
+                {member.invitationStatus ? <p className="mt-1 text-xs font-bold text-kc-cyan">{INVITATION_LABELS[member.invitationStatus]}{member.invitationLastSentAt ? ` · Último envío: ${formatDate(member.invitationLastSentAt)}` : ""}</p> : null}
               </div>
               <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">Rol
                 {immutableOwner ? (
@@ -219,8 +219,8 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
         open={Boolean(pendingStatus)}
         title={pendingStatus?.active ? "Activar usuario" : "Desactivar usuario"}
         description={pendingStatus ? (pendingStatus.active
-          ? "El usuario recuperara acceso con su rol actual. Su historial y asignaciones se conservan."
-          : `Este usuario tiene ${pendingStatus.member.assignedLeadCount} leads asignados. Se desactivara el acceso, pero los leads y su ownership se conservaran.`) : ""}
+          ? "El usuario recuperará acceso con su rol actual. Su historial y asignaciones se conservan."
+          : `Este usuario tiene ${pendingStatus.member.assignedLeadCount} leads asignados. Se desactivará el acceso, pero los leads y su responsable se conservarán.`) : ""}
         confirmText={pendingStatus?.active ? "Activar" : "Desactivar"}
         variant={pendingStatus?.active ? "default" : "danger"}
         loading={Boolean(pendingStatus && savingUid === pendingStatus.member.uid)}

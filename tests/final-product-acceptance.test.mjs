@@ -60,9 +60,17 @@ test("invitation resend uses an official invite link and idempotent delivery", (
   assert.match(invitationTemplate, /solo puede utilizarse una vez/);
 });
 
+test("mail exposes pending and provider-confirmed delivery states", () => {
+  assert.match(mail, /sending \? "Enviando…" : "Enviar"/);
+  for (const label of ["Enviado", "Entregado", "No entregado", "Rebotado"]) {
+    assert.match(mail, new RegExp(label));
+  }
+  assert.match(mail, /sendRequestId\.current/);
+});
+
 test("audited business labels avoid confirmed technical wording", () => {
   assert.doesNotMatch(billingRules, /Automated billing|receivable/);
   assert.doesNotMatch(payment, /Allocations/);
   assert.match(team, /Enviar invitación/);
-  assert.doesNotMatch(team, /Firebase generara|invitacion/);
+  assert.doesNotMatch(team, /Firebase generará|Invitacion|Ultimo acceso|Sales Agents|ownership/);
 });

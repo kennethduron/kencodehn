@@ -182,6 +182,7 @@ export function MailWorkspace({
   const [mobileFolders, setMobileFolders] = useState(false);
   const [compose, setCompose] = useState(composeContext.open);
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [identityId, setIdentityId] = useState(initial.identities[0]?.id || "");
@@ -353,29 +354,36 @@ export function MailWorkspace({
       return setError(
         "Necesita una identidad corporativa asignada para enviar.",
       );
-    setBusy(true);
+    setSending(true);
     setError("");
-    const response = await fetch("/api/admin/mail", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "send",
-        requestId:
-          sendRequestId.current ||
-          (sendRequestId.current = crypto.randomUUID()),
-        threadId: selected?.thread.id,
-        draftId: draft.id,
-        identityId,
-        to: addresses(to),
-        cc: addresses(cc),
-        bcc: addresses(bcc),
-        subject,
-        html,
-      }),
-    });
-    const body = await response.json();
-    setBusy(false);
-    if (!response.ok) return setError(body.error);
+    let response: Response;
+    let body: { error?: string; threadId?: string };
+    try {
+      response = await fetch("/api/admin/mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "send",
+          requestId:
+            sendRequestId.current ||
+            (sendRequestId.current = crypto.randomUUID()),
+          threadId: selected?.thread.id,
+          draftId: draft.id,
+          identityId,
+          to: addresses(to),
+          cc: addresses(cc),
+          bcc: addresses(bcc),
+          subject,
+          html,
+        }),
+      });
+      body = await response.json();
+    } catch {
+      setSending(false);
+      return setError("No pudimos completar el envío. Inténtelo nuevamente.");
+    }
+    setSending(false);
+    if (!response.ok) return setError(body.error || "No pudimos enviar el correo.");
     sendRequestId.current = null;
     setNotice("Correo enviado correctamente.");
     setCompose(false);
@@ -1228,15 +1236,15 @@ export function MailWorkspace({
               </div>
               <button
                 type="submit"
-                disabled={busy}
+                disabled={busy || sending}
                 className="inline-flex min-h-11 min-w-28 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-black text-white disabled:opacity-60"
               >
-                {busy ? (
+                {sending ? (
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
                   <Send size={16} />
                 )}{" "}
-                Enviar
+                {sending ? "Enviando…" : "Enviar"}
               </button>
             </footer>
           </form>
