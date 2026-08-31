@@ -49,6 +49,14 @@ try {
   });
   if (details.error) throw details.error;
   assert.equal(details.data.display_name, "Local Profile");
+  assert.equal(details.data.role, "owner");
+  assert.ok((await profileClient.rpc("update_own_profile", { p_changes: { role: "admin" } })).error);
+  const reloadedProfileClient = await login(profileEmail);
+  const persistedDetails = await reloadedProfileClient.from("profiles").select("display_name,preferred_name,job_title,phone,locale,role,active").eq("id", profileId).single();
+  if (persistedDetails.error) throw persistedDetails.error;
+  assert.deepEqual(persistedDetails.data, { display_name: "Local Profile", preferred_name: "Local", job_title: "QA", phone: "", locale: "es-HN", role: "owner", active: true });
+  const invalidLoginClient = createClient(apiUrl, publishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  assert.ok((await invalidLoginClient.auth.signInWithPassword({ email: profileEmail, password: "Incorrect-Local-Password!" })).error);
 
   const inactiveClient = await login(inactiveEmail);
   assert.ok((await inactiveClient.rpc("update_own_profile", { p_changes: { displayName: "Rejected" } })).error);

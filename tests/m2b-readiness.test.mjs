@@ -33,7 +33,7 @@ test("Supabase account UI includes forgot password, recovery, password visibilit
   const password = read("../src/components/auth/password-field.tsx");
   const security = read("../src/components/auth/security-panel.tsx");
   assert.match(forgot, /resetPasswordForEmail/);
-  assert.match(forgot, /Si la cuenta existe/);
+  assert.match(forgot, /Si existe una cuenta asociada/);
   assert.match(recovery, /updateUser\(\{ password \}\)/);
   assert.match(recovery, /inválido|invÃ¡lido/);
   assert.match(password, /aria-label=\{visible \? `Ocultar/);

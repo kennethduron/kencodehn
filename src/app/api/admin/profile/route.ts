@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { requireAdminFromRequest } from "@/lib/admin/auth";
+import { profileFieldErrors, profileSchema } from "@/lib/admin/profile-validation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const profileSchema = z.object({
-  displayName: z.string().trim().max(160), preferredName: z.string().trim().max(100),
-  jobTitle: z.string().trim().max(140), phone: z.string().trim().max(60),
-  locale: z.enum(["es-HN", "en-US"]),
-}).strict();
 const photoTypes = new Map([["image/jpeg", "jpg"], ["image/png", "png"], ["image/webp", "webp"]]);
 
 async function updateOwnProfile(changes: Record<string, unknown>, operation: string) {
-  const { error } = await (await createSupabaseServerClient()).rpc("update_own_profile", { p_changes: changes });
+  const result = await (await createSupabaseServerClient()).rpc("update_own_profile", { p_changes: changes });
+  const { error } = result;
   if (error) {
     console.error("[Ken Code CRM profile mutation]", { operation, code: error.code || "unknown" });
   }
-  return error;
+  return result;
 }
 
 export async function GET(request: NextRequest) {
@@ -31,9 +27,16 @@ export async function PATCH(request: NextRequest) {
   const admin = await requireAdminFromRequest(request);
   if (!admin) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const parsed = profileSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Revise los datos del perfil." }, { status: 400 });
-  const error = await updateOwnProfile(parsed.data, "details");
-  return error ? NextResponse.json({ error: "No pudimos guardar el perfil." }, { status: 500 }) : NextResponse.json({ ok: true });
+  if (!parsed.success) return NextResponse.json({ error: "Corrija los campos indicados.", fieldErrors: profileFieldErrors(parsed.error) }, { status: 400 });
+  const updated = await updateOwnProfile(parsed.data, "details");
+  if (updated.error) return NextResponse.json({ error: "No pudimos guardar el perfil." }, { status: 500 });
+  return NextResponse.json({ ok: true, profile: {
+    displayName: updated.data.display_name,
+    preferredName: updated.data.preferred_name,
+    jobTitle: updated.data.job_title,
+    phone: updated.data.phone,
+    locale: updated.data.locale,
+  } });
 }
 
 export async function POST(request: NextRequest) {
@@ -49,13 +52,13 @@ export async function POST(request: NextRequest) {
   const path = `${admin.uid}/${crypto.randomUUID()}.${extension}`;
   const uploaded = await client.storage.from("profile-photos").upload(path, new Uint8Array(await photo.arrayBuffer()), { contentType: photo.type, upsert: false, cacheControl: "3600" });
   if (uploaded.error) return NextResponse.json({ error: "No pudimos guardar la imagen." }, { status: 500 });
-  const updateError = await updateOwnProfile({ profilePhotoPath: path }, "photo_upload");
-  if (updateError) { await client.storage.from("profile-photos").remove([path]); return NextResponse.json({ error: "No pudimos actualizar el perfil." }, { status: 500 }); }
+  const updated = await updateOwnProfile({ profilePhotoPath: path }, "photo_upload");
+  if (updated.error) { await client.storage.from("profile-photos").remove([path]); return NextResponse.json({ error: "No pudimos actualizar el perfil." }, { status: 500 }); }
   if (current?.profile_photo_path && current.profile_photo_path !== path) {
     const removed = await client.storage.from("profile-photos").remove([current.profile_photo_path]);
     if (removed.error) {
-      const rollbackError = await updateOwnProfile({ profilePhotoPath: current.profile_photo_path }, "photo_replace_rollback");
-      if (!rollbackError) await client.storage.from("profile-photos").remove([path]);
+      const rollback = await updateOwnProfile({ profilePhotoPath: current.profile_photo_path }, "photo_replace_rollback");
+      if (!rollback.error) await client.storage.from("profile-photos").remove([path]);
       return NextResponse.json({ error: "No pudimos reemplazar la foto de forma segura. La imagen anterior se conservó." }, { status: 500 });
     }
   }
@@ -68,8 +71,8 @@ export async function DELETE(request: NextRequest) {
   const client = createSupabaseAdminClient();
   const { data } = await client.from("profiles").select("profile_photo_path").eq("id", admin.uid).maybeSingle();
   const previousPath = data?.profile_photo_path;
-  const error = await updateOwnProfile({ profilePhotoPath: null }, "photo_remove");
-  if (error) return NextResponse.json({ error: "No pudimos quitar la imagen." }, { status: 500 });
+  const updated = await updateOwnProfile({ profilePhotoPath: null }, "photo_remove");
+  if (updated.error) return NextResponse.json({ error: "No pudimos quitar la imagen." }, { status: 500 });
   if (previousPath) {
     const removed = await client.storage.from("profile-photos").remove([previousPath]);
     if (removed.error) {

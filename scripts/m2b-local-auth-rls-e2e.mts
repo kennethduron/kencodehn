@@ -43,6 +43,8 @@ const cutoverResult = await service.from("admin_settings").select("automation_cu
 if (cutoverResult.error || !cutoverResult.data.automation_cutover_at || !cutoverResult.data.automation_baseline_completed_at) throw cutoverResult.error ?? new Error("Automation baseline is missing.");
 const reminderNow = new Date(Date.parse(cutoverResult.data.automation_cutover_at) + 2 * 24 * 60 * 60 * 1000);
 const reminderTaskId = "30000000-0000-4000-8000-000000000001";
+const { error: reminderFixtureCleanupError } = await service.from("tasks").delete().eq("id", reminderTaskId);
+if (reminderFixtureCleanupError) throw reminderFixtureCleanupError;
 const { error: reminderTaskError } = await service.from("tasks").insert({
   id: reminderTaskId,
   firebase_id: "local-reminder-task",

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { profileFieldErrors, profileSchema } from "../src/lib/admin/profile-validation.ts";
+import { loginErrorMessage } from "../src/lib/auth/login-errors.ts";
 
 const read = (path) => readFileSync(path, "utf8");
 const mail = read("src/components/admin/mail-workspace.tsx");
@@ -15,6 +17,10 @@ const mailService = read("src/lib/mail/service.ts");
 const team = read("src/components/admin/team-panel.tsx");
 const billingRules = read("src/components/admin/billing-rules-panel.tsx");
 const payment = read("src/components/admin/payment-detail.tsx");
+const login = read("src/components/admin/admin-login.tsx");
+const forgot = read("src/components/auth/forgot-password-form.tsx");
+const recovery = read("src/components/auth/recovery-form.tsx");
+const recoveryRequestPage = read("src/app/recuperar-contrasena/page.tsx");
 
 test("reply, reply all and forward use the visual editor", () => {
   assert.match(mail, /openReply\("reply"\)/);
@@ -73,6 +79,42 @@ test("team presents pending invitations as a distinct business state", () => {
   assert.match(team, /Esperando aceptación/);
   assert.match(team, /Con acceso activo/);
   assert.match(team, /immutableOwner \? "Owner" : "Nombre no configurado"/);
+});
+
+test("profile accepts valid business details and an optional phone", () => {
+  assert.equal(profileSchema.safeParse({ displayName: "Nombre Real", preferredName: "Nombre", jobTitle: "Fundador", phone: "+504 9999-9999", locale: "es-HN" }).success, true);
+  assert.equal(profileSchema.safeParse({ displayName: "Nombre Real", preferredName: "", jobTitle: "", phone: "", locale: "es-HN" }).success, true);
+});
+
+test("profile reports field-specific errors without accepting security fields", () => {
+  const invalid = profileSchema.safeParse({ displayName: "Nombre Real", preferredName: "", jobTitle: "Fundador", phone: "not-a-phone", locale: "es-HN" });
+  assert.equal(invalid.success, false);
+  if (!invalid.success) assert.equal(profileFieldErrors(invalid.error).phone, "Ingrese un número de teléfono válido.");
+  assert.equal(profileSchema.safeParse({ displayName: "Nombre Real", preferredName: "", jobTitle: "Owner", phone: "", locale: "es-HN", role: "owner" }).success, false);
+  assert.match(profile, /fieldErrors\.phone/);
+  assert.match(profile, /aria-invalid=\{Boolean\(fieldErrors\.phone\)\}/);
+  assert.match(profile, /const payload = \{ displayName: profile\.displayName, preferredName: profile\.preferredName, jobTitle: profile\.jobTitle, phone: profile\.phone, locale: profile\.locale \}/);
+  assert.doesNotMatch(profile, /body: JSON\.stringify\(profile\)/);
+});
+
+test("login maps safe auth states and exposes an accessible recovery link", () => {
+  assert.match(login, /signInWithPassword\(\{ email: email\.trim\(\)\.toLowerCase\(\), password \}\)/);
+  assert.match(login, /href="\/recuperar-contrasena"/);
+  assert.match(login, /underline.*focus-visible:ring-2/);
+  assert.match(login, /Mostrar contraseña/);
+  assert.equal(loginErrorMessage({ code: "invalid_credentials", status: 400 }), "Correo o contraseña incorrectos, o la cuenta no está disponible.");
+  assert.match(loginErrorMessage({ code: "email_not_confirmed", status: 400 }), /Verifique sus datos/);
+  assert.match(loginErrorMessage({ code: "over_request_rate_limit", status: 429 }), /demasiados intentos/);
+});
+
+test("password recovery preserves privacy and uses the official token flow", () => {
+  assert.match(recoveryRequestPage, /Recuperar contraseña/);
+  assert.match(forgot, /resetPasswordForEmail\(email\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(forgot, /Si existe una cuenta asociada a ese correo/);
+  assert.match(forgot, /status !== 429/);
+  assert.match(recovery, /auth\.getSession\(\)/);
+  assert.match(recovery, /auth\.updateUser\(\{ password \}\)/);
+  assert.match(recovery, /auth\.signOut\(\{ scope: "local" \}\)/);
 });
 
 test("mail exposes pending and provider-confirmed delivery states", () => {

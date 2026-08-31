@@ -6,6 +6,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import Link from "next/link";
 import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { getFirebaseClient } from "@/lib/firebase/client";
+import { loginErrorMessage } from "@/lib/auth/login-errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { CrmAuthProvider } from "@/lib/auth/provider";
 
@@ -27,7 +28,11 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
       if (authProvider === "supabase") {
         const supabase = createSupabaseBrowserClient();
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-        if (error) throw error;
+        if (error) {
+          setMessage(loginErrorMessage(error));
+          setIsSubmitting(false);
+          return;
+        }
         const profileResponse = await fetch("/api/admin/me", { cache: "no-store" });
         if (!profileResponse.ok) {
           await supabase.auth.signOut();
@@ -35,6 +40,7 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
           setIsSubmitting(false);
           return;
         }
+        router.replace("/admin");
         router.refresh();
         return;
       }
@@ -58,8 +64,8 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
         return;
       }
       router.refresh();
-    } catch {
-      setMessage("Correo o contraseña incorrectos, o la cuenta no está disponible.");
+    } catch (error) {
+      setMessage(authProvider === "supabase" ? loginErrorMessage(error) : "No se pudo iniciar sesión. Inténtelo nuevamente.");
       setIsSubmitting(false);
     }
   }
@@ -107,14 +113,14 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
               </button>
             </span>
           </label>
-          {authProvider === "supabase" ? <Link href="/admin/forgot-password" className="w-fit text-sm font-bold text-kc-cyan hover:underline">¿Olvidó su contraseña?</Link> : null}
-          {message ? <p className="rounded-xl border border-rose-300/25 bg-rose-300/10 p-3 text-sm text-rose-100">{message}</p> : null}
+          {authProvider === "supabase" ? <Link href="/recuperar-contrasena" className="w-fit rounded-md text-sm font-black text-blue-700 underline decoration-2 decoration-blue-300 underline-offset-4 transition hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2">¿Olvidó su contraseña?</Link> : null}
+          {message ? <p role="alert" aria-live="polite" className="rounded-xl border border-rose-300/40 bg-rose-50 p-3 text-sm font-semibold text-rose-800">{message}</p> : null}
           <button
             type="submit"
             disabled={isSubmitting || missing.length > 0}
             className="min-h-12 rounded-xl bg-kc-electric px-5 text-sm font-black text-white shadow-[0_0_32px_rgba(0,109,255,0.28)] transition hover:bg-kc-cyan hover:text-kc-bg disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSubmitting ? "Entrando..." : "Entrar al CRM"}
+            {isSubmitting ? "Iniciando sesión…" : "Entrar al CRM"}
           </button>
         </form>
       </section>
