@@ -8,6 +8,9 @@ export const runtime = "nodejs";
 const allowedAttachments = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain"]);
 function emailOnly(value: string) { return (value.match(/<([^>]+)>/)?.[1] || value).trim().toLowerCase(); }
 function address(value: string) { const email = emailOnly(value); const name = value.includes("<") ? value.slice(0, value.lastIndexOf("<")).trim().replace(/^['"]|['"]$/g, "") : ""; return { email, ...(name ? { name } : {}) }; }
+function includesExactRecipient(value: unknown, expectedEmail: string) {
+  return Array.isArray(value) && value.some((item) => item && typeof item === "object" && "email" in item && String(item.email).trim().toLowerCase() === expectedEmail);
+}
 async function officialProviderMessageId(resend: Resend, providerEmailId: string) {
   const result = await resend.emails.get(providerEmailId);
   return String((result.data as ({ message_id?: string } | null))?.message_id || "");
@@ -104,9 +107,11 @@ export async function POST(request: NextRequest) {
         const identityThreadIds = (identityThreads || []).map((item) => item.id);
         if (identityThreadIds.length) {
           stage = "resolve_outbound_candidates";
-          const { data: candidates, error: candidatesError } = await client.from("mail_messages").select("provider_email_id,thread_id").eq("direction", "outbound").in("thread_id", identityThreadIds).contains("to_addresses", [{ email: emailOnly(received.data.from) }]).not("provider_email_id", "is", null).order("created_at", { ascending: false }).limit(20);
+          const { data: outboundRows, error: candidatesError } = await client.from("mail_messages").select("provider_email_id,thread_id,to_addresses").eq("direction", "outbound").in("thread_id", identityThreadIds).not("provider_email_id", "is", null).order("created_at", { ascending: false }).limit(100);
           if (candidatesError) throw candidatesError;
-          for (const candidate of candidates || []) {
+          const senderEmail = emailOnly(received.data.from);
+          const candidates = (outboundRows || []).filter((candidate) => includesExactRecipient(candidate.to_addresses, senderEmail)).slice(0, 20);
+          for (const candidate of candidates) {
             if (!candidate.provider_email_id) continue;
             stage = "retrieve_provider_message_id";
             const officialMessageId = await officialProviderMessageId(resend, candidate.provider_email_id);

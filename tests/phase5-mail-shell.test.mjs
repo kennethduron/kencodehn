@@ -38,8 +38,11 @@ const cases = [
  ["191 unresolved processed events are reopened",files.threadingMigration,/thread_reconciliation_pending/],
  ["192 delivery status updates remain narrowly mutable",files.threadingMigration,/auth\.role\(\) = 'service_role'[\s\S]*delivery_status'[\s\S]*provider_event_id/],
  ["193 threading diagnostics are bounded stages only",files.webhook,/resolve_direct_parent[\s\S]*resolve_outbound_candidates[\s\S]*retrieve_provider_message_id[\s\S]*reconcile_provider_parent/],
+ ["194 candidate recipient matching is bounded and exact",files.webhook,/includesExactRecipient[\s\S]*limit\(100\)[\s\S]*\.slice\(0, 20\)/],
+ ["195 candidate lookup selects bounded address metadata",files.webhook,/select\("provider_email_id,thread_id,to_addresses"\)/],
 ];
 for (const [name, source, pattern] of cases) test(name, () => assert.match(source, pattern));
+test("196 candidate lookup avoids fragile JSON URL filters", () => assert.doesNotMatch(files.webhook, /\.contains\("to_addresses"/));
 
 const normalizeCases = [["Kenneth Durón","kennethduron"],[" María López ","marialopez"],["sales+team","salesteam"],["A__B","a__b"],[".hidden.","hidden"],["A B C","abc"]];
 for (const [input, expected] of normalizeCases) test(`normalizes local part: ${input}`,()=>assert.equal(normalizeLocalPart(input),expected));
