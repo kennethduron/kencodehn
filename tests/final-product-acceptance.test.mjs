@@ -156,8 +156,10 @@ test("auth shell is responsive, safe-area aware and exposes a visible return lin
   assert.match(authShell, /max-w-md/);
   assert.match(authShell, /overflow-x-hidden/);
   assert.match(authShell, /href="\/admin\/login"/);
+  assert.match(authShell, /href="\/admin\/login" prefetch=\{false\}/);
   assert.match(authShell, /Volver al acceso/);
   assert.match(authShell, /text-blue-700[\s\S]*focus-visible:ring-2/);
+  assert.match(login, /href="\/recuperar-contrasena" prefetch=\{false\}/);
 });
 
 test("pending invitation sessions cannot enter the CRM until password login", () => {

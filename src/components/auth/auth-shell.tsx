@@ -26,7 +26,7 @@ export function AuthShell({
         <h1 className="mt-6 font-display text-2xl font-black text-kc-text sm:text-3xl">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-kc-muted">{description}</p>
         <div className="mt-6">{children}</div>
-        {showBackLink ? <Link href="/admin/login" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-black text-blue-700 underline decoration-2 decoration-blue-300 underline-offset-4 transition hover:bg-blue-50 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"><ArrowLeft size={17} aria-hidden="true" /> Volver al acceso</Link> : null}
+        {showBackLink ? <Link href="/admin/login" prefetch={false} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-black text-blue-700 underline decoration-2 decoration-blue-300 underline-offset-4 transition hover:bg-blue-50 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"><ArrowLeft size={17} aria-hidden="true" /> Volver al acceso</Link> : null}
       </section>
     </main>
   );
