@@ -77,20 +77,28 @@ export async function POST(request: NextRequest) {
     if (identitiesError) throw identitiesError;
     const identity = identities?.[0]; if (!identity) { await client.from("mail_webhook_events").update({ status: "ignored", processed_at: new Date().toISOString() }).eq("provider_event_id", eventId); return NextResponse.json({ ok: true, ignored: true }); }
     const headers = Object.fromEntries(Object.entries(received.data.headers || {}).map(([key, value]) => [key.toLowerCase(), value])); const inReplyTo = headers["in-reply-to"] || null; const references = parseHeaderReferences(headers.references);
-    let threadId: string | null = null;
+    stage = "resume_partial_event";
+    const existingMessage = await client.from("mail_messages").select("id,thread_id").eq("provider_email_id", received.data.id).eq("direction", "inbound").maybeSingle();
+    if (existingMessage.error) throw existingMessage.error;
+    let messageId: string | null = existingMessage.data?.id || null;
+    let threadId: string | null = existingMessage.data?.thread_id || null;
     stage = "resolve_thread";
-    if (inReplyTo) { const { data: parent, error: parentError } = await client.from("mail_messages").select("thread_id").eq("message_id", inReplyTo).maybeSingle(); if (parentError) throw parentError; threadId = parent?.thread_id || null; }
+    if (!threadId && inReplyTo) { const { data: parent, error: parentError } = await client.from("mail_messages").select("thread_id").eq("message_id", inReplyTo).maybeSingle(); if (parentError) throw parentError; threadId = parent?.thread_id || null; }
     if (!threadId && references.length) { const { data: parent, error: parentError } = await client.from("mail_messages").select("thread_id").in("message_id", references).order("created_at", { ascending: false }).limit(1).maybeSingle(); if (parentError) throw parentError; threadId = parent?.thread_id || null; }
     const rawHtml = received.data.html || `<p>${(received.data.text || "").replace(/[&<>]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[character] || character)).replace(/\n/g, "<br>")}</p>`; const hasRemoteImages = /<img\b[^>]*\bsrc\s*=\s*["']https?:/i.test(rawHtml); const cleanHtml = sanitizeMailHtml(rawHtml); const cleanText = (received.data.text || textFromHtml(cleanHtml)).slice(0, 1_000_000); const now = received.data.created_at || new Date().toISOString();
     if (!threadId) { stage = "create_thread"; const { data: assignments, error: assignmentError } = await client.from("mail_identity_assignments").select("profile_id").eq("identity_id", identity.id).eq("active", true).order("is_primary", { ascending: false }).limit(1); if (assignmentError) throw assignmentError; const created = await client.from("mail_threads").insert({ identity_id: identity.id, subject: received.data.subject || "(Sin asunto)", assigned_to: assignments?.[0]?.profile_id || null, snippet: cleanText.slice(0, 500), latest_message_at: now }).select("id").single(); if (created.error) throw created.error; threadId = created.data.id; }
-    stage = "store_message";
-    const message = await client.from("mail_messages").insert({ thread_id: threadId, direction: "inbound", delivery_status: "received", provider_email_id: received.data.id, provider_event_id: eventId, message_id: received.data.message_id, in_reply_to: inReplyTo, reference_ids: references, from_address: address(received.data.from), to_addresses: received.data.to.map(address), cc_addresses: (received.data.cc || []).map(address), bcc_addresses: (received.data.bcc || []).map(address), subject: received.data.subject || "(Sin asunto)", body_html: cleanHtml, body_text: cleanText, has_remote_images: hasRemoteImages, received_at: now }).select("id").single(); if (message.error) { if (message.error.code === "23505") { await client.from("mail_webhook_events").update({ status: "processed", processed_at: new Date().toISOString() }).eq("provider_event_id", eventId); return NextResponse.json({ ok: true, duplicate: true }); } throw message.error; }
+    if (!messageId) {
+      stage = "store_message";
+      const message = await client.from("mail_messages").insert({ thread_id: threadId, direction: "inbound", delivery_status: "received", provider_email_id: received.data.id, provider_event_id: eventId, message_id: received.data.message_id, in_reply_to: inReplyTo, reference_ids: references, from_address: address(received.data.from), to_addresses: received.data.to.map(address), cc_addresses: (received.data.cc || []).map(address), bcc_addresses: (received.data.bcc || []).map(address), subject: received.data.subject || "(Sin asunto)", body_html: cleanHtml, body_text: cleanText, has_remote_images: hasRemoteImages, received_at: now }).select("id").single();
+      if (message.error) throw message.error;
+      messageId = message.data.id;
+    }
     const threadUpdate = await client.from("mail_threads").update({ state: "inbox", subject: received.data.subject || "(Sin asunto)", snippet: cleanText.slice(0, 500), latest_message_at: now, updated_at: new Date().toISOString() }).eq("id", threadId);
     if (threadUpdate.error) throw threadUpdate.error;
     stage = "store_attachments";
     const attachmentList = await resend.emails.receiving.attachments.list({ emailId: received.data.id });
     if (attachmentList.error) throw attachmentList.error;
-    for (const attachment of attachmentList.data?.data || []) { if (!allowedAttachments.has(attachment.content_type) || attachment.size > 10 * 1024 * 1024) continue; const download = await fetch(attachment.download_url); if (!download.ok) continue; const path = `${identity.id}/${threadId}/${crypto.randomUUID()}`; const uploaded = await client.storage.from("mail-attachments").upload(path, new Uint8Array(await download.arrayBuffer()), { contentType: attachment.content_type, upsert: false }); if (!uploaded.error) await client.from("mail_attachments").insert({ message_id: message.data.id, provider_attachment_id: attachment.id, storage_path: path, filename: (attachment.filename || "archivo").replace(/[\r\n]/g, "").slice(0, 255), content_type: attachment.content_type, size_bytes: attachment.size, content_id: attachment.content_id || null, inline: attachment.content_disposition === "inline" }); }
+    for (const attachment of attachmentList.data?.data || []) { if (!allowedAttachments.has(attachment.content_type) || attachment.size > 10 * 1024 * 1024) continue; const existingAttachment = await client.from("mail_attachments").select("id").eq("message_id", messageId).eq("provider_attachment_id", attachment.id).maybeSingle(); if (existingAttachment.error || existingAttachment.data) { if (existingAttachment.error) throw existingAttachment.error; continue; } const download = await fetch(attachment.download_url); if (!download.ok) continue; const path = `${identity.id}/${threadId}/${crypto.randomUUID()}`; const uploaded = await client.storage.from("mail-attachments").upload(path, new Uint8Array(await download.arrayBuffer()), { contentType: attachment.content_type, upsert: false }); if (!uploaded.error) await client.from("mail_attachments").insert({ message_id: messageId, provider_attachment_id: attachment.id, storage_path: path, filename: (attachment.filename || "archivo").replace(/[\r\n]/g, "").slice(0, 255), content_type: attachment.content_type, size_bytes: attachment.size, content_id: attachment.content_id || null, inline: attachment.content_disposition === "inline" }); }
     stage = "notify_assignees";
     const { data: assignees, error: assigneesError } = await client.from("mail_identity_assignments").select("profile_id").eq("identity_id", identity.id).eq("active", true);
     if (assigneesError) throw assigneesError;
@@ -104,11 +112,18 @@ export async function POST(request: NextRequest) {
       const profile = profilesById.get(assignment.profile_id);
       const readState = await client.from("mail_read_states").upsert({ thread_id: threadId, profile_id: assignment.profile_id, unread: true, last_read_at: now });
       if (readState.error) throw readState.error;
-      const notification = await client.from("notifications").insert({ firebase_id: `mail:${eventId}:${assignment.profile_id}`, recipient_id: assignment.profile_id, recipient_name: profile?.display_name || profile?.name || "", recipient_email: profile?.email || "", type: "mail_received", severity: "info", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, action_url: `/admin/mail?thread=${threadId}`, is_read: false, created_at: now, updated_at: now });
+      const notification = await client.from("notifications").upsert({ firebase_id: `mail:${eventId}:${assignment.profile_id}`, recipient_id: assignment.profile_id, recipient_name: profile?.display_name || profile?.name || "", recipient_email: profile?.email || "", type: "mail_received", severity: "info", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, action_url: `/admin/mail?thread=${threadId}`, is_read: false, created_at: now, updated_at: now }, { onConflict: "firebase_id", ignoreDuplicates: true });
       if (notification.error) throw notification.error;
     }
     stage = "complete_event";
-    await client.from("mail_audit_events").insert({ action: "mail_message_received", identity_id: identity.id, thread_id: threadId, message_id: message.data.id, safe_metadata: { provider: "resend", attachmentCount: attachmentList.data?.data.length || 0 } }); await client.from("mail_webhook_events").update({ status: "processed", processed_at: new Date().toISOString() }).eq("provider_event_id", eventId);
+    const existingAudit = await client.from("mail_audit_events").select("id").eq("action", "mail_message_received").eq("message_id", messageId).maybeSingle();
+    if (existingAudit.error) throw existingAudit.error;
+    if (!existingAudit.data) {
+      const audit = await client.from("mail_audit_events").insert({ action: "mail_message_received", identity_id: identity.id, thread_id: threadId, message_id: messageId, safe_metadata: { provider: "resend", attachmentCount: attachmentList.data?.data.length || 0 } });
+      if (audit.error) throw audit.error;
+    }
+    const completedEvent = await client.from("mail_webhook_events").update({ status: "processed", processed_at: new Date().toISOString() }).eq("provider_event_id", eventId);
+    if (completedEvent.error) throw completedEvent.error;
     return NextResponse.json({ ok: true });
   } catch (error) { await markFailed(client, eventId, event.type, stage, error); return NextResponse.json({ error: "No pudimos procesar el evento." }, { status: 500 }); }
 }
