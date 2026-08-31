@@ -66,6 +66,12 @@ export async function loadThread(admin: AdminUser, threadId: string) {
 export async function sendMail(admin: AdminUser, input: { requestId: string; threadId?: string; draftId?: string; identityId: string; to: string[]; cc: string[]; bcc: string[]; subject: string; html: string }) {
   if (!(await mayUseIdentity(admin, input.identityId))) throw new Error("MAIL_IDENTITY_FORBIDDEN");
   const client = createSupabaseAdminClient();
+  const outgoingMessageId = `<${input.requestId}@mail.kencodehn.com>`;
+  const { data: completed } = await client.from("mail_messages").select("id,thread_id,sender_identity_id").eq("message_id", outgoingMessageId).maybeSingle();
+  if (completed) {
+    if (completed.sender_identity_id !== input.identityId || !(await mayAccessThread(admin, completed.thread_id))) throw new Error("MAIL_FORBIDDEN");
+    return { threadId: completed.thread_id, messageId: completed.id };
+  }
   const minuteAgo = new Date(Date.now() - 60_000).toISOString();
   const { count } = await client.from("mail_audit_events").select("id", { count: "exact", head: true }).eq("actor_id", admin.uid).eq("action", "mail_message_sent").gte("created_at", minuteAgo);
   if ((count || 0) >= 10) throw new Error("MAIL_RATE_LIMIT");
@@ -73,7 +79,7 @@ export async function sendMail(admin: AdminUser, input: { requestId: string; thr
   if (!identity) throw new Error("MAIL_IDENTITY_FORBIDDEN");
   let threadId = input.threadId;
   if (threadId && !(await mayAccessThread(admin, threadId))) throw new Error("MAIL_FORBIDDEN");
-  if (!threadId) { const created = await client.from("mail_threads").insert({ identity_id: identity.id, subject: input.subject || "(Sin asunto)", assigned_to: admin.uid, snippet: textFromHtml(input.html).slice(0, 500), created_by: admin.uid }).select("id").single(); if (created.error) throw created.error; threadId = created.data.id; }
+  if (!threadId) { const created = await client.from("mail_threads").upsert({ id: input.requestId, identity_id: identity.id, subject: input.subject || "(Sin asunto)", assigned_to: admin.uid, snippet: textFromHtml(input.html).slice(0, 500), created_by: admin.uid }, { onConflict: "id", ignoreDuplicates: true }).select("id").maybeSingle(); if (created.error) throw created.error; threadId = created.data?.id || input.requestId; }
   const { data: previous } = await client.from("mail_messages").select("message_id,reference_ids").eq("thread_id", threadId).order("created_at", { ascending: false }).limit(1).maybeSingle();
   const cleanHtml = sanitizeMailHtml(input.html); const cleanText = textFromHtml(cleanHtml);
   const providerAttachments: Array<{ filename: string; content: Buffer }> = [];
@@ -84,7 +90,6 @@ export async function sendMail(admin: AdminUser, input: { requestId: string; thr
     if ((attachments || []).reduce((sum, item) => sum + Number(item.size_bytes), 0) > 25 * 1024 * 1024) throw new Error("MAIL_ATTACHMENT_LIMIT");
     for (const attachment of attachments || []) { const file = await client.storage.from("mail-attachments").download(attachment.storage_path); if (file.error || !file.data) throw new Error("MAIL_ATTACHMENT_MISSING"); providerAttachments.push({ filename: attachment.filename, content: Buffer.from(await file.data.arrayBuffer()) }); }
   }
-  const outgoingMessageId = `<${input.requestId}@mail.kencodehn.com>`;
   const headers: Record<string, string> = { "Message-ID": outgoingMessageId }; if (previous?.message_id) { headers["In-Reply-To"] = previous.message_id; headers.References = [...(previous.reference_ids || []), previous.message_id].slice(-50).join(" "); }
   const resend = new Resend(process.env.RESEND_API_KEY);
   const delivery = await resend.emails.send({ from: `${identity.display_name} <${identity.email}>`, to: input.to, cc: input.cc.length ? input.cc : undefined, bcc: input.bcc.length ? input.bcc : undefined, subject: input.subject || "(Sin asunto)", html: cleanHtml || "<p></p>", text: cleanText, headers, attachments: providerAttachments.length ? providerAttachments : undefined }, { idempotencyKey: `mail/${admin.uid}/${input.requestId}` });

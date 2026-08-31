@@ -103,6 +103,15 @@ type Message = {
   sent_at?: string;
   received_at?: string;
   has_remote_images?: boolean;
+  delivery_status:
+    | "received"
+    | "queued"
+    | "sent"
+    | "delayed"
+    | "delivered"
+    | "failed"
+    | "bounced"
+    | "complained";
 };
 type Initial = {
   folder: string;
@@ -193,6 +202,7 @@ export function MailWorkspace({
   const [followTitle, setFollowTitle] = useState("Dar seguimiento al correo");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const signatureApplied = useRef(false);
+  const sendRequestId = useRef<string | null>(null);
   const selected = initial.selected;
   const lastMessage = selected?.messages.at(-1);
   const clientContext = relation(selected?.thread.clients);
@@ -266,6 +276,7 @@ export function MailWorkspace({
 
   async function discardDraft() {
     if (!draft.id) {
+      sendRequestId.current = null;
       setCompose(false);
       return;
     }
@@ -289,6 +300,7 @@ export function MailWorkspace({
     setSubject("");
     setHtml("");
     setConfirmDiscard(false);
+    sendRequestId.current = null;
     setCompose(false);
     setNotice("Borrador descartado.");
     router.refresh();
@@ -351,7 +363,9 @@ export function MailWorkspace({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "send",
-        requestId: crypto.randomUUID(),
+        requestId:
+          sendRequestId.current ||
+          (sendRequestId.current = crypto.randomUUID()),
         threadId: selected?.thread.id,
         draftId: draft.id,
         identityId,
@@ -365,6 +379,7 @@ export function MailWorkspace({
     const body = await response.json();
     setBusy(false);
     if (!response.ok) return setError(body.error);
+    sendRequestId.current = null;
     setNotice("Correo enviado correctamente.");
     setCompose(false);
     router.push(`/admin/mail?folder=sent&thread=${body.threadId}`);
@@ -879,6 +894,32 @@ export function MailWorkspace({
                         ).toLocaleString("es-HN")}
                       </time>
                     </div>
+                    {message.direction === "outbound" ? (
+                      <p
+                        className={`mt-2 text-xs font-bold ${
+                          ["failed", "bounced", "complained"].includes(
+                            message.delivery_status,
+                          )
+                            ? "text-rose-700"
+                            : message.delivery_status === "delayed"
+                              ? "text-amber-700"
+                              : message.delivery_status === "delivered"
+                                ? "text-emerald-700"
+                                : "text-kc-muted"
+                        }`}
+                      >
+                        {{
+                          sent: "Enviado",
+                          queued: "En cola",
+                          delayed: "Entrega demorada",
+                          delivered: "Entregado",
+                          failed: "No entregado",
+                          bounced: "Rebotado",
+                          complained: "Marcado como spam",
+                          received: "Recibido",
+                        }[message.delivery_status]}
+                      </p>
+                    ) : null}
                     {message.has_remote_images ? (
                       <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
                         Imágenes externas bloqueadas para proteger su

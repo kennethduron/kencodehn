@@ -39,7 +39,9 @@ const { error: profilesError } = await service.from("profiles").upsert(identitie
 })));
 if (profilesError) throw profilesError;
 
-const reminderNow = new Date("2026-08-28T18:00:00.000Z");
+const cutoverResult = await service.from("admin_settings").select("automation_cutover_at,automation_baseline_completed_at").eq("id", "default").single();
+if (cutoverResult.error || !cutoverResult.data.automation_cutover_at || !cutoverResult.data.automation_baseline_completed_at) throw cutoverResult.error ?? new Error("Automation baseline is missing.");
+const reminderNow = new Date(Date.parse(cutoverResult.data.automation_cutover_at) + 2 * 24 * 60 * 60 * 1000);
 const reminderTaskId = "30000000-0000-4000-8000-000000000001";
 const { error: reminderTaskError } = await service.from("tasks").insert({
   id: reminderTaskId,

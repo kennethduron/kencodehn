@@ -63,6 +63,11 @@ const viewer = await authenticated(identities[3]);
 const salesA = await authenticated(identities[4]);
 const salesB = await authenticated(identities[5]);
 const inactive = await authenticated(identities[6]);
+const anonymous = createClient(local.API_URL, local.PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+assert.ok((await anonymous.rpc("billing_dashboard_summary", { p_today: "2026-09-01" })).error);
+const initialDashboardSummary = await owner.rpc("billing_dashboard_summary", { p_today: "2026-09-01" });
+if (initialDashboardSummary.error) throw initialDashboardSummary.error;
+assert.deepEqual(initialDashboardSummary.data, [{ currency: "USD", due_today_minor: 0, next_7_days_minor: 0, overdue_minor: 0, outstanding_minor: 0, collected_month_minor: 0 }]);
 
 const createdClient = await rpc(owner, "client_create", {
   name: "Cliente financiero sanitizado", company: "Fixture Phase 2", email: "billing.phase2@example.test", clientSince: "2026-08-29", assignedToUid: identities[4].id,

@@ -44,21 +44,16 @@ export type BillingSummaryGroup = { currency:string;dueToday:string;next7:string
 
 export async function billingSummary():Promise<BillingSummaryGroup[]> {
   const client=await createSupabaseServerClient();
-  const [receivables,payments]=await Promise.all([
-    unwrap(client.from("receivables").select("amount_due_minor,amount_paid_minor,balance_minor,currency,due_date,payment_state").eq("currency","USD")),
-    unwrap(client.from("payments").select("amount_minor,currency,paid_at,status").eq("status","posted").eq("currency","USD")),
-  ]);
-  const today=todayInHonduras(); const next=new Date(`${today}T12:00:00Z`); next.setUTCDate(next.getUTCDate()+7); const next7=next.toISOString().slice(0,10);
-  const value={dueToday:BigInt(0),next7:BigInt(0),overdue:BigInt(0),outstanding:BigInt(0),collectedMonth:BigInt(0)};
-  for(const row of (receivables??[]) as Row[]){if(row.payment_state==="cancelled")continue;const balance=BigInt(text(row.balance_minor));value.outstanding+=balance;if(row.payment_state!=="paid"){if(row.due_date===today)value.dueToday+=balance;else if(row.due_date<today)value.overdue+=balance;else if(row.due_date<=next7)value.next7+=balance;}}
-  const month=today.slice(0,7);for(const row of (payments??[]) as Row[]){if(text(row.paid_at).slice(0,7)===month)value.collectedMonth+=BigInt(text(row.amount_minor));}
+  const {data,error}=await client.rpc("billing_dashboard_summary",{p_today:todayInHonduras()});
+  if(error)throw new Error(`Billing summary query failed (${error.code??"unknown"}).`);
+  const value=((data??[]) as Row[])[0]??{};
   return [{
     currency:"USD",
-    dueToday:value.dueToday.toString(),
-    next7:value.next7.toString(),
-    overdue:value.overdue.toString(),
-    outstanding:value.outstanding.toString(),
-    collectedMonth:value.collectedMonth.toString(),
+    dueToday:text(value.due_today_minor),
+    next7:text(value.next_7_days_minor),
+    overdue:text(value.overdue_minor),
+    outstanding:text(value.outstanding_minor),
+    collectedMonth:text(value.collected_month_minor),
   }];
 }
 

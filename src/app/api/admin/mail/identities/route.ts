@@ -8,9 +8,56 @@ const createSchema = z.object({ action: z.literal("create"), localPart: z.string
 const assignmentSchema = z.object({ action: z.enum(["assign", "unassign"]), identityId: uuidSchema, profileId: uuidSchema, primary: z.boolean().optional() }).strict();
 
 export async function GET(request: NextRequest) {
-  const auth = await requirePermissionsFromRequest(request, "mail:manage_identities"); if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
-  const client = createSupabaseAdminClient(); const [{ data: identities }, { data: profiles }] = await Promise.all([client.from("mail_identities").select("*,mail_identity_assignments(id,profile_id,is_primary,active,assigned_at,unassigned_at,profiles(email,display_name,name))").order("created_at"), client.from("profiles").select("id,email,display_name,name,active,role").eq("active", true).order("email")]);
-  return NextResponse.json({ identities: identities || [], profiles: profiles || [], suggestions: Object.fromEntries((profiles || []).map((profile) => [profile.id, suggestLocalParts(profile.display_name || profile.name || profile.email.split("@")[0])])) });
+  const auth = await requirePermissionsFromRequest(request, "mail:manage_identities");
+  if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
+
+  const client = createSupabaseAdminClient();
+  const [identityResult, assignmentResult, profileResult] = await Promise.all([
+    client
+      .from("mail_identities")
+      .select("id,local_part,email,display_name,status,created_at")
+      .order("created_at"),
+    client
+      .from("mail_identity_assignments")
+      .select("id,identity_id,profile_id,is_primary,active,assigned_at,unassigned_at")
+      .order("assigned_at"),
+    client
+      .from("profiles")
+      .select("id,email,display_name,name,active,role")
+      .eq("active", true)
+      .order("email"),
+  ]);
+
+  if (identityResult.error || assignmentResult.error || profileResult.error) {
+    return NextResponse.json(
+      { error: "No pudimos cargar las identidades corporativas." },
+      { status: 500 },
+    );
+  }
+
+  const profilesById = new Map(profileResult.data.map((profile) => [profile.id, profile]));
+  const assignmentsByIdentity = new Map<string, Array<Record<string, unknown>>>();
+  for (const assignment of assignmentResult.data) {
+    const entries = assignmentsByIdentity.get(assignment.identity_id) || [];
+    entries.push({
+      ...assignment,
+      profiles: profilesById.get(assignment.profile_id) || null,
+    });
+    assignmentsByIdentity.set(assignment.identity_id, entries);
+  }
+
+  const identities = identityResult.data.map((identity) => ({
+    ...identity,
+    mail_identity_assignments: assignmentsByIdentity.get(identity.id) || [],
+  }));
+  const suggestions = Object.fromEntries(
+    profileResult.data.map((profile) => [
+      profile.id,
+      suggestLocalParts(profile.display_name || profile.name || profile.email.split("@")[0]),
+    ]),
+  );
+
+  return NextResponse.json({ identities, profiles: profileResult.data, suggestions });
 }
 
 export async function POST(request: NextRequest) {
