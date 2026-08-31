@@ -1,7 +1,25 @@
 export const CRM_INVITATION_SUBJECT = "Invitación al CRM interno de Ken Code";
 
+export type CrmInvitationVerificationType = "invite" | "magiclink";
+
+const CRM_INVITATION_ONBOARDING_URL = "https://kencodehn.com/admin/recovery?mode=invite";
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
+}
+
+export function buildCrmInvitationHandoffLink(
+  tokenHash: string,
+  type: CrmInvitationVerificationType,
+) {
+  const normalizedTokenHash = tokenHash.trim();
+  if (!normalizedTokenHash) throw new Error("Invitation token hash is required.");
+  const url = new URL(CRM_INVITATION_ONBOARDING_URL);
+  const fragment = new URLSearchParams();
+  fragment.set("token_hash", normalizedTokenHash);
+  fragment.set("type", type);
+  url.hash = fragment.toString();
+  return url.toString();
 }
 
 export function buildCrmInvitationEmail(name: string, credentialLink: string) {

@@ -1,15 +1,13 @@
 import assert from "node:assert/strict";
 import { createClient } from "@supabase/supabase-js";
+import { buildCrmInvitationHandoffLink } from "../src/lib/admin/invitation.ts";
 
 const apiUrl = process.env.SUPABASE_LOCAL_URL || "";
 const publishableKey = process.env.SUPABASE_LOCAL_PUBLISHABLE_KEY || "";
 const serviceKey = process.env.SUPABASE_LOCAL_SERVICE_KEY || "";
-const mailpitUrl = process.env.SUPABASE_LOCAL_MAILPIT_URL || "";
 const parsedUrl = new URL(apiUrl);
-const parsedMailpitUrl = new URL(mailpitUrl);
 if (!publishableKey || !serviceKey
-  || !["127.0.0.1", "localhost"].includes(parsedUrl.hostname)
-  || !["127.0.0.1", "localhost"].includes(parsedMailpitUrl.hostname)) {
+  || !["127.0.0.1", "localhost"].includes(parsedUrl.hostname)) {
   throw new Error("Final acceptance E2E refuses non-loopback services.");
 }
 
@@ -24,39 +22,6 @@ const profileEmail = `profile.${runId}@example.test`;
 const inactiveEmail = `inactive.${runId}@example.test`;
 const createdAuthIds: string[] = [];
 const photoPaths: string[] = [];
-
-type MailMessage = { ID?: string; Id?: string; Subject?: string };
-async function messages(): Promise<MailMessage[]> {
-  const response = await fetch(`${mailpitUrl}/api/v1/messages`);
-  if (!response.ok) throw new Error("Local email sink is unavailable.");
-  const body = await response.json() as { messages?: MailMessage[] } | MailMessage[];
-  return Array.isArray(body) ? body : body.messages ?? [];
-}
-async function waitForMessage(subjectFragment: string, previousIds: Set<string>) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    const found = (await messages()).find((message) => {
-      const id = message.ID ?? message.Id ?? "";
-      return !previousIds.has(id) && String(message.Subject ?? "").includes(subjectFragment);
-    });
-    if (found) return found;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error(`Expected local email was not captured (${subjectFragment}).`);
-}
-async function invitationHash(message: MailMessage) {
-  const id = message.ID ?? message.Id;
-  if (!id) throw new Error("Local invitation email has no message ID.");
-  const response = await fetch(`${mailpitUrl}/api/v1/message/${id}`);
-  if (!response.ok) throw new Error("Local invitation email body is unavailable.");
-  const body = await response.json() as Record<string, unknown>;
-  const html = String(body.HTML ?? body.Html ?? body.Text ?? "").replaceAll("&amp;", "&");
-  const href = html.match(/href=["']([^"']+)["']/i)?.[1];
-  if (!href) throw new Error("Local invitation email has no confirmation URL.");
-  const url = new URL(href);
-  const tokenHash = url.searchParams.get("token") ?? url.searchParams.get("token_hash");
-  if (!tokenHash) throw new Error("Local invitation token hash is missing.");
-  return tokenHash;
-}
 
 async function createConfirmedUser(id: string, email: string) {
   const result = await service.auth.admin.createUser({ id, email, password, email_confirm: true });
@@ -124,13 +89,21 @@ try {
   if (storedProfile.error) throw storedProfile.error;
   assert.equal(storedProfile.data.profile_photo_path, null);
 
-  let beforeMail = new Set((await messages()).map((message) => message.ID ?? message.Id ?? ""));
-  const invitation = await service.auth.admin.inviteUserByEmail(invitedEmail, {
-    redirectTo: "http://127.0.0.1:3000/auth/callback?next=%2Fadmin%2Frecovery%3Fmode%3Dinvite",
+  const invitation = await service.auth.admin.generateLink({
+    type: "invite",
+    email: invitedEmail,
+    options: { redirectTo: "http://127.0.0.1:3000/admin/recovery?mode=invite" },
   });
   if (invitation.error || !invitation.data.user) throw invitation.error ?? new Error("Local invitation was not created.");
-  const firstInviteMessage = await waitForMessage("Invitaci", beforeMail);
-  const firstInviteHash = await invitationHash(firstInviteMessage);
+  const firstInviteHash = invitation.data.properties?.hashed_token;
+  if (!firstInviteHash) throw new Error("Local invitation token hash was not generated.");
+  const firstInviteLink = new URL(buildCrmInvitationHandoffLink(firstInviteHash, "invite"));
+  const firstInviteFragment = new URLSearchParams(firstInviteLink.hash.slice(1));
+  assert.equal(firstInviteLink.pathname, "/admin/recovery");
+  assert.equal(firstInviteLink.searchParams.get("mode"), "invite");
+  assert.equal(firstInviteFragment.get("type"), "invite");
+  assert.equal(firstInviteFragment.get("token_hash"), firstInviteHash);
+  assert.equal(firstInviteLink.searchParams.has("code"), false);
   createdAuthIds.push(invitation.data.user.id);
   const invitedProfile = await service.from("profiles").insert({
     id: invitation.data.user.id,
@@ -147,13 +120,14 @@ try {
   const claim = await service.rpc("claim_invitation_resend", { p_target: invitation.data.user.id, p_actor: profileId, p_now: claimedAt });
   if (claim.error) throw claim.error;
   assert.ok((await service.rpc("claim_invitation_resend", { p_target: invitation.data.user.id, p_actor: profileId, p_now: claimedAt })).error);
-  beforeMail = new Set((await messages()).map((message) => message.ID ?? message.Id ?? ""));
-  const resend = await service.auth.admin.inviteUserByEmail(invitedEmail, {
-    redirectTo: "http://127.0.0.1:3000/auth/callback?next=%2Fadmin%2Frecovery%3Fmode%3Dinvite",
+  const resend = await service.auth.admin.generateLink({
+    type: "invite",
+    email: invitedEmail,
+    options: { redirectTo: "http://127.0.0.1:3000/admin/recovery?mode=invite" },
   });
   if (resend.error || resend.data.user?.id !== invitation.data.user.id) throw resend.error ?? new Error("Pending invitation was not renewed for the same user.");
-  const secondInviteMessage = await waitForMessage("Invitaci", beforeMail);
-  const secondInviteHash = await invitationHash(secondInviteMessage);
+  const secondInviteHash = resend.data.properties?.hashed_token;
+  if (!secondInviteHash) throw new Error("Renewed invitation token hash was not generated.");
   assert.notEqual(firstInviteHash, secondInviteHash);
   const completed = await service.rpc("complete_invitation_resend", {
     p_target: invitation.data.user.id,
@@ -190,6 +164,13 @@ try {
   assert.ok((await invitedClient.auth.verifyOtp({ token_hash: firstContinuationHash, type: "magiclink" })).error);
   const verification = await invitedClient.auth.verifyOtp({ token_hash: secondContinuationHash, type: "magiclink" });
   if (verification.error || !verification.data.session) throw verification.error ?? new Error("Newest continuation link was not accepted.");
+  const continuationLink = new URL(buildCrmInvitationHandoffLink(secondContinuationHash, "magiclink"));
+  const continuationFragment = new URLSearchParams(continuationLink.hash.slice(1));
+  assert.equal(continuationLink.pathname, "/admin/recovery");
+  assert.equal(continuationLink.searchParams.get("mode"), "invite");
+  assert.equal(continuationFragment.get("type"), "magiclink");
+  assert.equal(continuationFragment.get("token_hash"), secondContinuationHash);
+  assert.equal(continuationLink.searchParams.has("code"), false);
   assert.equal((await invitedClient.auth.updateUser({ password: nextPassword })).error, null);
   assert.ok((await invitedClient.auth.verifyOtp({ token_hash: secondContinuationHash, type: "magiclink" })).error);
   const completedLogin = await login(invitedEmail, nextPassword);

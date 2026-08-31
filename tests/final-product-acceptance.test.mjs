@@ -72,16 +72,41 @@ test("profile replacement and removal roll back when file cleanup fails", () => 
 
 test("invitation resend renews pending access without misusing password recovery", () => {
   assert.match(invitations, /getUserById\(uid\)/);
-  assert.match(invitations, /auth\.admin\.inviteUserByEmail/);
-  assert.match(invitations, /generateLink\(\{[\s\S]*type: "magiclink"/);
+  assert.doesNotMatch(invitations, /auth\.admin\.inviteUserByEmail/);
+  assert.match(invitations, /generateInvitationCredential/);
+  assert.match(invitations, /type: "invite"/);
+  assert.match(invitations, /generateLink\(\{[\s\S]*type: input\.type/);
+  assert.match(invitations, /properties\?\.hashed_token/);
+  assert.match(invitations, /buildCrmInvitationHandoffLink\(tokenHash, input\.type\)/);
   assert.doesNotMatch(invitations, /type: "recovery"/);
   assert.doesNotMatch(invitations, /auth\.resend\(\{ type: "signup"/);
   assert.match(invitations, /target\.lastLoginAt \|\| target\.invitationStatus === "accepted"/);
   assert.match(invitations, /claim_invitation_resend/);
   assert.match(invitations, /complete_invitation_resend/);
-  assert.match(invitations, /recovery%3Fmode%3Dinvite/);
+  assert.match(invitationTemplate, /CRM_INVITATION_ONBOARDING_URL = "https:\/\/kencodehn\.com\/admin\/recovery\?mode=invite"/);
+  assert.match(invitationTemplate, /fragment\.set\("token_hash", normalizedTokenHash\)/);
+  assert.match(invitationTemplate, /fragment\.set\("type", type\)/);
+  assert.match(invitationTemplate, /url\.hash = fragment\.toString\(\)/);
   assert.match(invitations, /idempotencyKey: `user-invitation-resend/);
   assert.match(invitationTemplate, /solo puede utilizarse una vez/);
+});
+
+test("invitation handoff verifies the exact official token-hash type without missing-code or server logs", () => {
+  assert.match(recovery, /new URLSearchParams\(window\.location\.hash\.slice\(1\)\)/);
+  assert.match(recovery, /type === "invite" \|\| type === "magiclink"/);
+  assert.match(recovery, /verifyOtp\(\{ token_hash: tokenHash, type \}\)/);
+  assert.match(recovery, /window\.history\.replaceState/);
+  assert.doesNotMatch(recovery, /console\.(?:log|warn|error).*token/i);
+  assert.doesNotMatch(invitationTemplate, /access_token|refresh_token|code=/);
+  assert.doesNotMatch(invitations, /properties\?\.action_link/);
+  assert.doesNotMatch(invitations, /auth\/callback/);
+});
+
+test("invitation resend has one idempotent delivery after its atomic claim", () => {
+  const resendFlow = invitations.slice(invitations.indexOf("export async function resendSupabaseAdminInvitation"));
+  assert.equal((resendFlow.match(/await sendEmail\(/g) || []).length, 1);
+  assert.match(resendFlow, /claim_invitation_resend[\s\S]*await sendEmail\([\s\S]*complete\(true\)/);
+  assert.match(resendFlow, /user-invitation-resend\/\$\{uid\}\/\$\{String\(claim\.data\)\}/);
 });
 
 test("invitation resend is serialized, rate limited and forbidden after acceptance", () => {

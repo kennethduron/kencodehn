@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { PasswordField } from "./password-field";
 
+const INVITATION_VERIFICATION_TYPES = new Set(["invite", "magiclink"] as const);
+
 export function RecoveryForm({ invitation = false }: { invitation?: boolean }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -14,11 +16,25 @@ export function RecoveryForm({ invitation = false }: { invitation?: boolean }) {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
-    void supabase.auth.getSession().then(({ data }) => {
+    const validate = async () => {
+      if (invitation && window.location.hash.length > 1) {
+        const fragment = new URLSearchParams(window.location.hash.slice(1));
+        const tokenHash = fragment.get("token_hash");
+        const type = fragment.get("type");
+        window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+        if (tokenHash && (type === "invite" || type === "magiclink") && INVITATION_VERIFICATION_TYPES.has(type)) {
+          const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+          setSessionReady(!error && Boolean(data.session));
+          setMessage(error || !data.session ? "El enlace es inválido, expiró o ya fue utilizado." : "");
+          return;
+        }
+      }
+      const { data } = await supabase.auth.getSession();
       setSessionReady(Boolean(data.session));
       setMessage(data.session ? "" : "El enlace es inválido, expiró o ya fue utilizado.");
-    });
-  }, []);
+    };
+    void validate();
+  }, [invitation]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (password.length < 12) return setMessage("Use al menos 12 caracteres.");

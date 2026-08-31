@@ -26,6 +26,8 @@ const identities = [
 for (const identity of identities) {
   const { error } = await service.auth.admin.createUser({ id: identity.id, email: identity.email, password, email_confirm: true });
   if (error && error.status !== 422) throw error;
+  const reset = await service.auth.admin.updateUserById(identity.id, { password, email_confirm: true });
+  if (reset.error) throw reset.error;
 }
 const now = new Date().toISOString();
 const { error: profilesError } = await service.from("profiles").upsert(identities.map((identity) => ({
@@ -92,7 +94,7 @@ const notifications = [
   { id: "20000000-0000-4000-8000-000000000003", firebase_id: "local-agent-a", recipient_id: identities[2].id, title: "Agent A", message: "Fixture" },
   { id: "20000000-0000-4000-8000-000000000004", firebase_id: "local-agent-b", recipient_id: identities[3].id, title: "Agent B", message: "Fixture" },
   { id: "20000000-0000-4000-8000-000000000005", firebase_id: "local-legacy", recipient_id: null, title: "Legacy", message: "Fixture" },
-].map((row) => ({ ...row, type: "system", severity: "info", is_read: false, legacy_data: {}, created_at: now, updated_at: now }));
+].map((row) => ({ ...row, type: "system", severity: "info", is_read: false, read_at: null, legacy_data: {}, created_at: now, updated_at: now }));
 const { error: notificationsError } = await service.from("notifications").upsert(notifications);
 if (notificationsError) throw notificationsError;
 
@@ -206,7 +208,7 @@ assert.equal((await authenticated(identities[1].email, changedPassword)).auth !=
 assert.ok((await createClient(url, publishableKey).auth.verifyOtp({ token_hash: "invalid-local-token", type: "recovery" })).error);
 
 before = new Set((await messages()).map((message) => message.ID ?? message.Id ?? ""));
-const inviteEmail = "invite.m2b@example.test";
+const inviteEmail = `invite.${crypto.randomUUID().slice(0, 8)}.m2b@example.test`;
 const { data: invitation, error: invitationError } = await service.auth.admin.inviteUserByEmail(inviteEmail, { redirectTo: "http://127.0.0.1:3000/auth/callback?next=/admin/recovery?invitation=1" });
 if (invitationError || !invitation.user) throw invitationError ?? new Error("Local invitation user missing.");
 const { error: inviteProfileError } = await service.from("profiles").insert({ id: invitation.user.id, name: "Invited fixture", email: inviteEmail, role: "viewer", active: true });

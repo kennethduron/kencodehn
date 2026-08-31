@@ -49,7 +49,9 @@ test("Supabase team invitations reject Owner and use server-only transactional R
   const users = read("../src/lib/admin/supabase-users.ts");
   assert.match(sql, /if p_role = 'owner' then raise exception/);
   assert.match(sql, /revoke all on function public\.provision_invited_profile[\s\S]*from public,anon,authenticated/);
-  assert.match(users, /auth\.admin\.inviteUserByEmail/);
+  assert.match(users, /auth\.admin\.generateLink/);
+  assert.match(users, /properties\?\.hashed_token/);
+  assert.match(users, /await sendEmail\(/);
   assert.match(users, /provision_invited_profile/);
 });
 
