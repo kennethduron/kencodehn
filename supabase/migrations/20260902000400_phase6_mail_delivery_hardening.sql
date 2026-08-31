@@ -7,9 +7,16 @@ alter type public.mail_delivery_status add value if not exists 'complained';
 alter table public.mail_messages
   add column delivery_status_at timestamptz;
 
+-- Phase 5 intentionally rejects every UPDATE/DELETE. Suspend only that named
+-- trigger for this one transactional metadata backfill, then restore it before
+-- replacing the trigger function with the narrower service-role exception.
+alter table public.mail_messages disable trigger mail_messages_immutable;
+
 update public.mail_messages
 set delivery_status_at = coalesce(received_at, sent_at, created_at)
 where delivery_status_at is null;
+
+alter table public.mail_messages enable trigger mail_messages_immutable;
 
 alter table public.mail_messages
   alter column delivery_status_at set default now(),
