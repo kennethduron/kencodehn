@@ -364,7 +364,9 @@ export function resolveAdminUserFromProfile(input: {
     role: input.profile.role,
     active: true,
     permissions: defaultPermissionsForRole(input.profile.role),
-    displayName: typeof input.profile.display_name === "string" ? input.profile.display_name : typeof input.profile.name === "string" ? input.profile.name : "",
+    displayName: typeof input.profile.display_name === "string" && input.profile.display_name.trim()
+      ? input.profile.display_name.trim()
+      : typeof input.profile.name === "string" ? input.profile.name.trim() : "",
     preferredName: typeof input.profile.preferred_name === "string" ? input.profile.preferred_name : "",
     jobTitle: typeof input.profile.job_title === "string" ? input.profile.job_title : "",
     profilePhotoPath: typeof input.profile.profile_photo_path === "string" ? input.profile.profile_photo_path : null,

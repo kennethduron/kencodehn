@@ -46,19 +46,33 @@ test("global horizontal clipping preserves sticky positioning", () => {
 });
 
 test("profile replacement and removal roll back when file cleanup fails", () => {
+  assert.match(profileApi, /createSupabaseServerClient[\s\S]*rpc\("update_own_profile"/);
+  assert.match(profileApi, /displayName: data\.display_name \|\| data\.name \|\| ""/);
   assert.match(profileApi, /No pudimos reemplazar la foto de forma segura/);
-  assert.match(profileApi, /profile_photo_path: current\.profile_photo_path/);
+  assert.match(profileApi, /profilePhotoPath: current\.profile_photo_path/);
   assert.match(profileApi, /No pudimos quitar la foto de forma segura/);
-  assert.match(profileApi, /profile_photo_path: previousPath/);
+  assert.match(profileApi, /profilePhotoPath: previousPath/);
   assert.match(profile, /Quitar foto/);
   assert.match(profile, /initials/);
 });
 
-test("invitation resend uses an official invite link and idempotent delivery", () => {
-  assert.match(invitations, /generateLink\(\{[\s\S]*type: "invite"/);
+test("invitation resend renews access for the existing auth user", () => {
+  assert.match(invitations, /getUserById\(uid\)/);
+  assert.match(invitations, /generateLink\(\{[\s\S]*type: "recovery"/);
+  assert.doesNotMatch(invitations, /generateLink\(\{[\s\S]*type: "invite"/);
   assert.doesNotMatch(invitations, /auth\.resend\(\{ type: "signup"/);
+  assert.match(invitations, /last_sign_in_at \|\| target\.lastLoginAt/);
+  assert.match(invitations, /INVITATION_RESEND_COOLDOWN_MS = 60_000/);
+  assert.match(invitations, /recovery%3Fmode%3Dinvite/);
   assert.match(invitations, /idempotencyKey: `user-invitation-resend/);
   assert.match(invitationTemplate, /solo puede utilizarse una vez/);
+});
+
+test("team presents pending invitations as a distinct business state", () => {
+  assert.match(team, /Invitación pendiente/);
+  assert.match(team, /Esperando aceptación/);
+  assert.match(team, /Con acceso activo/);
+  assert.match(team, /immutableOwner \? "Owner" : "Nombre no configurado"/);
 });
 
 test("mail exposes pending and provider-confirmed delivery states", () => {

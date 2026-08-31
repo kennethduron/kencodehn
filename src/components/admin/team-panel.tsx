@@ -14,20 +14,18 @@ const ROLE_OPTIONS: Array<{ value: ManageableAdminRole; label: string }> = [
   { value: "admin", label: "Admin" },
 ];
 
-const ROLE_LABELS: Record<string, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  manager: "Manager",
-  viewer: "Viewer",
-  sales_agent: "Sales Agent",
-};
-
 const INVITATION_LABELS: Record<string, string> = {
   pending: "Invitación pendiente",
-  sent: "Invitación enviada",
-  failed: "Fallo de envio",
+  sent: "Correo de acceso enviado",
+  failed: "Envío pendiente de reintento",
   accepted: "Acceso configurado",
 };
+
+function invitationPending(member: AdminMember) {
+  return member.role !== "owner"
+    && !member.lastLoginAt
+    && Boolean(member.invitationStatus && ["pending", "sent", "failed"].includes(member.invitationStatus));
+}
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -49,7 +47,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
   const [pendingStatus, setPendingStatus] = useState<PendingStatusChange>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" | "info" }>({ message: "", variant: "success" });
 
-  const activeCount = useMemo(() => members.filter((member) => member.active).length, [members]);
+  const activeCount = useMemo(() => members.filter((member) => member.active && !invitationPending(member)).length, [members]);
   const agentCount = useMemo(() => members.filter((member) => member.role === "sales_agent").length, [members]);
 
   function replaceMember(updated: AdminMember) {
@@ -137,7 +135,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="kc-admin-card p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">Miembros</p><p className="mt-2 text-3xl font-black text-kc-text">{members.length}</p></div>
-        <div className="kc-admin-card p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">Activos</p><p className="mt-2 text-3xl font-black text-kc-lime">{activeCount}</p></div>
+        <div className="kc-admin-card p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">Con acceso activo</p><p className="mt-2 text-3xl font-black text-kc-lime">{activeCount}</p></div>
         <div className="kc-admin-card p-4"><p className="text-xs font-bold uppercase tracking-[0.18em] text-kc-muted">Agentes de ventas</p><p className="mt-2 text-3xl font-black text-kc-cyan">{agentCount}</p></div>
       </div>
 
@@ -172,13 +170,18 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
           const immutableOwner = member.role === "owner";
           const isSelf = member.uid === currentUserUid;
           const busy = savingUid === member.uid;
+          const pendingInvitation = invitationPending(member);
+          const statusLabel = !member.active ? "Inactivo" : pendingInvitation ? "Invitación pendiente" : "Activo";
+          const statusClass = !member.active
+            ? "bg-rose-400/10 text-rose-700"
+            : pendingInvitation ? "bg-amber-400/15 text-amber-800" : "bg-emerald-400/10 text-emerald-700";
           return (
             <article key={member.uid} className="kc-admin-card grid gap-4 p-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(10rem,.7fr)_minmax(9rem,.6fr)_auto] lg:items-center">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate font-display text-lg font-black text-kc-text">{member.name || "Sin nombre"}</h2>
+                  <h2 className="truncate font-display text-lg font-black text-kc-text">{member.name || (immutableOwner ? "Owner" : "Nombre no configurado")}</h2>
                   {immutableOwner ? <span className="inline-flex items-center gap-1 rounded-full border border-kc-lime/25 bg-kc-lime/10 px-2 py-1 text-xs font-black text-kc-lime"><ShieldCheck size={13} /> Owner protegido</span> : null}
-                  <span className={`rounded-full px-2 py-1 text-xs font-black ${member.active ? "bg-emerald-400/10 text-emerald-200" : "bg-rose-400/10 text-rose-200"}`}>{member.active ? "Activo" : "Inactivo"}</span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-black ${statusClass}`}>{statusLabel}</span>
                 </div>
                 <p className="mt-1 truncate text-sm text-kc-muted">{member.email || "Email no disponible"}</p>
                 <p className="mt-2 text-xs leading-5 text-kc-muted">Creado: {formatDate(member.createdAt)} · Último acceso: {formatDate(member.lastLoginAt)} · Leads asignados: {member.assignedLeadCount}</p>
@@ -193,7 +196,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
                   </select>
                 )}
               </label>
-              <div className="text-sm text-kc-muted"><span className="block text-xs font-bold uppercase tracking-[0.14em]">Estado</span><span className="mt-2 block">{ROLE_LABELS[member.role ?? ""] ?? "Rol invalido"}</span></div>
+              <div className="text-sm text-kc-muted"><span className="block text-xs font-bold uppercase tracking-[0.14em]">Estado</span><span className="mt-2 block">{!member.active ? "Acceso desactivado" : pendingInvitation ? "Esperando aceptación" : "Acceso habilitado"}</span></div>
               <div className="grid gap-2">
                 {member.active && member.invitationStatus && ["pending", "sent", "failed"].includes(member.invitationStatus) ? (
                   <button type="button" disabled={busy || immutableOwner} onClick={() => resendInvite(member)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-kc-cyan/25 px-4 text-sm font-black text-kc-cyan transition hover:bg-kc-cyan/10 disabled:opacity-40">

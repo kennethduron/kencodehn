@@ -7,10 +7,11 @@ import { AdminUserManagementError } from "@/lib/admin/users";
 import { buildCrmInvitationEmail } from "@/lib/admin/invitation";
 import { sendEmail } from "@/lib/email/service";
 
-const inviteRedirect = "https://kencodehn.com/auth/callback?next=%2Fadmin%2Frecovery%3Finvitation%3D1";
+const inviteRedirect = "https://kencodehn.com/auth/callback?next=%2Fadmin%2Frecovery%3Fmode%3Dinvite";
+const INVITATION_RESEND_COOLDOWN_MS = 60_000;
 
 function member(row: Record<string, any>, assignedLeadCount = 0): AdminMember {
-  return { uid: String(row.id), name: String(row.name ?? ""), email: String(row.email ?? ""), role: row.role ?? null, active: row.active === true, createdAt: row.created_at ?? null, updatedAt: row.updated_at ?? null, lastLoginAt: row.last_login_at ?? null, invitedAt: row.invited_at ?? null, invitedByUid: row.invited_by ?? null, invitationStatus: row.invitation_status ?? null, invitationLastSentAt: row.invitation_last_sent_at ?? null, assignedLeadCount };
+  return { uid: String(row.id), name: String(row.display_name || row.name || ""), email: String(row.email ?? ""), role: row.role ?? null, active: row.active === true, createdAt: row.created_at ?? null, updatedAt: row.updated_at ?? null, lastLoginAt: row.last_login_at ?? null, invitedAt: row.invited_at ?? null, invitedByUid: row.invited_by ?? null, invitationStatus: row.invitation_status ?? null, invitationLastSentAt: row.invitation_last_sent_at ?? null, assignedLeadCount };
 }
 function ensureManager(actor: AdminUser) {
   if (!hasPermission(actor, "users:manage")) throw new AdminUserManagementError(403, "No tienes permiso para administrar usuarios.");
@@ -67,10 +68,22 @@ export async function resendSupabaseAdminInvitation(uid: string, actor: AdminUse
   const target = await getSupabaseAdminMember(uid);
   if (!target) throw new AdminUserManagementError(404, "Usuario no encontrado.");
   if (!canResendInvitation(target)) throw new AdminUserManagementError(409, "La invitación no puede reenviarse en su estado actual.");
+  const lastSentAt = target.invitationLastSentAt ? Date.parse(target.invitationLastSentAt) : 0;
+  if (Number.isFinite(lastSentAt) && lastSentAt > 0 && Date.now() - lastSentAt < INVITATION_RESEND_COOLDOWN_MS) {
+    throw new AdminUserManagementError(429, "Espere un minuto antes de solicitar otro enlace de acceso.");
+  }
+  const authResult = await client.auth.admin.getUserById(uid);
+  const authUser = authResult.data.user;
+  if (authResult.error || !authUser || authUser.email?.trim().toLowerCase() !== target.email.trim().toLowerCase()) {
+    throw new AdminUserManagementError(409, "La cuenta de acceso no coincide con este miembro del equipo.");
+  }
+  if (authUser.last_sign_in_at || target.lastLoginAt || target.invitationStatus === "accepted") {
+    throw new AdminUserManagementError(409, "El usuario ya completó su acceso y no necesita otra invitación.");
+  }
   const { data: linkData, error: linkError } = await client.auth.admin.generateLink({
-    type: "invite",
+    type: "recovery",
     email: target.email,
-    options: { data: { name: target.name }, redirectTo: inviteRedirect },
+    options: { redirectTo: inviteRedirect },
   });
   const actionLink = linkData?.properties?.action_link;
   if (linkError || !actionLink) throw new AdminUserManagementError(502, "No pudimos preparar una nueva invitación.");
