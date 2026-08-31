@@ -37,7 +37,7 @@ export async function listMail(admin: AdminUser, folder: MailFolder, search: str
   }
   let query = client.from("mail_threads").select("id,subject,state,assigned_to,is_important,follow_up_at,snippet,latest_message_at,identity_id,lead_id,client_id,project_id,add_on_id,proposal_id,mail_identities(email,display_name),mail_read_states(unread),mail_messages(id,direction,from_address,to_addresses,created_at)").order("latest_message_at", { ascending: false }).limit(26);
   if (!maySuperviseMail(admin)) query = identities.length ? query.or(`assigned_to.eq.${admin.uid},identity_id.in.(${identities.join(",")})`) : query.eq("assigned_to", admin.uid);
-  if (folder === "archived") query = query.eq("state", "archived"); else if (folder === "trash") query = query.eq("state", "trash"); else query = query.eq("state", "inbox");
+  if (folder === "sent") query = query.neq("state", "trash"); else if (folder === "archived") query = query.eq("state", "archived"); else if (folder === "trash") query = query.eq("state", "trash"); else query = query.eq("state", "inbox");
   if (folder === "follow-up") query = query.not("follow_up_at", "is", null);
   if (search) query = query.or(`subject.ilike.%${search.replace(/[%_,()]/g, "")}%,snippet.ilike.%${search.replace(/[%_,()]/g, "")}%`);
   if (cursor) query = query.lt("latest_message_at", cursor);

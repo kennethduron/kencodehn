@@ -11,6 +11,7 @@ const profileApi = read("src/app/api/admin/profile/route.ts");
 const profile = read("src/components/admin/profile-panel.tsx");
 const invitations = read("src/lib/admin/supabase-users.ts");
 const invitationTemplate = read("src/lib/admin/invitation.ts");
+const mailService = read("src/lib/mail/service.ts");
 const team = read("src/components/admin/team-panel.tsx");
 const billingRules = read("src/components/admin/billing-rules-panel.tsx");
 const payment = read("src/components/admin/payment-detail.tsx");
@@ -66,6 +67,8 @@ test("mail exposes pending and provider-confirmed delivery states", () => {
     assert.match(mail, new RegExp(label));
   }
   assert.match(mail, /sendRequestId\.current/);
+  assert.match(mailService, /folder === "sent".*neq\("state", "trash"\)/);
+  assert.match(mailService, /folder !== "sent" \|\| thread\.mail_messages\?\.some/);
 });
 
 test("audited business labels avoid confirmed technical wording", () => {
