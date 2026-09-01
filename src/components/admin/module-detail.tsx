@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   Download,
   FileText,
+  History,
   Plus,
   Save,
   Send,
@@ -28,6 +29,7 @@ import {
   parseMoneyToMinor,
 } from "@/lib/billing/money";
 import { todayInHonduras } from "@/lib/time";
+import { ConfirmDialog } from "./ui";
 
 type Draft = {
   label: string;
@@ -66,10 +68,13 @@ export function ModuleDetail({
     [message, setMessage] = useState(""),
     [acceptanceDates, setAcceptanceDates] = useState<Record<string, string>>(
       {},
-    );
+    ),
+    [proposalToDiscard, setProposalToDiscard] = useState<ProjectAddOn["proposals"][number] | null>(null),
+    [discardReason, setDiscardReason] = useState("");
   const draft = addOn.proposals.find((item) => item.status === "draft"),
     latest = addOn.proposals[0],
     sale = addOn.sale,
+    soldMinor = sale?.acceptedAmountMinor ?? addOn.acceptedAmountMinor,
     plan = sale
       ? (addOn.paymentPlans.find((item) => item.status === "draft") ??
         addOn.paymentPlans[0])
@@ -84,8 +89,8 @@ export function ModuleDetail({
     })) ?? [
       {
         label: "Pago unico",
-        amount: addOn.acceptedAmountMinor
-          ? minorToDecimalInput(addOn.acceptedAmountMinor)
+        amount: soldMinor
+          ? minorToDecimalInput(soldMinor)
           : "0.00",
         dueDate: "",
         dueTime: "",
@@ -100,7 +105,7 @@ export function ModuleDetail({
         return BigInt(-1);
       }
     }, [rows]),
-    accepted = BigInt(addOn.acceptedAmountMinor ?? "0"),
+    accepted = BigInt(soldMinor ?? "0"),
     difference = accepted - total;
   async function run(
     operation: string,
@@ -167,6 +172,21 @@ export function ModuleDetail({
       "Plan de pago guardado sin registrar pagos.",
     );
   }
+  async function discardDraft() {
+    if (!proposalToDiscard || discardReason.trim().length < 3) return;
+    setSaving(true); setMessage("");
+    try {
+      const response = await fetch("/api/admin/lifecycle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity: "proposal", id: proposalToDiscard.id, action: "delete", reason: discardReason.trim() }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "No se pudo descartar el borrador.");
+      setProposalToDiscard(null); setDiscardReason(""); setMessage("Borrador descartado; no se eliminó historial comercial."); router.refresh();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "No se pudo descartar el borrador."); }
+    finally { setSaving(false); }
+  }
   return (
     <div className="grid gap-5">
       <div>
@@ -212,6 +232,10 @@ export function ModuleDetail({
                   </Link>
                 ) : null}
               </>
+            ) : canManage ? (
+              <Link href={`/admin/clientes/${addOn.clientId}/historial`} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-black text-blue-700">
+                <History size={16} /> Registrar venta histórica
+              </Link>
             ) : null}
             <Link
               href={`/admin/mail?compose=1&addOn=${addOn.id}${latest ? `&proposal=${latest.id}` : ""}`}
@@ -260,16 +284,21 @@ export function ModuleDetail({
               Comercial
             </p>
             <h2 className="mt-2 text-xl font-black">
-              {commercialLabels[addOn.commercialStatus]}
+              {sale ? "Aprobado" : addOn.commercialStatus === "approved" ? "Revisión requerida" : commercialLabels[addOn.commercialStatus]}
             </h2>
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-kc-muted">
               {addOn.description || "Sin descripción."}
             </p>
             <p className="mt-4 font-black">
-              {addOn.acceptedAmountMinor
-                ? formatMinor(addOn.acceptedAmountMinor, "USD")
+              {sale
+                ? `Venta registrada: ${formatMinor(sale.acceptedAmountMinor, "USD")}`
                 : "Sin venta aprobada"}
             </p>
+            {sale ? (
+              <p className="mt-1 text-sm text-kc-muted">
+                Fecha efectiva: {new Date(`${sale.effectiveDate}T12:00:00`).toLocaleDateString("es-HN")}
+              </p>
+            ) : null}
           </section>
           <section className="kc-admin-card p-5">
             <p className="text-xs font-black uppercase tracking-[.16em] text-violet-700">
@@ -287,20 +316,21 @@ export function ModuleDetail({
               Financiero
             </p>
             <h2 className="mt-2 text-xl font-black">
-              {addOn.acceptedAmountMinor &&
-              BigInt(addOn.outstandingMinor) === BigInt(0)
-                ? "Pagado"
-                : BigInt(addOn.paidMinor) > BigInt(0)
-                  ? "Pago parcial"
-                  : "Pendiente"}
+              {!sale
+                ? BigInt(addOn.paidMinor) > BigInt(0) || BigInt(addOn.outstandingMinor) > BigInt(0)
+                  ? "Revisión requerida"
+                  : "Sin venta registrada"
+                : BigInt(addOn.outstandingMinor) === BigInt(0)
+                  ? "Pagado"
+                  : BigInt(addOn.paidMinor) > BigInt(0)
+                    ? "Pago parcial"
+                    : "Pendiente"}
             </h2>
-            <p className="mt-2 text-sm">
-              <strong>{formatMinor(addOn.paidMinor, "USD")}</strong> de{" "}
-              {formatMinor(addOn.acceptedAmountMinor || "0", "USD")}
-            </p>
-            <p className="mt-1 text-sm font-black text-amber-700">
-              Pendiente {formatMinor(addOn.outstandingMinor, "USD")}
-            </p>
+            <dl className="mt-3 grid gap-2 text-sm">
+              <div className="flex items-center justify-between gap-3"><dt className="text-kc-muted">Precio vendido</dt><dd className="font-black">{sale ? formatMinor(soldMinor || "0", "USD") : "—"}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-kc-muted">Cobrado</dt><dd className="font-black text-emerald-700">{formatMinor(addOn.paidMinor, "USD")}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-kc-muted">Pendiente</dt><dd className="font-black text-amber-700">{formatMinor(addOn.outstandingMinor, "USD")}</dd></div>
+            </dl>
             {addOn.recurring ? (
               <p className="mt-3 text-sm text-kc-muted">
                 Cargo mensual separado:{" "}
@@ -483,6 +513,9 @@ export function ModuleDetail({
                     <p className="mt-2 text-xs text-kc-muted">
                       Registrar como enviada no envía un correo. Use “Enviar por Mail” para entregarla al cliente.
                     </p>
+                    <button type="button" disabled={saving} onClick={() => setProposalToDiscard(proposal)} className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 font-black text-rose-700">
+                      <Trash2 size={17} /> Descartar borrador
+                    </button>
                   </>
                 ) : null}
                 {proposal.status === "sent" && canApprove ? (
@@ -908,6 +941,9 @@ export function ModuleDetail({
           ) : null}
         </div>
       ) : null}
+      <ConfirmDialog open={Boolean(proposalToDiscard)} title={`Descartar “${proposalToDiscard?.title || "borrador"}”`} description="Esta propuesta nunca fue enviada ni aceptada. Si continúa, el borrador se eliminará definitivamente; las propuestas históricas no se modificarán." confirmText="Descartar borrador" variant="danger" loading={saving} onCancel={() => { setProposalToDiscard(null); setDiscardReason(""); }} onConfirm={discardDraft}>
+        <label className="grid gap-2 text-sm font-bold">Motivo<textarea autoFocus value={discardReason} onChange={(event) => setDiscardReason(event.target.value)} rows={3} className="rounded-xl border p-3" placeholder="Explique brevemente el motivo" /></label>
+      </ConfirmDialog>
     </div>
   );
 }

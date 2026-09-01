@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
-import { canRunMaintenance, deleteLeadCascade, getLeadDeletionSummary } from "@/lib/admin/cleanup";
+import { applyRecordLifecycle } from "@/lib/lifecycle/data";
 import { createCrmRepositories } from "@/lib/data/repositories";
 
 export const runtime = "nodejs";
@@ -37,17 +37,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const access = await requirePermissionsFromRequest(request, "maintenance:run");
+  const access = await requirePermissionsFromRequest(request, "records:delete_empty");
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
-  const admin = access.admin;
-  if (!canRunMaintenance(admin)) return NextResponse.json({ ok: false, message: "No tienes permiso para eliminar leads." }, { status: 403 });
   const { id } = await params;
-  const summary = await getLeadDeletionSummary(id);
-  if (summary.leads === 0) {
-    return NextResponse.json({ ok: false, message: "Lead no encontrado." }, { status: 404 });
+  const reason = new URL(request.url).searchParams.get("reason") || "Registro creado por error y sin actividad";
+  try {
+    const deleted = await applyRecordLifecycle("lead", id, "delete", reason);
+    return NextResponse.json({ ok: true, deleted });
+  } catch (error) {
+    const status = typeof error === "object" && error && "status" in error ? Number(error.status) : 400;
+    return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "Este Lead debe conservarse; puede archivarlo." }, { status });
   }
-  const deleted = await deleteLeadCascade(id);
-  return NextResponse.json({ ok: true, deleted });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

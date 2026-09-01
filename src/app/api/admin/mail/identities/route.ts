@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { normalizeLocalPart, suggestLocalParts, uuidSchema } from "@/lib/mail/security";
+import { inspectRecordLifecycle } from "@/lib/lifecycle/data";
 
 const createSchema = z.object({ action: z.literal("create"), localPart: z.string().max(100), displayName: z.string().trim().min(2).max(160), profileId: uuidSchema.optional(), confirmed: z.literal(true) }).strict();
 const assignmentSchema = z.object({ action: z.enum(["assign", "unassign"]), identityId: uuidSchema, profileId: uuidSchema, primary: z.boolean().optional() }).strict();
@@ -46,10 +47,11 @@ export async function GET(request: NextRequest) {
     assignmentsByIdentity.set(assignment.identity_id, entries);
   }
 
-  const identities = identityResult.data.map((identity) => ({
+  const identities = await Promise.all(identityResult.data.map(async (identity) => ({
     ...identity,
     mail_identity_assignments: assignmentsByIdentity.get(identity.id) || [],
-  }));
+    lifecycle: await inspectRecordLifecycle("mail_identity", identity.id),
+  })));
   const suggestions = Object.fromEntries(
     profileResult.data.map((profile) => [
       profile.id,

@@ -70,5 +70,5 @@ export function completeHistoricalImport(
 }
 
 export function createHistoricalAddOn(payload: Record<string, unknown>) {
-  return run("historical_add_on_create", { p_payload: payload });
+  return run(payload.existingAddOnId ? "historical_add_on_complete_existing" : "historical_add_on_create", { p_payload: payload });
 }

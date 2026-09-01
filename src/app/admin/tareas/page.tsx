@@ -33,7 +33,7 @@ export default async function AdminTasksPage() {
         assignees={assignees}
         currentUserUid={admin.uid}
         canAssign={canAssignTask(admin)}
-        canDelete={hasPermission(admin, "tasks:delete")}
+        canDelete={hasPermission(admin, "records:delete_empty")}
       />
     </AdminChrome>
   );

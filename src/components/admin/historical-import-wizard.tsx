@@ -20,6 +20,7 @@ import type {
 } from "@/lib/commercial/types";
 import type { HistoricalImportSession } from "@/lib/historical-import/data";
 import { buildRecurringPreview } from "@/lib/historical-import/recurring-preview";
+import { similarHistoricalModules } from "@/lib/historical-import/module-matching";
 import { BillingPanel } from "./billing-panel";
 
 type Installment = { label: string; amount: string; dueDate: string };
@@ -88,6 +89,9 @@ export function HistoricalImportWizard({
     frequency: "monthly" as const,
   });
   const [previewConfirmed, setPreviewConfirmed] = useState(false);
+  const [moduleName, setModuleName] = useState("");
+  const [moduleChoice, setModuleChoice] = useState<"undecided" | "existing" | "new">("undecided");
+  const [existingModuleId, setExistingModuleId] = useState("");
   const project = projects.find((item) => item.id === selectedProject);
   const projectReceivables = receivables.filter(
     (item) =>
@@ -139,6 +143,13 @@ export function HistoricalImportWizard({
       return null;
     }
   }, [recurring, today]);
+  const similarModules = useMemo(
+    () => similarHistoricalModules(addOns, selectedProject, moduleName),
+    [addOns, moduleName, selectedProject],
+  );
+  const reusableModules = similarModules.filter(
+    (item) => !item.sale && !["approved", "rejected", "cancelled"].includes(item.commercialStatus),
+  );
   async function run(work: () => Promise<void>) {
     setSaving(true);
     setMessage("");
@@ -264,6 +275,12 @@ export function HistoricalImportWizard({
     if (!activeSession || !selectedProject) return;
     const data = new FormData(event.currentTarget);
     await run(async () => {
+      if (similarModules.length && moduleChoice === "undecided") {
+        throw new Error("Revise el módulo similar y elija usarlo, crear otro o cancelar.");
+      }
+      if (moduleChoice === "existing" && !reusableModules.some((item) => item.id === existingModuleId)) {
+        throw new Error("Seleccione un módulo existente que todavía no tenga una venta registrada.");
+      }
       const amountMinor = parseMoneyToMinor(
         String(data.get("amount")),
       ).toString();
@@ -279,6 +296,7 @@ export function HistoricalImportWizard({
         sessionId: activeSession.id,
         clientId: client.id,
         projectId: selectedProject,
+        existingAddOnId: moduleChoice === "existing" ? existingModuleId : undefined,
         name: String(data.get("name")),
         description: String(data.get("description")),
         requestDate: String(data.get("requestDate")),
@@ -436,11 +454,45 @@ export function HistoricalImportWizard({
               Nombre
               <input
                 name="name"
+                value={moduleName}
+                onChange={(event) => {
+                  setModuleName(event.target.value);
+                  setModuleChoice("undecided");
+                  setExistingModuleId("");
+                }}
                 required
                 minLength={2}
                 className="min-h-11 rounded-xl border px-3"
               />
             </label>
+            {similarModules.length ? (
+              <fieldset className="grid gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 sm:col-span-2">
+                <legend className="px-1 font-black text-amber-950">Ya existe un módulo con un nombre similar.</legend>
+                <p className="text-sm text-amber-950">Revise los registros antes de crear otro. No se combinará ni cambiará ningún módulo automáticamente.</p>
+                {similarModules.map((item) => {
+                  const reusable = reusableModules.some((candidate) => candidate.id === item.id);
+                  return (
+                    <label key={item.id} className={`flex min-h-12 items-start gap-3 rounded-xl border bg-white p-3 ${reusable ? "cursor-pointer" : "opacity-75"}`}>
+                      <input
+                        type="radio"
+                        name="historicalModuleChoice"
+                        value={item.id}
+                        disabled={!reusable}
+                        checked={moduleChoice === "existing" && existingModuleId === item.id}
+                        onChange={() => { setModuleChoice("existing"); setExistingModuleId(item.id); }}
+                        className="mt-1 h-5 w-5"
+                      />
+                      <span><strong>Usar existente: {item.name}</strong><br /><span className="text-sm text-kc-muted">{reusable ? "Se completará este registro con la venta histórica." : "Ya tiene una venta o un estado definitivo; se conservará sin cambios."}</span></span>
+                    </label>
+                  );
+                })}
+                <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border bg-white p-3">
+                  <input type="radio" name="historicalModuleChoice" value="new" checked={moduleChoice === "new"} onChange={() => { setModuleChoice("new"); setExistingModuleId(""); }} className="h-5 w-5" />
+                  <strong>Crear de todas formas</strong>
+                </label>
+                <button type="button" onClick={() => { setModuleName(""); setModuleChoice("undecided"); setExistingModuleId(""); }} className="min-h-11 rounded-xl border bg-white px-4 font-black">Cancelar</button>
+              </fieldset>
+            ) : null}
             <label className="grid gap-2 text-sm font-bold">
               Valor total (USD)
               <input

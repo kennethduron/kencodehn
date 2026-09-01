@@ -6,6 +6,8 @@ import { getCurrentAdmin, getMissingAdminEnv, getMissingAuthClientEnv } from "@/
 import { getCrmAuthProvider } from "@/lib/auth/provider";
 import { canAssignLead, hasPermission } from "@/lib/admin/authorization";
 import { createCrmRepositories } from "@/lib/data/repositories";
+import { inspectRecordLifecycle } from "@/lib/lifecycle/data";
+import { LifecycleActions } from "@/components/admin/lifecycle-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -28,17 +30,19 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
   if (!lead) {
     notFound();
   }
-  const [notes, tasks, activity, notifications, assignableUsers] = await Promise.all([
+  const [notes, tasks, activity, notifications, assignableUsers, lifecycle] = await Promise.all([
     canViewNotes ? repositories.notes.list(id, admin) : Promise.resolve([]),
     canViewTasks ? repositories.tasks.list(admin, id) : Promise.resolve([]),
     canViewActivity ? repositories.activity.list(admin, id) : Promise.resolve([]),
     hasPermission(admin, "notifications:view") ? repositories.notifications.list(admin) : Promise.resolve([]),
     mayAssignLead ? repositories.users.list().then((members) => members.filter((member) => member.active && member.role === "sales_agent").map(({ uid, name, email }) => ({ uid, name, email }))) : Promise.resolve([]),
+    hasPermission(admin, "records:archive") ? inspectRecordLifecycle("lead", id) : Promise.resolve(null),
   ]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (
     <AdminChrome admin={admin} unreadCount={unreadCount} authProvider={getCrmAuthProvider()}>
+      {lifecycle ? <div className="mb-4 flex justify-end"><LifecycleActions entity="lead" id={id} name={lead.name} info={lifecycle} returnTo="/admin/leads" /></div> : null}
       <LeadDetail
         initialLead={lead}
         initialNotes={notes}
@@ -50,7 +54,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
         canViewTasks={canViewTasks}
         canEditTasks={hasPermission(admin, "tasks:edit")}
         canViewActivity={canViewActivity}
-        canDeleteLead={hasPermission(admin, "maintenance:run")}
+        canDeleteLead={false}
         canAssignLead={mayAssignLead}
         canConvertLead={hasPermission(admin, "clients:edit")}
         assignableUsers={assignableUsers}

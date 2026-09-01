@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { CalendarDays, Check, Clock3, Edit3, Filter, Plus, Trash2, X } from "lucide-react";
+import { CalendarDays, Check, Clock3, Edit3, Ellipsis, Filter, Plus, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AdminLead, AdminTask, TaskAssignee, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 import { shortDate, taskPriorityLabels, taskStatusLabels, taskTypeLabels, timeAgo } from "./admin-labels";
@@ -156,6 +156,14 @@ export function TasksPanel({
     showToast(result.message || "No se pudo eliminar. Inténtelo nuevamente.", "error");
   }
 
+  async function openLifecycle(task: AdminTask) {
+    const response = await fetch(`/api/admin/lifecycle?entity=task&id=${encodeURIComponent(task.id)}`, { cache: "no-store" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) return showToast(result.error || "No pudimos revisar esta tarea.", "error");
+    if (result.info?.recommendedAction === "delete") return setConfirmDelete(task);
+    showToast(result.info?.reason || "Esta tarea debe conservarse como parte del historial. Puede cancelarla desde su estado.", "info");
+  }
+
   function showToast(message: string, variant: "success" | "error" | "info" = "success") {
     setToastVariant(variant);
     setToast(message);
@@ -190,8 +198,8 @@ export function TasksPanel({
             {Object.entries(taskStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           {canDelete ? (
-            <button type="button" onClick={() => setConfirmDelete(task)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-300/10 px-3 text-sm font-black text-rose-100">
-              <Trash2 size={16} /> Eliminar
+            <button type="button" onClick={() => void openLifecycle(task)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300/30 px-3 text-sm font-black text-kc-text">
+              <Ellipsis size={16} /> Más acciones
             </button>
           ) : null}
         </div>
@@ -345,9 +353,9 @@ export function TasksPanel({
 
       <ConfirmDialog
         open={Boolean(confirmDelete)}
-        title="Eliminar tarea"
-        description={`¿Está seguro de que desea eliminar "${confirmDelete?.title ?? "esta tarea"}"? Esta acción no se puede deshacer.`}
-        confirmText="Sí, eliminar"
+        title={`Eliminar “${confirmDelete?.title ?? "esta tarea"}”`}
+        description="Esta tarea no tiene actividad relacionada. Si continúa se eliminará definitivamente."
+        confirmText="Eliminar definitivamente"
         cancelText="Cancelar"
         variant="danger"
         loading={isDeleting}

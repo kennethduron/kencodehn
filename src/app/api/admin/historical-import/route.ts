@@ -30,6 +30,7 @@ const schema = z.discriminatedUnion("operation", [
           sessionId: z.string().uuid(),
           clientId: z.string().uuid(),
           projectId: z.string().uuid(),
+          existingAddOnId: z.string().uuid().optional(),
           name: z.string().trim().min(2).max(180),
           description: z.string().trim().min(2).max(8000),
           requestDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

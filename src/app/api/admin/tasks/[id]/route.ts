@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { createCrmRepositories } from "@/lib/data/repositories";
+import { applyRecordLifecycle } from "@/lib/lifecycle/data";
 
 export const runtime = "nodejs";
 
@@ -39,13 +40,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const access = await requirePermissionsFromRequest(request, "tasks:delete");
+  const access = await requirePermissionsFromRequest(request, "records:delete_empty");
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const admin = access.admin;
   const { id } = await params;
   try {
     const repositories = await createCrmRepositories();
-    await repositories.tasks.remove(id, admin);
+    await applyRecordLifecycle("task", id, "delete", "Tarea creada por error y sin actividad");
     const tasks = await repositories.tasks.list(admin);
     return NextResponse.json({ ok: true, tasks });
   } catch (error) {

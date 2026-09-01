@@ -20,6 +20,8 @@ import {
 import { commercialPageContext } from "@/lib/commercial/page-context";
 import { listPayments, listReceivables } from "@/lib/billing/data";
 import { listClientAddOns } from "@/lib/add-ons/data";
+import { inspectRecordLifecycle } from "@/lib/lifecycle/data";
+import { LifecycleActions } from "@/components/admin/lifecycle-actions";
 export const dynamic = "force-dynamic";
 export default async function ClientPage({
   params,
@@ -37,7 +39,7 @@ export default async function ClientPage({
     );
   if (!hasPermission(admin, "clients:view")) redirect("/admin");
   const { id } = await params;
-  const [detail, context, receivables, payments, addOns, financialOverview] =
+  const [detail, context, receivables, payments, addOns, financialOverview, lifecycle] =
     await Promise.all([
       getCommercialClient(id),
       commercialPageContext(admin),
@@ -45,6 +47,7 @@ export default async function ClientPage({
       listPayments(id),
       listClientAddOns(id),
       getClientFinancialOverview(id),
+      hasPermission(admin, "records:archive") ? inspectRecordLifecycle("client", id) : Promise.resolve(null),
     ]);
   if (!detail) notFound();
   return (
@@ -54,6 +57,7 @@ export default async function ClientPage({
       authProvider={getCrmAuthProvider()}
     >
       <div className="grid gap-5">
+        {lifecycle ? <div className="flex justify-end"><LifecycleActions entity="client" id={id} name={detail.client.company || detail.client.name} info={lifecycle} returnTo="/admin/clientes" /></div> : null}
         <ClientDetail
           {...detail}
           billingReceivables={receivables.items}
