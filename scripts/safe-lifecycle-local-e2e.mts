@@ -25,6 +25,7 @@ const people = [
   { id: "65000000-0000-4000-8000-000000000003", email: "sales.lifecycle@example.test", role: "sales_agent", active: true },
   { id: "65000000-0000-4000-8000-000000000004", email: "viewer.lifecycle@example.test", role: "viewer", active: true },
   { id: "65000000-0000-4000-8000-000000000005", email: "inactive.lifecycle@example.test", role: "admin", active: false },
+  { id: "65000000-0000-4000-8000-000000000006", email: "admin.lifecycle@example.test", role: "admin", active: true },
 ] as const;
 
 for (const person of people) {
@@ -59,6 +60,7 @@ const manager = await auth(people[1]);
 const sales = await auth(people[2]);
 const viewer = await auth(people[3]);
 const inactive = await auth(people[4]);
+const admin = await auth(people[5]);
 const emailBefore = await service.from("email_logs").select("id", { count: "exact", head: true });
 const pushBefore = await service.from("push_logs").select("id", { count: "exact", head: true });
 
@@ -160,6 +162,83 @@ const draftModuleInfo = await owner.rpc("record_lifecycle_inspect", { p_entity: 
 if (draftModuleInfo.error) throw draftModuleInfo.error;
 assert.equal(draftModuleInfo.data.deleteAllowed, true);
 
+const deliveredModule = await write(owner, "add_on_write", "module_create", {
+  clientId, projectId, name: "Delivered but unsold module", description: "Local accidental fixture",
+  requestDate: "2026-08-31", requestedByClient: false, currency: "USD",
+});
+if (deliveredModule.error) throw deliveredModule.error;
+const deliveredProposal = await write(owner, "add_on_write", "proposal_create", {
+  addOnId: deliveredModule.data.id, title: "Unsent accidental proposal", scope: "Never sent local draft",
+  amountMinor: "15900", currency: "USD", paymentTerms: "", monthlyAddOnMinor: "0",
+  estimatedDelivery: "", validUntil: "", clientNotes: "", internalNotes: "",
+});
+if (deliveredProposal.error) throw deliveredProposal.error;
+const assignment = await write(owner, "add_on_write", "module_assign", {
+  addOnId: deliveredModule.data.id, sellerId: "", reason: "Auxiliary reassignment fixture",
+});
+if (assignment.error) throw assignment.error;
+const delivered = await write(owner, "add_on_write", "work_status_update", {
+  addOnId: deliveredModule.data.id, status: "delivered", plannedStartDate: "2026-08-01",
+  targetDeliveryDate: "2026-08-15", actualDeliveryDate: "2026-08-15", notes: "Auxiliary delivery state",
+});
+if (delivered.error) throw delivered.error;
+const auxiliaryNotification = await service.from("notifications").insert({
+  firebase_id: `local:${crypto.randomUUID()}`,
+  recipient_id: people[0].id,
+  add_on_id: deliveredModule.data.id,
+  type: "module",
+  severity: "info",
+  title: "Auxiliary module notification",
+  message: "Local-only fixture",
+  action_url: `/admin/modulos/${deliveredModule.data.id}`,
+  created_at: now,
+  updated_at: now,
+}).select("id").single();
+if (auxiliaryNotification.error) throw auxiliaryNotification.error;
+for (const actor of [owner, admin, manager]) {
+  const info = await actor.rpc("record_lifecycle_inspect", { p_entity: "module", p_id: deliveredModule.data.id });
+  if (info.error) throw info.error;
+  assert.equal(info.data.deleteAllowed, true);
+  assert.equal(info.data.hasHistory, false);
+  assert.deepEqual(info.data.blockingReasons, []);
+  assert.match(info.data.reason, /no tiene ventas, cobros ni pagos/i);
+}
+const auxiliaryActivityIds = (await service.from("activity_logs").select("id").eq("add_on_id", deliveredModule.data.id)).data?.map((row) => row.id) || [];
+const deliveredDelete = await manager.rpc("record_lifecycle_apply", {
+  p_entity: "module", p_id: deliveredModule.data.id, p_action: "delete", p_reason: "Registro accidental sin venta",
+});
+if (deliveredDelete.error) throw deliveredDelete.error;
+assert.equal((await service.from("project_add_ons").select("id").eq("id", deliveredModule.data.id)).data?.length, 0);
+assert.equal((await service.from("add_on_proposals").select("id").eq("id", deliveredProposal.data.id)).data?.length, 0);
+assert.equal((await service.from("add_on_seller_assignment_events").select("id").eq("add_on_id", deliveredModule.data.id)).data?.length, 0);
+assert.equal((await service.from("notifications").select("id").eq("id", auxiliaryNotification.data.id)).data?.length, 0);
+if (auxiliaryActivityIds.length) {
+  const detached = await service.from("activity_logs").select("add_on_id").in("id", auxiliaryActivityIds);
+  assert.ok(detached.data?.every((row) => row.add_on_id === null));
+}
+
+const soldModule = await write(owner, "add_on_write", "module_create", {
+  clientId, projectId, name: "Sold protected module", description: "Local protected fixture",
+  requestDate: "2026-08-31", requestedByClient: true, currency: "USD",
+});
+if (soldModule.error) throw soldModule.error;
+const soldProposal = await write(owner, "add_on_write", "proposal_create", {
+  addOnId: soldModule.data.id, title: "Accepted proposal", scope: "Commercial sale fixture",
+  amountMinor: "22500", currency: "USD", paymentTerms: "One payment", monthlyAddOnMinor: "0",
+  estimatedDelivery: "", validUntil: "", clientNotes: "", internalNotes: "",
+});
+if (soldProposal.error) throw soldProposal.error;
+const acceptedSale = await write(owner, "add_on_write", "proposal_accept", {
+  proposalId: soldProposal.data.id, effectiveDate: "2026-08-31", decisionNotes: "Accepted locally",
+});
+if (acceptedSale.error) throw acceptedSale.error;
+const saleInfo = await owner.rpc("record_lifecycle_inspect", { p_entity: "module", p_id: soldModule.data.id });
+if (saleInfo.error) throw saleInfo.error;
+assert.equal(saleInfo.data.deleteAllowed, false);
+assert.ok(saleInfo.data.blockingReasons.includes("approved_sale"));
+assert.match(saleInfo.data.reason, /venta aprobada/i);
+assert.ok((await owner.rpc("record_lifecycle_apply", { p_entity: "module", p_id: soldModule.data.id, p_action: "delete", p_reason: "Must remain" })).error);
+
 const managerModule = await write(owner, "add_on_write", "module_create", {
   clientId,
   projectId,
@@ -247,6 +326,10 @@ console.log(JSON.stringify({
   inactive: "DENIED",
   financialHardDelete: "DENIED",
   proposalDraftDiscard: "PASS",
+  deliveredWithoutBusinessHistoryDelete: "PASS",
+  exactBlockingReason: "PASS",
+  auxiliaryCleanup: "PASS",
+  acceptedSaleDelete: "DENIED",
   unusedMailIdentityDelete: "PASS",
   externalDeliveries: { email: 0, push: 0 },
 }, null, 2));

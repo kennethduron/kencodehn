@@ -15,6 +15,18 @@ const labels: Record<LifecycleInfo["recommendedAction"], string> = {
   none: "Sin acciones disponibles",
 };
 
+const deleteLabels: Partial<Record<LifecycleEntity, string>> = {
+  lead: "Eliminar lead",
+  client: "Eliminar cliente",
+  project: "Eliminar proyecto",
+  module: "Eliminar módulo",
+  proposal: "Eliminar borrador",
+  task: "Eliminar tarea",
+  recurring_service: "Eliminar servicio",
+  add_on_recurring: "Eliminar cargo mensual",
+  mail_identity: "Eliminar identidad",
+};
+
 export function LifecycleActions({ entity, id, name, info, returnTo }: { entity: LifecycleEntity; id: string; name: string; info: LifecycleInfo; returnTo: string }) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -49,9 +61,9 @@ export function LifecycleActions({ entity, id, name, info, returnTo }: { entity:
     <button type="button" onClick={() => setOpen((value) => !value)} aria-haspopup="menu" aria-expanded={open} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-black text-slate-800"><Ellipsis size={18} /> Más acciones</button>
     {open ? <div role="menu" className="absolute right-0 z-40 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border bg-white p-2 shadow-2xl">
       <p className="px-3 py-2 text-xs leading-5 text-kc-muted">{info.reason}</p>
-      {actionable ? <button role="menuitem" type="button" onClick={() => { setConfirming(recommended); setOpen(false); }} className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left font-black ${recommended === "delete" ? "text-rose-700 hover:bg-rose-50" : "text-slate-800 hover:bg-slate-50"}`}>{recommended === "delete" ? <Trash2 size={17} /> : <Archive size={17} />}{labels[recommended]}</button> : null}
+      {actionable ? <button role="menuitem" type="button" onClick={() => { setConfirming(recommended); setOpen(false); }} className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left font-black ${recommended === "delete" ? "text-rose-700 hover:bg-rose-50" : "text-slate-800 hover:bg-slate-50"}`}>{recommended === "delete" ? <Trash2 size={17} /> : <Archive size={17} />}{recommended === "delete" ? (deleteLabels[entity] ?? labels.delete) : labels[recommended]}</button> : null}
     </div> : null}
-    <ConfirmDialog open={Boolean(confirming)} title={`${confirming === "delete" ? "Eliminar" : labels[confirming ?? "none"]} “${name}”`} description={confirming === "delete" ? "Este registro no tiene actividad relacionada. Si continúa se eliminará definitivamente." : "El registro se conservará para mantener el historial de Ken Code."} confirmText={confirming === "delete" ? "Eliminar definitivamente" : labels[confirming ?? "none"]} variant="danger" loading={busy} onCancel={() => { setConfirming(null); setReason(""); }} onConfirm={apply}>
+    <ConfirmDialog open={Boolean(confirming)} title={`${confirming === "delete" ? "Eliminar" : labels[confirming ?? "none"]} “${name}”`} description={confirming === "delete" ? (entity === "module" ? "Este módulo no tiene ventas, cobros ni pagos registrados. Se eliminará definitivamente porque no contiene historial comercial o financiero que deba conservarse." : "Este registro no tiene actividad empresarial relacionada. Si continúa se eliminará definitivamente.") : "El registro se conservará para mantener el historial de Ken Code."} confirmText={confirming === "delete" ? "Eliminar definitivamente" : labels[confirming ?? "none"]} variant="danger" loading={busy} onCancel={() => { setConfirming(null); setReason(""); }} onConfirm={apply}>
       <label className="grid gap-2 text-sm font-bold">Motivo<textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} className="rounded-xl border p-3" placeholder="Explique brevemente el motivo" /></label>
     </ConfirmDialog>
   </div>;

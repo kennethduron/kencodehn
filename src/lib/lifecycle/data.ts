@@ -11,6 +11,7 @@ export type LifecycleInfo = {
   archiveAllowed: boolean;
   recommendedAction: "delete" | "archive" | "deactivate" | "cancel" | "reverse" | "none";
   reason: string;
+  blockingReasons?: string[];
 };
 
 function mapError(error: { code?: string; message?: string }) {

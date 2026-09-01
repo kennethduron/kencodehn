@@ -12,6 +12,7 @@ const lifecycleUi = readFileSync("src/components/admin/lifecycle-actions.tsx", "
 const authorization = readFileSync("src/lib/admin/authorization.ts", "utf8");
 const moduleMigration = readFileSync("supabase/migrations/20260902001400_module_financial_consistency.sql", "utf8");
 const lifecycleMigration = readFileSync("supabase/migrations/20260902001500_safe_record_lifecycle.sql", "utf8");
+const eligibilityMigration = readFileSync("supabase/migrations/20260902001600_safe_delete_eligibility_refinement.sql", "utf8");
 const leadRoute = readFileSync("src/app/api/admin/leads/[id]/route.ts", "utf8");
 const taskRoute = readFileSync("src/app/api/admin/tasks/[id]/route.ts", "utf8");
 const tasksUi = readFileSync("src/components/admin/tasks-panel.tsx", "utf8");
@@ -107,3 +108,29 @@ test("task UI checks lifecycle before showing destructive confirmation", () => {
   assert.match(tasksUi, /Más acciones/);
 });
 test("read-only financial audit contains no mutation methods", () => assert.doesNotMatch(auditScript, /\.(insert|update|upsert|delete)\s*\(/));
+test("module creation audit does not block safe deletion", () => assert.doesNotMatch(eligibilityMigration.match(/action in \([\s\S]*?\)/)?.[0] || "", /module_created/));
+test("delivered work status is auxiliary without business history", () => assert.doesNotMatch(eligibilityMigration.match(/action in \([\s\S]*?\)/)?.[0] || "", /module_delivered/));
+test("module assignment events are explicitly cleaned, not treated as business history", () => {
+  assert.match(eligibilityMigration, /delete from public\.add_on_seller_assignment_events where add_on_id=p_id/);
+  assert.doesNotMatch(eligibilityMigration.match(/private\.module_lifecycle_blockers[\s\S]*?return v_blockers/)?.[0] || "", /add_on_seller_assignment_events/);
+});
+test("accepted sale remains an authoritative module blocker", () => assert.match(eligibilityMigration, /add_on_sales where add_on_id=p_id[\s\S]*approved_sale/));
+test("accepted amount inconsistency fails closed", () => assert.match(eligibilityMigration, /commercial_status='approved'[\s\S]*accepted_proposal_id is not null[\s\S]*accepted_amount_minor/));
+test("module Cobros are resolved through relational and legacy metadata paths", () => assert.match(eligibilityMigration, /add_on_installments[\s\S]*add_on_payment_plans[\s\S]*add_on_recurring_services[\s\S]*metadata->>'addOnId'/));
+test("module payment allocations block hard delete", () => assert.match(eligibilityMigration, /payment_allocations[\s\S]*pa\.reversed_at is null[\s\S]*'payment'/));
+test("real module Mail remains a blocker", () => assert.match(eligibilityMigration, /mail_threads where add_on_id=p_id[\s\S]*commercial_mail/));
+test("non-draft proposals remain protected", () => assert.match(eligibilityMigration, /add_on_proposals where add_on_id=p_id and status<>'draft'/));
+test("module blocker reason identifies payment precisely", () => assert.match(eligibilityMigration, /No puede eliminarse porque tiene un pago registrado/));
+test("module blocker reason identifies approved sale precisely", () => assert.match(eligibilityMigration, /No puede eliminarse porque existe una venta aprobada/));
+test("module blocker reason identifies Cobro precisely", () => assert.match(eligibilityMigration, /No puede eliminarse porque tiene un cobro registrado/));
+test("module blocker reason identifies commercial correspondence precisely", () => assert.match(eligibilityMigration, /No puede eliminarse porque contiene correspondencia comercial/));
+test("empty module reason describes commercial and financial eligibility", () => assert.match(eligibilityMigration, /no tiene ventas, cobros ni pagos registrados/));
+test("module safe delete removes only auxiliary notifications and detaches audit links", () => assert.match(eligibilityMigration, /delete from public\.notifications where add_on_id=p_id[\s\S]*update public\.activity_logs set add_on_id=null/));
+test("lead creation and ordinary edits are auxiliary", () => assert.match(eligibilityMigration, /lead_created[\s\S]*lead_updated[\s\S]*lead_assigned/));
+test("client creation edits and assignment are auxiliary", () => assert.match(eligibilityMigration, /client_created[\s\S]*client_updated[\s\S]*client_assigned/));
+test("project creation edits and assignment are auxiliary", () => assert.match(eligibilityMigration, /project_created[\s\S]*project_updated[\s\S]*project_assigned/));
+test("accidental pending task edits are auxiliary but completed tasks remain history", () => assert.match(eligibilityMigration, /status in \('completed','cancelled','overdue'\)[\s\S]*task_created[\s\S]*task_updated/));
+test("unused recurring services remain deletable only before generating Cobros", () => assert.match(eligibilityMigration, /recurring_service'[\s\S]*receivables where recurring_service_id=p_id/));
+test("refinement introduces no destructive cascade", () => assert.doesNotMatch(eligibilityMigration, /on delete cascade/i));
+test("module dialog explains permanent deletion consequences", () => assert.match(lifecycleUi, /Este módulo no tiene ventas, cobros ni pagos registrados[\s\S]*Eliminar definitivamente/));
+test("module action has a clear business label", () => assert.match(lifecycleUi, /module: "Eliminar módulo"/));
