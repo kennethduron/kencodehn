@@ -44,6 +44,16 @@ const tabs = [
   ["activity", "Actividad"],
 ] as const;
 
+const businessDateTimeFormatter = new Intl.DateTimeFormat("es-HN", {
+  dateStyle: "short",
+  timeStyle: "medium",
+  timeZone: "America/Tegucigalpa",
+});
+
+function formatBusinessDateTime(value: string) {
+  return businessDateTimeFormatter.format(new Date(value));
+}
+
 async function mutate(operation: string, payload: Record<string, unknown>) {
   const response = await fetch("/api/admin/commercial", {
     method: "POST",
@@ -431,7 +441,7 @@ export function ClientDetail({
                 <div>
                   <dt className="text-kc-muted">Creado en sistema</dt>
                   <dd className="font-bold text-kc-text">
-                    {new Date(client.createdAt).toLocaleString("es-HN")}
+                    {formatBusinessDateTime(client.createdAt)}
                   </dd>
                 </div>
                 <div>
@@ -511,7 +521,7 @@ export function ClientDetail({
                 </div>
                 <p className="mt-2 text-sm text-kc-muted">
                   {task.due_at
-                    ? new Date(task.due_at).toLocaleString("es-HN")
+                    ? formatBusinessDateTime(task.due_at)
                     : "Sin fecha"}
                 </p>
               </article>
@@ -570,7 +580,7 @@ export function ClientDetail({
                   <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
                     <h2 className="font-black text-kc-text">{event.title}</h2>
                     <time className="text-xs font-bold text-kc-muted">
-                      {new Date(event.createdAt).toLocaleString("es-HN")}
+                      {formatBusinessDateTime(event.createdAt)}
                     </time>
                   </div>
                   <p className="mt-1 text-sm text-kc-muted">

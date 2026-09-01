@@ -210,3 +210,7 @@ test("44 historical UI contains no implementation jargon", () => {
   for (const term of ["RPC", "UUID", "Supabase", "database", "cron"])
     assert.doesNotMatch(wizard, new RegExp(`\\b${term}\\b`, "i"));
 });
+test("45 client business dates hydrate consistently", () => {
+  assert.match(client, /timeZone: "America\/Tegucigalpa"/);
+  assert.doesNotMatch(client, /toLocaleString\("es-HN"\)/);
+});
