@@ -34,7 +34,7 @@ test("USD09 payment API rejects manipulated non-USD currency", () => assert.matc
 test("USD10 expense API rejects manipulated non-USD currency", () => assert.match(financeApi, /currency:z\.literal\("USD"\)/));
 test("USD11 export API rejects manipulated non-USD currency", () => assert.match(exportApi, /currency:z\.literal\("USD"\)/));
 test("USD12 report and series RPCs reject non-USD", () => { assert.match(migration, /report currency must be USD/); assert.match(migration, /finance series currency must be USD/); });
-test("USD13 finance server data always requests USD", () => assert.match(financeData, /p_currency:"USD"/));
+test("USD13 finance server data always requests USD", () => assert.match(financeData, /p_currency:\s*"USD"/));
 test("USD14 billing summary is one USD perspective", () => { assert.match(billingData, /currency:"USD"/); assert.doesNotMatch(billingData.slice(billingData.indexOf("billingSummary"), billingData.indexOf("listPayments")), /byCurrency/); });
 test("USD15 ordinary forms expose no currency selector", () => assert.doesNotMatch(projectList + projectDetail + expensePanel + billingPanel + paymentList + reports, /name="currency"[^>]*(select|input)|HNL|Todas las monedas|USD \/ HNL/));
 test("USD16 project, recurring and expense UI submit USD automatically", () => { assert.match(projectList, /currency: "USD"/); assert.match(projectDetail, /currency:"USD"/); assert.match(expensePanel, /currency:"USD"/); });

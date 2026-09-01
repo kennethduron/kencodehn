@@ -122,3 +122,47 @@ export async function commercialMutation(operation: string, payload: Record<stri
   }
   return (data ?? {}) as Record<string, unknown>;
 }
+
+export type ClientFinancialOverview = {
+  originalProjectsMinor: string;
+  additionalSalesMinor: string;
+  lifetimeSoldMinor: string;
+  collectedMinor: string;
+  outstandingMinor: string;
+  baseMonthlyMinor: string;
+  addOnMonthlyMinor: string;
+  monthlyCommitmentMinor: string;
+  currency: "USD";
+};
+
+export async function getClientFinancialOverview(clientId: string): Promise<ClientFinancialOverview> {
+  const client = await createSupabaseServerClient();
+  const [projectsResult, salesResult, paymentsResult, receivablesResult, baseResult, addOnResult] = await Promise.all([
+    client.from("projects").select("total_amount_minor,status").eq("client_id", clientId),
+    client.from("add_on_sales").select("accepted_amount_minor").eq("client_id", clientId),
+    client.from("payments").select("amount_minor,status").eq("client_id", clientId),
+    client.from("receivables").select("balance_minor,payment_state").eq("client_id", clientId),
+    client.from("project_recurring_services").select("monthly_amount_minor,status,projects!inner(client_id)").eq("projects.client_id", clientId),
+    client.from("add_on_recurring_services").select("monthly_amount_minor,status,add_on_sales!inner(client_id)").eq("add_on_sales.client_id", clientId),
+  ]);
+  const failed = [projectsResult, salesResult, paymentsResult, receivablesResult, baseResult, addOnResult].find((result) => result.error);
+  if (failed?.error) throw new Error("No se pudo calcular el resumen financiero del cliente.");
+  const sum = (values: unknown[]) => values.reduce<bigint>((total, value) => total + BigInt(String(value ?? "0")), BigInt(0));
+  const original = sum(((projectsResult.data ?? []) as Row[]).filter((row) => row.status !== "cancelled").map((row) => row.total_amount_minor));
+  const additions = sum(((salesResult.data ?? []) as Row[]).map((row) => row.accepted_amount_minor));
+  const collected = sum(((paymentsResult.data ?? []) as Row[]).filter((row) => row.status === "posted").map((row) => row.amount_minor));
+  const outstanding = sum(((receivablesResult.data ?? []) as Row[]).filter((row) => row.payment_state === "open" || row.payment_state === "partially_paid").map((row) => row.balance_minor));
+  const baseMonthly = sum(((baseResult.data ?? []) as Row[]).filter((row) => row.status === "active").map((row) => row.monthly_amount_minor));
+  const addOnMonthly = sum(((addOnResult.data ?? []) as Row[]).filter((row) => row.status === "active").map((row) => row.monthly_amount_minor));
+  return {
+    originalProjectsMinor: original.toString(),
+    additionalSalesMinor: additions.toString(),
+    lifetimeSoldMinor: (original + additions).toString(),
+    collectedMinor: collected.toString(),
+    outstandingMinor: outstanding.toString(),
+    baseMonthlyMinor: baseMonthly.toString(),
+    addOnMonthlyMinor: addOnMonthly.toString(),
+    monthlyCommitmentMinor: (baseMonthly + addOnMonthly).toString(),
+    currency: "USD",
+  };
+}

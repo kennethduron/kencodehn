@@ -31,9 +31,24 @@ async function unwrap<T>(promise: PromiseLike<{ data: T | null; error: { code?: 
   return data;
 }
 
-export async function listReceivables(input: { page?: number; pageSize?: number; state?: string; timing?: string; origin?: string; currency?: string; clientId?: string; projectId?: string } = {}) {
+export async function listReceivables(input: { page?: number; pageSize?: number; state?: string; timing?: string; origin?: string; currency?: string; clientId?: string; projectId?: string; addOnId?: string } = {}) {
   const client = await createSupabaseServerClient();
   const page=Math.max(1,input.page??1),pageSize=Math.min(50,Math.max(1,input.pageSize??20));
+  if (input.addOnId) {
+    let query=client.from("receivables")
+      .select("*,clients!inner(name,company),projects!inner(name,assigned_to)",{count:"exact"})
+      .contains("metadata",{addOnId:input.addOnId})
+      .order("due_date",{ascending:true})
+      .range((page-1)*pageSize,page*pageSize-1);
+    if(input.state)query=query.eq("payment_state",input.state);
+    if(input.origin)query=query.eq("origin_type",input.origin);
+    if(input.currency)query=query.eq("currency",input.currency.toUpperCase());
+    const {data,error,count}=await query;
+    if(error)throw new Error(`Billing add-on receivables query failed (${error.code??"unknown"}).`);
+    let items=((data??[]) as Row[]).map(mapReceivable);
+    if(input.timing)items=items.filter(item=>item.timingState===input.timing);
+    return {items,total:count??items.length,page,pageSize};
+  }
   const {data,error}=await client.rpc("billing_list_receivables",{p_page:page,p_page_size:pageSize,p_payment_state:input.state??null,p_timing_state:input.timing??null,p_origin_type:input.origin??null,p_currency:input.currency??null,p_client_id:input.clientId??null,p_project_id:input.projectId??null});
   if(error) throw new Error(`Billing receivables query failed (${error.code??"unknown"}).`);
   const rows=(data??[]) as Row[];const items=rows.map(mapReceivable);

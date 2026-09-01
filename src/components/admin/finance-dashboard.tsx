@@ -1,17 +1,60 @@
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Banknote, CircleDollarSign, ReceiptText, Scale, TriangleAlert } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
+  Banknote,
+  CircleDollarSign,
+  ReceiptText,
+  Scale,
+  TriangleAlert,
+} from "lucide-react";
 import { formatMinor, formatSignedMinor } from "@/lib/billing/money";
-import type { FinanceReportRow, FinanceSeriesPoint, FinanceSummary } from "@/lib/finance/types";
+import type {
+  FinanceReportRow,
+  FinanceSeriesPoint,
+  FinanceSummary,
+} from "@/lib/finance/types";
 import { financePeriodLabels } from "@/lib/finance/range";
 import { FinanceNav, FinancePageHeader } from "./finance-nav";
 
 const metrics = [
-  ["Valor vendido", "soldMinor", CircleDollarSign, "Importe contractual registrado; no es efectivo cobrado."],
-  ["Cobrado", "collectedMinor", Banknote, "Dinero real recibido durante el periodo."],
-  ["Por cobrar", "outstandingMinor", ArrowUpRight, "Saldo de obligaciones del periodo."],
-  ["Vencido", "overdueMinor", TriangleAlert, "Saldo que superó su fecha de cobro."],
-  ["Gastos", "expenseMinor", ReceiptText, "Salidas de caja registradas y vigentes."],
-  ["Resultado neto de caja", "netCashMinor", Scale, "Cobrado menos gastos; no es utilidad contable."],
+  [
+    "Valor vendido",
+    "soldMinor",
+    CircleDollarSign,
+    "Importe contractual registrado; no es efectivo cobrado.",
+  ],
+  [
+    "Cobrado",
+    "collectedMinor",
+    Banknote,
+    "Dinero real recibido durante el periodo.",
+  ],
+  [
+    "Por cobrar",
+    "outstandingMinor",
+    ArrowUpRight,
+    "Saldo de obligaciones del periodo.",
+  ],
+  [
+    "Vencido",
+    "overdueMinor",
+    TriangleAlert,
+    "Saldo que superó su fecha de cobro.",
+  ],
+  [
+    "Gastos",
+    "expenseMinor",
+    ReceiptText,
+    "Salidas de caja registradas y vigentes.",
+  ],
+  [
+    "Resultado neto de caja",
+    "netCashMinor",
+    Scale,
+    "Cobrado menos gastos; no es utilidad contable.",
+  ],
 ] as const;
 
 function FinanceBars({ points }: { points: FinanceSeriesPoint[] }) {
@@ -20,26 +63,340 @@ function FinanceBars({ points }: { points: FinanceSeriesPoint[] }) {
     const spent = BigInt(item.expenseMinor);
     return collected > value ? collected : spent > value ? spent : value;
   }, BigInt(1));
-  return <article className="kc-admin-card p-4 sm:p-5">
-    <div className="flex items-start justify-between gap-3"><div><h2 className="font-black text-kc-text">Cobrado vs. gastado</h2><p className="mt-1 text-sm text-kc-muted">Serie mensual en USD</p></div><span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700">USD</span></div>
-    <div className="mt-5 grid gap-4" role="img" aria-label="Comparación mensual de cobros y gastos en USD">{points.map((item) => {
-      const collected = BigInt(item.collectedMinor); const spent = BigInt(item.expenseMinor);
-      const collectedWidth = Number(collected * BigInt(100) / max); const spentWidth = Number(spent * BigInt(100) / max);
-      return <div key={item.monthStart} className="grid grid-cols-[4.8rem_minmax(0,1fr)] items-center gap-3"><span className="text-xs font-bold text-kc-muted">{new Intl.DateTimeFormat("es-HN", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${item.monthStart}T12:00:00Z`))}</span><div className="grid gap-1.5"><span className="h-2 rounded-full bg-blue-100"><span className="block h-full rounded-full bg-blue-600" style={{ width: `${collectedWidth}%` }} title={`Cobrado ${formatMinor(collected, "USD")}`} /></span><span className="h-2 rounded-full bg-orange-100"><span className="block h-full rounded-full bg-orange-500" style={{ width: `${spentWidth}%` }} title={`Gastado ${formatMinor(spent, "USD")}`} /></span></div></div>;
-    })}</div>
-    <div className="mt-4 flex gap-4 text-xs font-bold text-kc-muted"><span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-blue-600" />Cobrado</span><span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-orange-500" />Gastado</span></div>
-    <details className="mt-4 text-sm"><summary className="font-bold text-blue-700">Ver alternativa tabular</summary><div className="mt-2 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Mes</th><th className="p-2">Cobrado</th><th className="p-2">Gastado</th></tr></thead><tbody>{points.map((item) => <tr key={item.monthStart} className="border-t"><td className="p-2">{item.monthStart}</td><td className="p-2">{formatMinor(item.collectedMinor, "USD")}</td><td className="p-2">{formatMinor(item.expenseMinor, "USD")}</td></tr>)}</tbody></table></div></details>
-  </article>;
+  return (
+    <article className="kc-admin-card p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-black text-kc-text">Cobrado vs. gastado</h2>
+          <p className="mt-1 text-sm text-kc-muted">Serie mensual en USD</p>
+        </div>
+        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700">
+          USD
+        </span>
+      </div>
+      <div
+        className="mt-5 grid gap-4"
+        role="img"
+        aria-label="Comparación mensual de cobros y gastos en USD"
+      >
+        {points.map((item) => {
+          const collected = BigInt(item.collectedMinor);
+          const spent = BigInt(item.expenseMinor);
+          const collectedWidth = Number((collected * BigInt(100)) / max);
+          const spentWidth = Number((spent * BigInt(100)) / max);
+          return (
+            <div
+              key={item.monthStart}
+              className="grid grid-cols-[4.8rem_minmax(0,1fr)] items-center gap-3"
+            >
+              <span className="text-xs font-bold text-kc-muted">
+                {new Intl.DateTimeFormat("es-HN", {
+                  month: "short",
+                  year: "2-digit",
+                  timeZone: "UTC",
+                }).format(new Date(`${item.monthStart}T12:00:00Z`))}
+              </span>
+              <div className="grid gap-1.5">
+                <span className="h-2 rounded-full bg-blue-100">
+                  <span
+                    className="block h-full rounded-full bg-blue-600"
+                    style={{ width: `${collectedWidth}%` }}
+                    title={`Cobrado ${formatMinor(collected, "USD")}`}
+                  />
+                </span>
+                <span className="h-2 rounded-full bg-orange-100">
+                  <span
+                    className="block h-full rounded-full bg-orange-500"
+                    style={{ width: `${spentWidth}%` }}
+                    title={`Gastado ${formatMinor(spent, "USD")}`}
+                  />
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex gap-4 text-xs font-bold text-kc-muted">
+        <span className="flex items-center gap-1.5">
+          <i className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+          Cobrado
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="h-2.5 w-2.5 rounded-full bg-orange-500" />
+          Gastado
+        </span>
+      </div>
+      <details className="mt-4 text-sm">
+        <summary className="font-bold text-blue-700">
+          Ver alternativa tabular
+        </summary>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className="p-2">Mes</th>
+                <th className="p-2">Cobrado</th>
+                <th className="p-2">Gastado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {points.map((item) => (
+                <tr key={item.monthStart} className="border-t">
+                  <td className="p-2">{item.monthStart}</td>
+                  <td className="p-2">
+                    {formatMinor(item.collectedMinor, "USD")}
+                  </td>
+                  <td className="p-2">
+                    {formatMinor(item.expenseMinor, "USD")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </article>
+  );
 }
 
-export function FinanceDashboard({ summary, series, movements, range, moduleSummary }: { summary: FinanceSummary[]; series: Record<string, FinanceSeriesPoint[]>; movements: FinanceReportRow[]; range: { period: string; from: string; to: string }; moduleSummary:{originalProjectSalesMinor:string;addOnSalesMinor:string;lifetimeSoldMinor:string;addOnCollectedMinor:string;addOnOutstandingMinor:string;baseRecurringCollectedMinor:string;addOnRecurringCollectedMinor:string;currency:"USD"}|null }) {
-  const group = summary[0] ?? { currency: "USD", soldMinor: "0", collectedMinor: "0", outstandingMinor: "0", overdueMinor: "0", recurringCollectedMinor: "0", expenseMinor: "0", netCashMinor: "0" };
-  return <div className="grid gap-5">
-    <FinancePageHeader title="Resumen financiero" description="Ventas, cobros, obligaciones y gastos operativos en USD." action={<Link href="/admin/finanzas/gastos" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white">Registrar gasto <ArrowRight size={16} /></Link>} />
-    <FinanceNav active="summary" />
-    <form className="kc-filter-bar kc-admin-card flex flex-wrap items-end gap-3 p-3" method="get"><label className="grid gap-1 text-xs font-bold text-kc-muted">Periodo<select name="period" defaultValue={range.period} className="min-h-11 rounded-xl border px-3 text-sm">{Object.entries(financePeriodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="grid gap-1 text-xs font-bold text-kc-muted">Desde<input name="from" type="date" defaultValue={range.from} className="min-h-11 rounded-xl border px-3 text-sm" /></label><label className="grid gap-1 text-xs font-bold text-kc-muted">Hasta<input name="to" type="date" defaultValue={range.to} className="min-h-11 rounded-xl border px-3 text-sm" /></label><button className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-700">Actualizar</button><p className="ml-auto pb-2 text-xs font-bold text-kc-muted">Moneda: USD · Zona horaria: America/Tegucigalpa</p></form>
-    <section className="grid gap-4" aria-labelledby="finance-usd"><h2 id="finance-usd" className="text-lg font-black text-kc-text">Resumen USD</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">{metrics.map(([label, key, Icon, detail]) => { const raw = BigInt(group[key]); const signed = key === "netCashMinor"; const negative = signed && raw < BigInt(0); return <article key={key} className="kc-admin-card p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold text-kc-muted">{label}</p><p className={`mt-2 text-xl font-black ${negative ? "text-rose-700" : "text-kc-text"}`}>{signed ? formatSignedMinor(raw, "USD") : formatMinor(raw, "USD")}</p></div><span className={`grid h-9 w-9 place-items-center rounded-xl ${key === "expenseMinor" || negative ? "bg-orange-50 text-orange-700" : "bg-blue-50 text-blue-700"}`}><Icon size={18} /></span></div><p className="mt-3 text-xs leading-5 text-kc-muted">{detail}</p></article>; })}</div><FinanceBars points={series.USD ?? []} /></section>
-    <section className="kc-admin-card p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-black text-kc-text">Movimientos recientes</h2><p className="mt-1 text-sm text-kc-muted">Pagos recibidos y gastos en USD, conservando sus tablas de origen.</p></div><Link href="/admin/finanzas/movimientos" className="text-sm font-black text-blue-700">Ver todos</Link></div>{movements.length ? <div className="mt-4 grid gap-2">{movements.slice(0, 6).map((item) => <div key={`${item.recordType}-${item.recordId}`} className="flex items-center gap-3 rounded-xl border p-3"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${item.recordType === "expense" ? "bg-orange-50 text-orange-700" : "bg-emerald-50 text-emerald-700"}`}>{item.recordType === "expense" ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}</span><span className="min-w-0 flex-1"><strong className="block truncate text-sm text-kc-text">{item.concept}</strong><span className="block truncate text-xs text-kc-muted">{item.party} · {item.occurredOn}</span></span><strong className={BigInt(item.amountMinor) < BigInt(0) ? "text-rose-700" : "text-emerald-700"}>{formatSignedMinor(BigInt(item.amountMinor), "USD")}</strong></div>)}</div> : <p className="mt-4 rounded-xl border border-dashed p-5 text-sm text-kc-muted">Sin movimientos en el periodo seleccionado.</p>}</section>
-    <section className="kc-admin-card p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-black text-kc-text">Composición comercial</h2><p className="mt-1 text-sm text-kc-muted">Proyecto original y ventas adicionales permanecen separados.</p></div><Link href="/admin/modulos" className="text-sm font-black text-blue-700">Ver módulos</Link></div><div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["Proyectos originales",moduleSummary?.originalProjectSalesMinor??"0"],["Ventas adicionales",moduleSummary?.addOnSalesMinor??"0"],["Cobrado por módulos",moduleSummary?.addOnCollectedMinor??"0"],["Pendiente por módulos",moduleSummary?.addOnOutstandingMinor??"0"]].map(([label,value])=><div key={label} className="rounded-xl border bg-slate-50 p-3"><p className="text-xs font-bold text-kc-muted">{label}</p><p className="mt-1 text-lg font-black">{formatMinor(value,"USD")}</p></div>)}</div></section>
-  </div>;
+export function FinanceDashboard({
+  summary,
+  series,
+  movements,
+  range,
+  moduleSummary,
+  hasMovementsOutside = false,
+}: {
+  summary: FinanceSummary[];
+  series: Record<string, FinanceSeriesPoint[]>;
+  movements: FinanceReportRow[];
+  range: { period: string; from: string; to: string };
+  moduleSummary: {
+    originalProjectSalesMinor: string;
+    addOnSalesMinor: string;
+    lifetimeSoldMinor: string;
+    addOnCollectedMinor: string;
+    addOnOutstandingMinor: string;
+    baseRecurringCollectedMinor: string;
+    addOnRecurringCollectedMinor: string;
+    currency: "USD";
+  } | null;
+  hasMovementsOutside?: boolean;
+}) {
+  const group = summary[0] ?? {
+    currency: "USD",
+    soldMinor: "0",
+    collectedMinor: "0",
+    outstandingMinor: "0",
+    overdueMinor: "0",
+    recurringCollectedMinor: "0",
+    expenseMinor: "0",
+    netCashMinor: "0",
+  };
+  return (
+    <div className="grid gap-5">
+      <FinancePageHeader
+        title="Resumen financiero"
+        description="Ventas, cobros, obligaciones y gastos operativos en USD."
+        action={
+          <Link
+            href="/admin/finanzas/gastos"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white"
+          >
+            Registrar gasto <ArrowRight size={16} />
+          </Link>
+        }
+      />
+      <FinanceNav active="summary" />
+      <form
+        className="kc-filter-bar kc-admin-card flex flex-wrap items-end gap-3 p-3"
+        method="get"
+      >
+        <label className="grid gap-1 text-xs font-bold text-kc-muted">
+          Periodo
+          <select
+            name="period"
+            defaultValue={range.period}
+            className="min-h-11 rounded-xl border px-3 text-sm"
+          >
+            {Object.entries(financePeriodLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs font-bold text-kc-muted">
+          Desde
+          <input
+            name="from"
+            type="date"
+            defaultValue={range.from}
+            className="min-h-11 rounded-xl border px-3 text-sm"
+          />
+        </label>
+        <label className="grid gap-1 text-xs font-bold text-kc-muted">
+          Hasta
+          <input
+            name="to"
+            type="date"
+            defaultValue={range.to}
+            className="min-h-11 rounded-xl border px-3 text-sm"
+          />
+        </label>
+        <button className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-700">
+          Actualizar
+        </button>
+        <p className="ml-auto pb-2 text-xs font-bold text-kc-muted">
+          Moneda: USD · Zona horaria: America/Tegucigalpa
+        </p>
+      </form>
+      {hasMovementsOutside ? (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+          <strong>Existen movimientos fuera de este periodo.</strong> Cambie el
+          periodo o use fechas personalizadas para consultar el historial
+          completo.
+          <Link
+            href={`/admin/finanzas?period=custom&from=2016-01-01&to=${range.to}`}
+            className="ml-1 font-black text-blue-700"
+          >
+            Ver periodo completo
+          </Link>
+        </div>
+      ) : null}
+      <section className="grid gap-4" aria-labelledby="finance-usd">
+        <h2 id="finance-usd" className="text-lg font-black text-kc-text">
+          Resumen USD
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          {metrics.map(([label, key, Icon, detail]) => {
+            const raw = BigInt(group[key]);
+            const signed = key === "netCashMinor";
+            const negative = signed && raw < BigInt(0);
+            return (
+              <article key={key} className="kc-admin-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-kc-muted">{label}</p>
+                    <p
+                      className={`mt-2 text-xl font-black ${negative ? "text-rose-700" : "text-kc-text"}`}
+                    >
+                      {signed
+                        ? formatSignedMinor(raw, "USD")
+                        : formatMinor(raw, "USD")}
+                    </p>
+                  </div>
+                  <span
+                    className={`grid h-9 w-9 place-items-center rounded-xl ${key === "expenseMinor" || negative ? "bg-orange-50 text-orange-700" : "bg-blue-50 text-blue-700"}`}
+                  >
+                    <Icon size={18} />
+                  </span>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-kc-muted">{detail}</p>
+              </article>
+            );
+          })}
+        </div>
+        <FinanceBars points={series.USD ?? []} />
+      </section>
+      <section className="kc-admin-card p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black text-kc-text">
+              Movimientos recientes
+            </h2>
+            <p className="mt-1 text-sm text-kc-muted">
+              Pagos recibidos y gastos en USD, conservando sus tablas de origen.
+            </p>
+          </div>
+          <Link
+            href="/admin/finanzas/movimientos"
+            className="text-sm font-black text-blue-700"
+          >
+            Ver todos
+          </Link>
+        </div>
+        {movements.length ? (
+          <div className="mt-4 grid gap-2">
+            {movements.slice(0, 6).map((item) => (
+              <div
+                key={`${item.recordType}-${item.recordId}`}
+                className="flex items-center gap-3 rounded-xl border p-3"
+              >
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${item.recordType === "expense" ? "bg-orange-50 text-orange-700" : "bg-emerald-50 text-emerald-700"}`}
+                >
+                  {item.recordType === "expense" ? (
+                    <ArrowDownRight size={18} />
+                  ) : (
+                    <ArrowUpRight size={18} />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <strong className="block truncate text-sm text-kc-text">
+                    {item.concept}
+                  </strong>
+                  <span className="block truncate text-xs text-kc-muted">
+                    {item.party} · {item.occurredOn}
+                  </span>
+                </span>
+                <strong
+                  className={
+                    BigInt(item.amountMinor) < BigInt(0)
+                      ? "text-rose-700"
+                      : "text-emerald-700"
+                  }
+                >
+                  {formatSignedMinor(BigInt(item.amountMinor), "USD")}
+                </strong>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-xl border border-dashed p-5 text-sm text-kc-muted">
+            Sin movimientos en el periodo seleccionado.
+          </p>
+        )}
+      </section>
+      <section className="kc-admin-card p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black text-kc-text">
+              Composición comercial
+            </h2>
+            <p className="mt-1 text-sm text-kc-muted">
+              Proyecto original y ventas adicionales permanecen separados.
+            </p>
+          </div>
+          <Link
+            href="/admin/modulos"
+            className="text-sm font-black text-blue-700"
+          >
+            Ver módulos
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            [
+              "Proyectos originales",
+              moduleSummary?.originalProjectSalesMinor ?? "0",
+            ],
+            ["Ventas adicionales", moduleSummary?.addOnSalesMinor ?? "0"],
+            ["Cobrado por módulos", moduleSummary?.addOnCollectedMinor ?? "0"],
+            [
+              "Pendiente por módulos",
+              moduleSummary?.addOnOutstandingMinor ?? "0",
+            ],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl border bg-slate-50 p-3">
+              <p className="text-xs font-bold text-kc-muted">{label}</p>
+              <p className="mt-1 text-lg font-black">
+                {formatMinor(value, "USD")}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 }
