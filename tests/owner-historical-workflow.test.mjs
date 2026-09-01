@@ -213,4 +213,11 @@ test("44 historical UI contains no implementation jargon", () => {
 test("45 client business dates hydrate consistently", () => {
   assert.match(client, /timeZone: "America\/Tegucigalpa"/);
   assert.doesNotMatch(client, /toLocaleString\("es-HN"\)/);
+  assert.doesNotMatch(client, /new Date\(\)\.toISOString\(\)\.slice/);
+});
+test("46 project business dates hydrate consistently", () => {
+  assert.match(project, /timeZone: "America\/Tegucigalpa"/);
+  assert.match(project, /todayInHonduras\(\)/);
+  assert.doesNotMatch(project, /toLocaleString\("es-HN"\)/);
+  assert.doesNotMatch(project, /new Date\(\)\.toISOString\(\)\.slice/);
 });

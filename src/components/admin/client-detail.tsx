@@ -33,6 +33,7 @@ import {
   ClientPaymentsSection,
 } from "./billing-detail-sections";
 import { formatMinor } from "@/lib/billing/money";
+import { todayInHonduras } from "@/lib/time";
 
 const tabs = [
   ["overview", "Resumen"],
@@ -357,7 +358,7 @@ export function ClientDetail({
               <input
                 name="clientSince"
                 type="date"
-                max={new Date().toISOString().slice(0, 10)}
+                max={todayInHonduras()}
                 defaultValue={client.clientSince}
                 disabled={!canEdit}
                 className="min-h-11 rounded-xl border px-3"

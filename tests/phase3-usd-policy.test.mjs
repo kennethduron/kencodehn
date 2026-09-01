@@ -37,7 +37,7 @@ test("USD12 report and series RPCs reject non-USD", () => { assert.match(migrati
 test("USD13 finance server data always requests USD", () => assert.match(financeData, /p_currency:\s*"USD"/));
 test("USD14 billing summary is one USD perspective", () => { assert.match(billingData, /currency:"USD"/); assert.doesNotMatch(billingData.slice(billingData.indexOf("billingSummary"), billingData.indexOf("listPayments")), /byCurrency/); });
 test("USD15 ordinary forms expose no currency selector", () => assert.doesNotMatch(projectList + projectDetail + expensePanel + billingPanel + paymentList + reports, /name="currency"[^>]*(select|input)|HNL|Todas las monedas|USD \/ HNL/));
-test("USD16 project, recurring and expense UI submit USD automatically", () => { assert.match(projectList, /currency: "USD"/); assert.match(projectDetail, /currency:"USD"/); assert.match(expensePanel, /currency:"USD"/); });
+test("USD16 project, recurring and expense UI submit USD automatically", () => { assert.match(projectList, /currency:\s*"USD"/); assert.match(projectDetail, /currency:\s*"USD"/); assert.match(expensePanel, /currency:\s*"USD"/); });
 test("USD17 finance dashboard has a single USD view", () => { assert.match(financeDashboard, /Resumen USD/); assert.doesNotMatch(financeDashboard, /summary\.map|Sin conversion de moneda/); });
 test("USD18 reports expose no currency filter", () => { assert.doesNotMatch(reports, /<select name="currency"/); assert.match(reports, /type="hidden" name="currency" value="USD"/); });
 test("USD19 exports declare Moneda USD", () => assert.match(exportApi, /\["Moneda","USD"\]/));
