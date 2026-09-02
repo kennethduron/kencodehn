@@ -275,12 +275,43 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const onCancelRef = useRef(onCancel);
+  const loadingRef = useRef(loading);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const pointerTriggerRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+  if (open && !wasOpenRef.current && typeof document !== "undefined") {
+    // Capture before the dialog commit: child autoFocus runs before effects and
+    // would otherwise replace the real trigger as document.activeElement.
+    const active = document.activeElement as HTMLElement | null;
+    returnFocusRef.current = pointerTriggerRef.current ?? (active === document.body ? null : active);
+  }
+  wasOpenRef.current = open;
+  useEffect(() => {
+    if (open) return;
+    function rememberPointerTrigger(event: Event) {
+      pointerTriggerRef.current = (event.target as HTMLElement | null)?.closest<HTMLElement>("button, a[href]") ?? null;
+    }
+    document.addEventListener("pointerdown", rememberPointerTrigger, true);
+    document.addEventListener("mousedown", rememberPointerTrigger, true);
+    document.addEventListener("touchstart", rememberPointerTrigger, true);
+    document.addEventListener("click", rememberPointerTrigger, true);
+    return () => {
+      document.removeEventListener("pointerdown", rememberPointerTrigger, true);
+      document.removeEventListener("mousedown", rememberPointerTrigger, true);
+      document.removeEventListener("touchstart", rememberPointerTrigger, true);
+      document.removeEventListener("click", rememberPointerTrigger, true);
+    };
+  }, [open]);
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+    loadingRef.current = loading;
+  }, [loading, onCancel]);
   useEffect(() => {
     if (!open) return;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
     confirmRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !loading) onCancel();
+      if (event.key === "Escape" && !loadingRef.current) onCancelRef.current();
       if (event.key === "Tab") {
         const controls = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]') ?? []);
         if (!controls.length) return;
@@ -298,9 +329,9 @@ export function ConfirmDialog({
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      previouslyFocused?.focus();
+      returnFocusRef.current?.focus();
     };
-  }, [loading, onCancel, open]);
+  }, [open]);
 
   if (!open) return null;
   const confirmClass = variant === "danger" ? "bg-rose-700 text-white hover:bg-rose-800" : "bg-kc-cyan text-white hover:bg-kc-electric";
