@@ -8,6 +8,8 @@ export type BillingReceivable = {
   amountDueMinor: string; amountPaidMinor: string; balanceMinor: string; currency: string;
   dueDate: string; dueTime: string | null; dueAt: string | null; paymentState: ReceivableState;
   timingState: ReceivableTiming; notificationsEnabled: boolean;
+  recurringServiceId: string | null; addOnRecurringServiceId: string | null;
+  recurringPeriodKey: string | null; cancellationReason: string;
 };
 
 export type BillingPayment = {

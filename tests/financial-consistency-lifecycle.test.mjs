@@ -96,7 +96,10 @@ test("global More actions pattern has reason and confirmation", () => {
 test("destructive dialog is viewport bounded and touch friendly", () => assert.match(lifecycleUi, /w-\[min\(20rem,calc\(100vw-2rem\)\)\][\s\S]*min-h-11/));
 test("lifecycle API checks explicit capability", () => assert.match(lifecycleRoute, /records:delete_empty[\s\S]*records:archive/));
 test("lifecycle inspection API also requires archive capability", () => assert.match(lifecycleRoute, /export async function GET[\s\S]*records:archive/));
-test("financial reversal endpoint requires explicit capability", () => assert.match(billingRoute, /payment_reverse"\|\|parsed\.data\.operation==="receivable_cancel"[\s\S]*financial:reverse/));
+test("payment reversal remains sensitive while empty future corrections use their operational capability", () => {
+  assert.match(billingRoute, /receivable_cancel"\|\|parsed\.data\.operation==="recurring_service_deactivate"[\s\S]*billing:correct_future/);
+  assert.match(billingRoute, /operation==="payment_reverse"[\s\S]*financial:reverse/);
+});
 test("payment page does not infer reversal from payment-entry capability", () => assert.match(paymentPage, /canReverse=\{hasPermission\(admin,"financial:reverse"\)\}/));
 test("Lead deletion no longer calls broad cascade", () => {
   assert.match(leadRoute, /applyRecordLifecycle\("lead"/);

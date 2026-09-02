@@ -54,11 +54,13 @@ export function ModuleDetail({
   canDraft,
   canManage,
   canApprove,
+  canCorrectBilling,
 }: {
   addOn: ProjectAddOn;
   canDraft: boolean;
   canManage: boolean;
   canApprove: boolean;
+  canCorrectBilling: boolean;
 }) {
   const router = useRouter(),
     [tab, setTab] = useState<"summary" | "proposal" | "payments" | "work">(
@@ -70,7 +72,11 @@ export function ModuleDetail({
       {},
     ),
     [proposalToDiscard, setProposalToDiscard] = useState<ProjectAddOn["proposals"][number] | null>(null),
-    [discardReason, setDiscardReason] = useState("");
+    [discardReason, setDiscardReason] = useState(""),
+    [deactivateRecurringOpen, setDeactivateRecurringOpen] = useState(false),
+    [cancelFutureRecurring, setCancelFutureRecurring] = useState(false),
+    [deactivateRecurringReason, setDeactivateRecurringReason] = useState(""),
+    [deactivateRecurringImpact, setDeactivateRecurringImpact] = useState<{total:number;cancellable:number;protected:number}|null>(null);
   const draft = addOn.proposals.find((item) => item.status === "draft"),
     latest = addOn.proposals[0],
     sale = addOn.sale,
@@ -122,6 +128,44 @@ export function ModuleDetail({
       setMessage(
         error instanceof Error ? error.message : "No se pudo completar.",
       );
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function deactivateRecurring() {
+    if (!addOn.recurring || saving || deactivateRecurringReason.trim().length < 3) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/billing", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ operation: "recurring_service_deactivate", payload: { serviceType: "add_on", serviceId: addOn.recurring.id, cancelFuture: cancelFutureRecurring, reason: deactivateRecurringReason.trim() } }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "No se pudo desactivar el cargo mensual.");
+      setDeactivateRecurringOpen(false);
+      setDeactivateRecurringReason("");
+      setMessage(cancelFutureRecurring ? `Cargo mensual desactivado y ${Number(body.result?.cancelledFuture || 0)} cobros futuros cancelados.` : "Cargo mensual desactivado. Los cobros existentes se conservaron.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo desactivar el cargo mensual.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function openRecurringDeactivation() {
+    if (!addOn.recurring || saving) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/billing?serviceType=add_on&serviceId=${encodeURIComponent(addOn.recurring.id)}`);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "No pudimos calcular el impacto de esta corrección.");
+      setDeactivateRecurringImpact(body.result);
+      setDeactivateRecurringOpen(true);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No pudimos calcular el impacto de esta corrección.");
     } finally {
       setSaving(false);
     }
@@ -930,11 +974,16 @@ export function ModuleDetail({
                 <option value="draft">Borrador</option>
                 <option value="active">Activo</option>
                 <option value="paused">Pausado</option>
-                <option value="cancelled">Cancelado</option>
+                {addOn.recurring?.status === "cancelled" ? <option value="cancelled">Cancelado</option> : null}
               </select>
               {canManage ? (
                 <button className="min-h-11 rounded-xl bg-blue-600 font-black text-white">
                   Guardar mensualidad
+                </button>
+              ) : null}
+              {canCorrectBilling && addOn.recurring && addOn.recurring.status !== "cancelled" ? (
+                <button type="button" disabled={saving} onClick={openRecurringDeactivation} className="min-h-11 rounded-xl border border-rose-200 font-black text-rose-700 disabled:opacity-50">
+                  Desactivar cargo mensual
                 </button>
               ) : null}
             </form>
@@ -943,6 +992,10 @@ export function ModuleDetail({
       ) : null}
       <ConfirmDialog open={Boolean(proposalToDiscard)} title={`Descartar “${proposalToDiscard?.title || "borrador"}”`} description="Esta propuesta nunca fue enviada ni aceptada. Si continúa, el borrador se eliminará definitivamente; las propuestas históricas no se modificarán." confirmText="Descartar borrador" variant="danger" loading={saving} onCancel={() => { setProposalToDiscard(null); setDiscardReason(""); }} onConfirm={discardDraft}>
         <label className="grid gap-2 text-sm font-bold">Motivo<textarea autoFocus value={discardReason} onChange={(event) => setDiscardReason(event.target.value)} rows={3} className="rounded-xl border p-3" placeholder="Explique brevemente el motivo" /></label>
+      </ConfirmDialog>
+      <ConfirmDialog open={deactivateRecurringOpen} title="Desactivar cargo mensual" description={`Se encontraron ${deactivateRecurringImpact?.total ?? 0} cobros futuros: ${deactivateRecurringImpact?.cancellable ?? 0} sin pagos y ${deactivateRecurringImpact?.protected ?? 0} protegidos.`} confirmText="Desactivar cargo mensual" variant="danger" loading={saving} onCancel={() => { if (!saving) { setDeactivateRecurringOpen(false); setDeactivateRecurringReason(""); } }} onConfirm={deactivateRecurring}>
+        <label className="flex min-h-11 items-start gap-3 rounded-xl border p-3 text-sm"><input type="checkbox" checked={cancelFutureRecurring} onChange={(event) => setCancelFutureRecurring(event.target.checked)} className="mt-1 h-5 w-5" /><span><strong className="block">Cancelar {deactivateRecurringImpact?.cancellable ?? 0} cobros futuros sin pagos</strong><span className="text-kc-muted">Los cobros pagados o parcialmente pagados no se modificarán.</span></span></label>
+        <label className="mt-4 grid gap-2 text-sm font-bold">Motivo<textarea autoFocus value={deactivateRecurringReason} onChange={(event) => setDeactivateRecurringReason(event.target.value)} rows={3} maxLength={1000} className="rounded-xl border p-3" placeholder="Explique brevemente el motivo" /></label>
       </ConfirmDialog>
     </div>
   );

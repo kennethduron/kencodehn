@@ -39,6 +39,7 @@ import {
   parseMoneyToMinor,
 } from "@/lib/billing/money";
 import { todayInHonduras } from "@/lib/time";
+import { ConfirmDialog } from "./ui";
 
 const projectStatuses = [
   ["draft", "Borrador"],
@@ -91,6 +92,7 @@ export function ProjectDetail({
   canAssign,
   canEditPlans,
   canEditRecurring,
+  canCorrectBilling,
 }: {
   project: CommercialProject;
   client: CommercialClient;
@@ -105,6 +107,7 @@ export function ProjectDetail({
   canAssign: boolean;
   canEditPlans: boolean;
   canEditRecurring: boolean;
+  canCorrectBilling: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<
@@ -112,6 +115,10 @@ export function ProjectDetail({
   >("overview");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [deactivateMode, setDeactivateMode] = useState<"keep" | "cancel">("keep");
+  const [deactivateReason, setDeactivateReason] = useState("");
+  const [deactivateImpact, setDeactivateImpact] = useState<{total:number;cancellable:number;protected:number}|null>(null);
   const latestDraft = plans.find((plan) => plan.status === "draft");
   const [planId, setPlanId] = useState(latestDraft?.id || "");
   const [planName, setPlanName] = useState(
@@ -279,6 +286,47 @@ export function ProjectDetail({
       setFeedback(
         error instanceof Error ? error.message : "No se pudo guardar.",
       );
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function deactivateRecurring() {
+    if (!recurring || saving || deactivateReason.trim().length < 3) return;
+    setSaving(true);
+    setFeedback("");
+    try {
+      const response = await fetch("/api/admin/billing", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          operation: "recurring_service_deactivate",
+          payload: { serviceType: "base", serviceId: recurring.id, cancelFuture: deactivateMode === "cancel", reason: deactivateReason.trim() },
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "No se pudo desactivar el servicio.");
+      setDeactivateOpen(false);
+      setDeactivateReason("");
+      setFeedback(deactivateMode === "cancel" ? `Servicio desactivado y ${Number(body.result?.cancelledFuture || 0)} cobros futuros cancelados.` : "Servicio desactivado. Los cobros existentes se conservaron.");
+      router.refresh();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "No se pudo desactivar el servicio.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function openRecurringDeactivation() {
+    if (!recurring || saving) return;
+    setSaving(true);
+    setFeedback("");
+    try {
+      const response = await fetch(`/api/admin/billing?serviceType=base&serviceId=${encodeURIComponent(recurring.id)}`);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "No pudimos calcular el impacto de esta corrección.");
+      setDeactivateImpact(body.result);
+      setDeactivateOpen(true);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "No pudimos calcular el impacto de esta corrección.");
     } finally {
       setSaving(false);
     }
@@ -927,7 +975,7 @@ export function ProjectDetail({
               <option value="draft">Borrador</option>
               <option value="active">Activo</option>
               <option value="paused">En pausa</option>
-              <option value="cancelled">Cancelado</option>
+              {recurring?.status === "cancelled" ? <option value="cancelled">Cancelado</option> : null}
             </select>
           </label>
           <div className="rounded-xl border bg-slate-50 p-3 text-sm text-kc-muted">
@@ -943,8 +991,31 @@ export function ProjectDetail({
               {saving ? "Guardando…" : "Guardar configuración"}
             </button>
           ) : null}
+          {canCorrectBilling && recurring && recurring.status !== "cancelled" ? (
+            <button type="button" disabled={saving} onClick={openRecurringDeactivation} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-200 px-4 text-sm font-black text-rose-700 disabled:opacity-50 sm:col-span-2 xl:col-span-1">
+              Desactivar servicio
+            </button>
+          ) : null}
         </form>
       ) : null}
+
+      <ConfirmDialog
+        open={deactivateOpen}
+        title="Desactivar servicio recurrente"
+        description={`Se encontraron ${deactivateImpact?.total ?? 0} cobros futuros: ${deactivateImpact?.cancellable ?? 0} sin pagos y ${deactivateImpact?.protected ?? 0} protegidos por actividad financiera.`}
+        confirmText="Desactivar servicio"
+        variant="danger"
+        loading={saving}
+        onCancel={() => { if (!saving) { setDeactivateOpen(false); setDeactivateReason(""); } }}
+        onConfirm={deactivateRecurring}
+      >
+        <fieldset className="grid gap-3 text-sm">
+          <legend className="font-black">Cobros futuros</legend>
+          <label className="flex min-h-11 items-start gap-3 rounded-xl border p-3"><input type="radio" name="futureMode" checked={deactivateMode === "keep"} onChange={() => setDeactivateMode("keep")} className="mt-1 h-5 w-5" /><span><strong className="block">Conservarlos</strong><span className="text-kc-muted">El servicio no generará nuevos períodos, pero los cobros actuales permanecerán.</span></span></label>
+          <label className="flex min-h-11 items-start gap-3 rounded-xl border p-3"><input type="radio" name="futureMode" checked={deactivateMode === "cancel"} onChange={() => setDeactivateMode("cancel")} className="mt-1 h-5 w-5" /><span><strong className="block">Cancelar los que no tienen pagos</strong><span className="text-kc-muted">Se cancelarán {deactivateImpact?.cancellable ?? 0}; cualquier período pagado o parcialmente pagado se conservará.</span></span></label>
+        </fieldset>
+        <label className="mt-4 grid gap-2 text-sm font-bold">Motivo<textarea autoFocus value={deactivateReason} onChange={(event) => setDeactivateReason(event.target.value)} rows={3} maxLength={1000} className="rounded-xl border p-3" placeholder="Explique brevemente el motivo" /></label>
+      </ConfirmDialog>
 
       {tab === "activity" ? (
         <section className="grid gap-3">
