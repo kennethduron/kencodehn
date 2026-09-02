@@ -20,9 +20,16 @@ test("shared confirmation dialog does not remount its focus trap while typing", 
 
 test("dialog escape uses current callbacks without restarting focus management", () => {
   assert.match(ui, /!loadingRef\.current\) onCancelRef\.current\(\)/);
-  assert.match(ui, /returnFocusRef\.current\?\.focus\(\)/);
+  assert.match(ui, /focusTarget\?\.isConnected/);
   assert.match(ui, /open && !wasOpenRef\.current/);
   assert.doesNotMatch(ui, /setTimeout\([^)]*focus/);
+});
+
+test("dialog returns focus to a persistent menu trigger when its menu item unmounts", () => {
+  assert.match(ui, /directTrigger\?\.closest<HTMLElement>\('\[role="menu"\]'\)/);
+  assert.match(ui, /parentMenu\?\.previousElementSibling/);
+  assert.match(ui, /pointerTriggerRef\.current = stableTrigger \?\? directTrigger/);
+  assert.match(ui, /returnFocusRef\.current\?\.isConnected \? returnFocusRef\.current : pointerTriggerRef\.current/);
 });
 
 test("shared dialog includes inputs, textareas and selects in its keyboard trap", () => {

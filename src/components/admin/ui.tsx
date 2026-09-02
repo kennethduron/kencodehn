@@ -290,7 +290,15 @@ export function ConfirmDialog({
   useEffect(() => {
     if (open) return;
     function rememberPointerTrigger(event: Event) {
-      pointerTriggerRef.current = (event.target as HTMLElement | null)?.closest<HTMLElement>("button, a[href]") ?? null;
+      const directTrigger = (event.target as HTMLElement | null)?.closest<HTMLElement>("button, a[href]") ?? null;
+      const parentMenu = directTrigger?.closest<HTMLElement>('[role="menu"]');
+      let stableTrigger: HTMLElement | null = null;
+      for (let sibling = parentMenu?.previousElementSibling; sibling && !stableTrigger; sibling = sibling.previousElementSibling) {
+        if (sibling.matches("button, a[href]")) stableTrigger = sibling as HTMLElement;
+      }
+      // Menu items commonly unmount as they open a dialog. In that case return
+      // focus to the persistent menu trigger instead of retaining a detached node.
+      pointerTriggerRef.current = stableTrigger ?? directTrigger;
     }
     document.addEventListener("pointerdown", rememberPointerTrigger, true);
     document.addEventListener("mousedown", rememberPointerTrigger, true);
@@ -329,7 +337,8 @@ export function ConfirmDialog({
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      returnFocusRef.current?.focus();
+      const focusTarget = returnFocusRef.current?.isConnected ? returnFocusRef.current : pointerTriggerRef.current;
+      if (focusTarget?.isConnected) focusTarget.focus();
     };
   }, [open]);
 
