@@ -27,6 +27,8 @@
     "test:phase4:production-qa": "node --experimental-strip-types scripts/phase4-production-engine-qa.mts",
     "test:phase5": "node --experimental-strip-types --test tests/phase5-mail-shell.test.mjs",
     "test:phase5:local": "node --experimental-strip-types scripts/phase5-mail-local-e2e.mts",
+    "test:mail-identity:local": "node --experimental-strip-types scripts/mail-identity-local-e2e.mts",
+    "test:mail-identity:responsive": "node --experimental-strip-types scripts/mail-identity-responsive-local.mts",
     "test:phase6": "node --experimental-strip-types --test tests/phase6-hardening.test.mjs",
     "test:final-auth:production": "node --experimental-strip-types scripts/final-auth-production-qa.mts",
     "test:final-invitation:local": "node --experimental-strip-types scripts/final-invitation-route-local-e2e.mts",

@@ -35,7 +35,7 @@ import { hasPermission } from "@/lib/admin/authorization";
 import { ConfirmDialog, Toast, Tooltip } from "./ui";
 import { RichTextEditor } from "./rich-text-editor";
 
-type Identity = { id?: string; email: string; display_name: string };
+type Identity = { id?: string; email: string; display_name: string; mail_identity_assignments?: Array<{ is_primary: boolean }> };
 type Template = {
   id: string;
   name: string;
@@ -210,7 +210,7 @@ export function MailWorkspace({
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [identityId, setIdentityId] = useState(initial.identities[0]?.id || "");
+  const [identityId, setIdentityId] = useState(initial.identities.find((item) => item.mail_identity_assignments?.some((assignment) => assignment.is_primary))?.id || (initial.identities.length === 1 ? initial.identities[0].id : "") || "");
   const [to, setTo] = useState(composeContext.to);
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
@@ -482,7 +482,7 @@ export function MailWorkspace({
       return setError(body.error || "No pudimos abrir el borrador.");
     const item = body.selectedDraft;
     setDraft({ id: item.id, version: item.version });
-    setIdentityId(item.identity_id || "");
+    setIdentityId(initial.identities.some((identity) => identity.id === item.identity_id) ? item.identity_id || "" : "");
     setTo(
       (item.to_addresses || [])
         .map((address: { email?: string }) => address.email)
@@ -1164,6 +1164,7 @@ export function MailWorkspace({
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
               <div className="grid gap-3">
                 <label className="grid gap-1 text-xs font-bold">
+                  {!initial.identities.length ? <span role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm">No tiene una dirección de Ken Code activa asignada. Comuníquese con el Owner para configurar una.{hasPermission(admin, "mail:manage_identities") ? <Link href="/admin/mail/configuracion" className="mt-2 block min-h-11 py-3 font-bold text-blue-700">Configurar direcciones</Link> : null}</span> : null}
                   De
                   <select
                     value={identityId}

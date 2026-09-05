@@ -84,7 +84,10 @@ test("accepted proposals are preserved", () => assert.match(lifecycleMigration, 
 test("recurring services with generated Cobros are preserved", () => assert.match(lifecycleMigration, /receivables where recurring_service_id=p_id/));
 test("used Mail identities are preserved", () => assert.match(lifecycleMigration, /mail_threads where identity_id=p_id[\s\S]*mail_messages where sender_identity_id=p_id/));
 test("unused Mail identity cleanup is explicit and preserves audit", () => assert.match(lifecycleMigration, /update public\.mail_audit_events set identity_id=null[\s\S]*delete from public\.mail_signatures[\s\S]*delete from public\.mail_identity_assignments/));
-test("Mail identity UI only offers the recommended lifecycle action", () => assert.match(identityUi, /recommendedAction === "delete"[\s\S]*recommendedAction === "deactivate"/));
+test("Mail identity UI gates deletion by eligibility and makes deactivation reversible", () => {
+  assert.match(identityUi, /identity\.lifecycle\.deleteAllowed/);
+  assert.match(identityUi, /identity\.status !== "active"[\s\S]*Reactivar identidad[\s\S]*Desactivar identidad/);
+});
 test("legacy browser-wide cleanup execution is revoked", () => assert.match(lifecycleMigration, /revoke execute on function public\.delete_lead_cascade[\s\S]*cleanup_operational_data\(\) from authenticated/));
 test("new lifecycle migration introduces no destructive cascade", () => assert.doesNotMatch(lifecycleMigration, /on delete cascade/i));
 test("lifecycle application preserves a business audit entry", () => assert.match(lifecycleMigration, /insert into public\.activity_logs/));
