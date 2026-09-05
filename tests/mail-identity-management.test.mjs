@@ -23,6 +23,7 @@ test("composer uses assigned active identities and prefers the primary", () => {
   assert.match(composer, /initial.identities.find\([\s\S]*assignment.is_primary/);
   assert.match(composer, /No tiene una dirección de Ken Code activa asignada/);
   assert.match(composer, /Configurar direcciones/);
+  assert.match(composer, /disabled=\{busy \|\| sending \|\| !identityId\}/);
 });
 test("new From uses current display name while sent messages retain snapshots", () => {
   assert.ok(service.includes('from: `${identity.display_name} <${identity.email}>`'));

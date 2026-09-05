@@ -1345,7 +1345,7 @@ export function MailWorkspace({
               </div>
               <button
                 type="submit"
-                disabled={busy || sending}
+                disabled={busy || sending || !identityId}
                 className="inline-flex min-h-11 min-w-28 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-black text-white disabled:opacity-60"
               >
                 {sending ? (
