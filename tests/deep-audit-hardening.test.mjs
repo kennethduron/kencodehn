@@ -39,6 +39,7 @@ test("Owner can activate the production scheduler without exposing its secret", 
   assert.match(route, /access\.admin\.role !== "owner"/);
   assert.match(route, /process\.env\.CRON_SECRET/);
   assert.match(route, /task_reminder_configure_scheduler/);
+  assert.match(route, /createSupabaseServerClient/);
   assert.match(route, /https:\/\/kencodehn\.com\/api\/cron\/task-reminders/);
   assert.doesNotMatch(route, /console\.(?:log|error)\([^\n]*secret/i);
   assert.doesNotMatch(route, /NextResponse\.json\([^\n]*secret/i);
