@@ -83,6 +83,12 @@ test("thread details include authorized attachment metadata and mobile download 
   assert.match(workspace, /api\/admin\/mail\/attachments\?id=/);
 });
 
+test("Mail dates render in the same Honduras timezone on server and browser", () => {
+  assert.match(workspace, /formatHondurasDate\(item\.updated_at\)/);
+  assert.match(workspace, /formatHondurasDateTime\(/);
+  assert.doesNotMatch(workspace, /toLocale(?:Date)?String\("es-HN"/);
+});
+
 test("signature sanitizer preserves the marker and only safe external images", () => {
   const safe = sanitizeMailHtml('<div data-kc-signature="corporate:abc"><img src="https://cdn.example/logo.png" width="420"></div>', { signatureContent: true });
   assert.match(safe, /data-kc-signature/);

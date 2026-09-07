@@ -35,6 +35,7 @@ import { hasPermission } from "@/lib/admin/authorization";
 import { ConfirmDialog, Toast, Tooltip } from "./ui";
 import { RichTextEditor } from "./rich-text-editor";
 import { draftFingerprint, isMeaningfulDraft, type DraftAutosavePayload } from "@/lib/mail/draft-autosave";
+import { formatHondurasDate, formatHondurasDateTime } from "@/lib/time";
 
 type Identity = { id?: string; email: string; display_name: string; mail_identity_assignments?: Array<{ is_primary: boolean }> };
 type Template = {
@@ -902,7 +903,7 @@ export function MailWorkspace({
                         {item.subject || "(Sin asunto)"}
                       </strong>
                       <span className="shrink-0 text-xs text-kc-muted">
-                        {new Date(item.updated_at).toLocaleDateString("es-HN")}
+                        {formatHondurasDate(item.updated_at)}
                       </span>
                     </div>
                     <p className="mt-1 truncate text-xs text-kc-muted">
@@ -929,17 +930,14 @@ export function MailWorkspace({
                           : identityOf(thread)?.email || "Ken Code"}
                       </span>
                       <time className="shrink-0 text-[.68rem] text-kc-muted">
-                        {new Date(
+                        {formatHondurasDateTime(
                           initial.folder === "sent"
                             ? thread.last_outbound_at ||
                                 latestOutbound(thread)?.sent_at ||
                                 latestOutbound(thread)?.created_at ||
                                 thread.latest_message_at
                             : thread.latest_message_at,
-                        ).toLocaleString("es-HN", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}
+                        )}
                       </time>
                     </div>
                     <div className="mt-1 flex items-center gap-2">
@@ -1117,11 +1115,11 @@ export function MailWorkspace({
                         </span>
                       </div>
                       <time className="text-xs text-kc-muted">
-                        {new Date(
+                        {formatHondurasDateTime(
                           message.received_at ||
                             message.sent_at ||
                             message.created_at,
-                        ).toLocaleString("es-HN")}
+                        )}
                       </time>
                     </div>
                     {message.direction === "outbound" ? (
