@@ -10,7 +10,7 @@ export async function commercialPageContext(admin: AdminUser) {
     hasPermission(admin, "notifications:view") ? repositories.notifications.list(admin) : Promise.resolve([]),
     canAssignCommercialOwner(admin)
       ? listSupabaseAdminMembers().then((items) => items.filter((item) => item.active && item.role === "sales_agent"))
-      : Promise.resolve(admin.role === "sales_agent" ? [{ uid: admin.uid, name: "", email: admin.email, role: admin.role, active: true as const, createdAt: null, updatedAt: null, lastLoginAt: null, invitedAt: null, invitedByUid: null, invitationStatus: null, invitationLastSentAt: null, assignedLeadCount: 0 }] : []),
+      : Promise.resolve(admin.role === "sales_agent" ? [{ uid: admin.uid, name: "", email: admin.email, username: null, role: admin.role, active: true as const, createdAt: null, updatedAt: null, lastLoginAt: null, invitedAt: null, invitedByUid: null, invitationStatus: null, invitationLastSentAt: null, assignedLeadCount: 0 }] : []),
   ]);
   return { unreadCount: notifications.filter((item) => !item.read).length, members };
 }

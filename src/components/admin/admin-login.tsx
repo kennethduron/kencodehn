@@ -13,7 +13,7 @@ import type { CrmAuthProvider } from "@/lib/auth/provider";
 
 export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], missingClientEnv = [] }: { authProvider?: CrmAuthProvider; missingServerEnv?: string[]; missingClientEnv?: string[] }) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,12 +28,19 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
     try {
       if (authProvider === "supabase") {
         const supabase = createSupabaseBrowserClient();
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-        if (error) {
-          setMessage(loginErrorMessage(error));
+        const loginResponse = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier, password }),
+        });
+        const loginResult = await loginResponse.json().catch(() => null);
+        if (!loginResponse.ok || !loginResult?.accessToken || !loginResult?.refreshToken) {
+          setMessage(loginResult?.message || "Correo/usuario o contraseña incorrectos, o la cuenta no está disponible.");
           setIsSubmitting(false);
           return;
         }
+        const { error } = await supabase.auth.setSession({ access_token: loginResult.accessToken, refresh_token: loginResult.refreshToken });
+        if (error) throw error;
         const profileResponse = await fetch("/api/admin/me", { cache: "no-store" });
         if (!profileResponse.ok) {
           await supabase.auth.signOut();
@@ -52,7 +59,7 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
         setIsSubmitting(false);
         return;
       }
-      const credential = await signInWithEmailAndPassword(firebase.auth, email, password);
+      const credential = await signInWithEmailAndPassword(firebase.auth, identifier.trim().toLowerCase(), password);
       const idToken = await credential.user.getIdToken();
       const response = await fetch("/api/admin/session", {
         method: "POST",
@@ -82,12 +89,12 @@ export function AdminLogin({ authProvider = "firebase", missingServerEnv = [], m
 
         <form className="grid gap-4" onSubmit={onSubmit}>
           <label className="grid gap-2 text-sm font-bold text-kc-text">
-            Correo
+            Correo o usuario
             <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
+              type="text"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              autoComplete="username"
               className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-kc-text outline-none transition focus:border-kc-cyan"
               required
             />

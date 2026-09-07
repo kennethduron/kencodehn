@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MailPlus, RefreshCw, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
+import { Check, Loader2, MailPlus, RefreshCw, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { AdminMember } from "@/lib/admin/types";
 import type { ManageableAdminRole } from "@/lib/admin/authorization";
@@ -8,10 +8,10 @@ import { HONDURAS_TIME_ZONE } from "@/lib/time";
 import { ConfirmDialog, Toast } from "./ui";
 
 const ROLE_OPTIONS: Array<{ value: ManageableAdminRole; label: string }> = [
-  { value: "sales_agent", label: "Sales Agent" },
-  { value: "manager", label: "Manager" },
-  { value: "viewer", label: "Viewer" },
-  { value: "admin", label: "Admin" },
+  { value: "sales_agent", label: "Agente de ventas" },
+  { value: "manager", label: "Gerente" },
+  { value: "viewer", label: "Solo lectura" },
+  { value: "admin", label: "Administrador" },
 ];
 
 const INVITATION_LABELS: Record<string, string> = {
@@ -39,10 +39,11 @@ function formatDate(value: string | null) {
 type PendingStatusChange = { member: AdminMember; active: boolean } | null;
 type PendingDeletion = { member: AdminMember; reason: string } | null;
 
-export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: AdminMember[]; currentUserUid: string }) {
+export function TeamPanel({ initialMembers, currentUserUid, currentUserRole }: { initialMembers: AdminMember[]; currentUserUid: string; currentUserRole: string }) {
   const [members, setMembers] = useState(initialMembers);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [invite, setInvite] = useState({ name: "", email: "", role: "sales_agent" as ManageableAdminRole });
+  const [invite, setInvite] = useState({ name: "", email: "", username: "", role: "sales_agent" as ManageableAdminRole });
+  const [usernameEdits, setUsernameEdits] = useState<Record<string, string>>(() => Object.fromEntries(initialMembers.map((member) => [member.uid, member.username || ""])));
   const [savingUid, setSavingUid] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<PendingStatusChange>(null);
@@ -56,7 +57,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
     setMembers((current) => current.map((member) => (member.uid === updated.uid ? updated : member)));
   }
 
-  async function patchMember(uid: string, changes: { role?: ManageableAdminRole; active?: boolean }) {
+  async function patchMember(uid: string, changes: { role?: ManageableAdminRole; active?: boolean; username?: string | null }) {
     setSavingUid(uid);
     setToast({ message: "", variant: "success" });
     try {
@@ -89,7 +90,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
       const payload = await response.json();
       if (!response.ok || !payload.member) throw new Error(payload.message || "No se pudo preparar la invitación.");
       setMembers((current) => [...current, payload.member].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email)));
-      setInvite({ name: "", email: "", role: "sales_agent" });
+      setInvite({ name: "", email: "", username: "", role: "sales_agent" });
       setInviteOpen(false);
       setToast({
         message: payload.emailSent ? "Usuario creado e invitación enviada." : "Usuario creado; el correo falló y puede reenviarse desde Equipo.",
@@ -178,8 +179,8 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
       </div>
 
       {inviteOpen ? (
-        <form onSubmit={submitInvite} className="kc-admin-card grid gap-4 p-5 md:grid-cols-3">
-          <div className="md:col-span-3">
+        <form onSubmit={submitInvite} className="kc-admin-card grid gap-4 p-5 md:grid-cols-4">
+          <div className="md:col-span-4">
             <h2 className="font-display text-xl font-black text-kc-text">Nueva invitación</h2>
             <p className="mt-1 text-sm text-kc-muted">El sistema enviará un enlace seguro para configurar el acceso. Nunca se crea ni se envía una contraseña temporal.</p>
           </div>
@@ -189,12 +190,15 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
           <label className="grid gap-2 text-sm font-bold text-kc-text">Email
             <input required type="email" maxLength={180} value={invite.email} onChange={(event) => setInvite((value) => ({ ...value, email: event.target.value }))} className="min-h-11 rounded-xl border border-white/10 bg-white/[0.04] px-3 outline-none transition focus:border-kc-cyan/60" />
           </label>
+          {currentUserRole === "owner" ? <label className="grid gap-2 text-sm font-bold text-kc-text">Usuario
+            <input minLength={3} maxLength={32} autoComplete="off" placeholder="nicoleguerra" value={invite.username} onChange={(event) => setInvite((value) => ({ ...value, username: event.target.value }))} className="min-h-11 rounded-xl border border-white/10 bg-white/[0.04] px-3 outline-none transition focus:border-kc-cyan/60" />
+          </label> : null}
           <label className="grid gap-2 text-sm font-bold text-kc-text">Rol
             <select value={invite.role} onChange={(event) => setInvite((value) => ({ ...value, role: event.target.value as ManageableAdminRole }))} className="min-h-11 rounded-xl border border-white/10 bg-kc-bg-soft px-3 outline-none transition focus:border-kc-cyan/60">
               {ROLE_OPTIONS.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
             </select>
           </label>
-          <div className="flex gap-2 md:col-span-3 md:justify-end">
+          <div className="flex gap-2 md:col-span-4 md:justify-end">
             <button type="button" onClick={() => setInviteOpen(false)} disabled={inviting} className="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-black text-kc-text disabled:opacity-50">Cancelar</button>
             <button type="submit" disabled={inviting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-kc-cyan px-4 text-sm font-black text-kc-bg disabled:opacity-60">
               {inviting ? <Loader2 size={16} className="animate-spin" /> : <MailPlus size={16} />} Enviar invitación
@@ -222,6 +226,9 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
                   <span className={`rounded-full px-2 py-1 text-xs font-black ${statusClass}`}>{statusLabel}</span>
                 </div>
                 <p className="mt-1 truncate text-sm text-kc-muted">{member.email || "Email no disponible"}</p>
+                {currentUserRole === "owner" ? <div className="mt-3 flex max-w-md flex-wrap items-end gap-2"><label className="grid min-w-0 flex-1 gap-1 text-xs font-bold uppercase tracking-[0.14em] text-kc-muted">Usuario
+                  <input value={usernameEdits[member.uid] ?? ""} onChange={(event) => setUsernameEdits((current) => ({ ...current, [member.uid]: event.target.value }))} minLength={3} maxLength={32} autoComplete="off" placeholder="Sin usuario" className="min-h-10 rounded-xl border px-3 text-sm font-normal normal-case tracking-normal text-kc-text" />
+                </label><button type="button" disabled={busy || (usernameEdits[member.uid] || "") === (member.username || "")} onClick={() => void patchMember(member.uid, { username: usernameEdits[member.uid]?.trim() || null })} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-black disabled:opacity-40"><Check size={15} /> Guardar usuario</button></div> : member.username ? <p className="mt-1 text-xs text-kc-muted">Usuario: {member.username}</p> : null}
                 <p className="mt-2 text-xs leading-5 text-kc-muted">Creado: {formatDate(member.createdAt)} · Último acceso: {formatDate(member.lastLoginAt)} · Leads asignados: {member.assignedLeadCount}</p>
                 {member.invitationStatus ? <p className="mt-1 text-xs font-bold text-kc-cyan">{INVITATION_LABELS[member.invitationStatus]}{member.invitationLastSentAt ? ` · Último envío: ${formatDate(member.invitationLastSentAt)}` : ""}</p> : null}
               </div>
@@ -250,7 +257,7 @@ export function TeamPanel({ initialMembers, currentUserUid }: { initialMembers: 
                   {busy ? <Loader2 size={16} className="animate-spin" /> : member.active ? <UserX size={16} /> : <UserCheck size={16} />}
                   {member.active ? "Desactivar" : "Activar"}
                 </button>
-                {!immutableOwner && !isSelf ? (
+                {!immutableOwner && !isSelf && !member.lastLoginAt ? (
                   <button
                     type="button"
                     disabled={busy}

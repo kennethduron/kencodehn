@@ -64,6 +64,7 @@ export type AdminMember = {
   uid: string;
   name: string;
   email: string;
+  username: string | null;
   role: import("@/lib/admin/authorization").AdminRole | null;
   active: boolean;
   createdAt: string | null;

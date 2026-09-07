@@ -22,7 +22,7 @@ export default async function AdminTeamPage() {
 
   return (
     <AdminChrome admin={admin} unreadCount={unreadCount} authProvider={getCrmAuthProvider()}>
-      <TeamPanel initialMembers={members} currentUserUid={admin.uid} />
+      <TeamPanel initialMembers={members} currentUserUid={admin.uid} currentUserRole={admin.role} />
     </AdminChrome>
   );
 }

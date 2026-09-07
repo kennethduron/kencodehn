@@ -22,12 +22,17 @@ export function buildCrmInvitationHandoffLink(
   return url.toString();
 }
 
-export function buildCrmInvitationEmail(name: string, credentialLink: string) {
+export function buildCrmInvitationEmail(name: string, credentialLink: string, username?: string | null) {
   const safeName = escapeHtml(name);
   const safeLink = escapeHtml(credentialLink);
+  const normalizedUsername = username?.trim() || "";
+  const usernameText = normalizedUsername ? ` Tu usuario es: ${normalizedUsername}.` : "";
+  const usernameHtml = normalizedUsername
+    ? `<p>Tu usuario para iniciar sesión es <strong>${escapeHtml(normalizedUsername)}</strong>. También puedes usar este correo.</p>`
+    : "";
   return {
     subject: CRM_INVITATION_SUBJECT,
-    text: `Hola ${name}, fuiste invitado al sistema interno de Ken Code. Configura tu contraseña de forma segura usando este enlace: ${credentialLink}`,
-    html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#102033"><h1>Acceso al CRM de Ken Code</h1><p>Hola ${safeName},</p><p>Fuiste invitado al sistema interno de Ken Code.</p><p><a href="${safeLink}">Configurar mi acceso</a></p><p>El enlace es personal, vence por seguridad y solo puede utilizarse una vez.</p></div>`,
+    text: `Hola ${name}, fuiste invitado al sistema interno de Ken Code.${usernameText} Configura tu contraseña de forma segura usando este enlace: ${credentialLink}`,
+    html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#102033"><h1>Acceso al CRM de Ken Code</h1><p>Hola ${safeName},</p><p>Fuiste invitado al sistema interno de Ken Code.</p>${usernameHtml}<p><a href="${safeLink}">Configurar mi acceso</a></p><p>El enlace es personal, vence por seguridad y solo puede utilizarse una vez.</p></div>`,
   };
 }

@@ -34,7 +34,7 @@ async function generateInvitationCredential(
 }
 
 function member(row: Record<string, any>, assignedLeadCount = 0): AdminMember {
-  return { uid: String(row.id), name: String(row.display_name || row.name || ""), email: String(row.email ?? ""), role: row.role ?? null, active: row.active === true, createdAt: row.created_at ?? null, updatedAt: row.updated_at ?? null, lastLoginAt: row.last_login_at ?? null, invitedAt: row.invited_at ?? null, invitedByUid: row.invited_by ?? null, invitationStatus: row.invitation_status ?? null, invitationLastSentAt: row.invitation_last_sent_at ?? null, assignedLeadCount };
+  return { uid: String(row.id), name: String(row.display_name || row.name || ""), email: String(row.email ?? ""), username: row.username ? String(row.username) : null, role: row.role ?? null, active: row.active === true, createdAt: row.created_at ?? null, updatedAt: row.updated_at ?? null, lastLoginAt: row.last_login_at ?? null, invitedAt: row.invited_at ?? null, invitedByUid: row.invited_by ?? null, invitationStatus: row.invitation_status ?? null, invitationLastSentAt: row.invitation_last_sent_at ?? null, assignedLeadCount };
 }
 function ensureManager(actor: AdminUser) {
   if (!hasPermission(actor, "users:manage")) throw new AdminUserManagementError(403, "No tienes permiso para administrar usuarios.");
@@ -84,12 +84,14 @@ export async function deleteSupabaseAdminMemberWithoutHistory(uid: string, actor
 
 export async function listSupabaseAdminMembers() {
   const client = createSupabaseAdminClient();
-  const { data, error } = await client.from("profiles").select("*").order("name");
+  const [{ data, error }, leads] = await Promise.all([
+    client.from("profiles").select("*").order("name"),
+    client.from("leads").select("assigned_to").not("assigned_to", "is", null),
+  ]);
   if (error) throw new AdminUserManagementError(500, "No se pudo consultar el equipo.");
-  return Promise.all((data ?? []).map(async (row) => {
-    const { count } = await client.from("leads").select("id", { count: "exact", head: true }).eq("assigned_to", row.id);
-    return member(row, count ?? 0);
-  }));
+  const counts = new Map<string, number>();
+  for (const lead of leads.data || []) if (lead.assigned_to) counts.set(lead.assigned_to, (counts.get(lead.assigned_to) || 0) + 1);
+  return (data ?? []).map((row) => member(row, counts.get(row.id) || 0));
 }
 export async function getSupabaseAdminMember(uid: string) {
   const client = createSupabaseAdminClient();
@@ -106,13 +108,14 @@ export async function listSupabaseAssignableSalesAgents(actor: AdminUser): Promi
 export async function listSupabaseTaskAssignees(actor: AdminUser): Promise<TaskAssignee[]> {
   return (await listSupabaseAdminMembers()).filter((item) => item.active && (item.role === "owner" || item.role === "admin" || item.role === "sales_agent") && (canAssignTask(actor) || item.uid === actor.uid)).map(({ uid, name, email, role }) => ({ uid, name, email, role: role as TaskAssignee["role"] }));
 }
-export async function updateSupabaseAdminMember(uid: string, input: { name?: string; role?: ManageableAdminRole; active?: boolean }, actor: AdminUser) {
+export async function updateSupabaseAdminMember(uid: string, input: { name?: string; role?: ManageableAdminRole; active?: boolean; username?: string | null }, actor: AdminUser) {
   ensureManager(actor);
+  if (input.username !== undefined && actor.role !== "owner") throw new AdminUserManagementError(403, "Solo el Owner puede administrar usuarios de acceso.");
   const { error } = await createSupabaseAdminClient().rpc("admin_update_profile", { p_target: uid, p_changes: input, p_actor: actor.uid });
   if (error) throw new AdminUserManagementError(error.message.includes("not found") ? 404 : 400, "No se pudo actualizar el perfil de forma segura.");
   return getSupabaseAdminMember(uid);
 }
-export async function inviteSupabaseAdminMember(input: { name: string; email: string; role: ManageableAdminRole }, actor: AdminUser) {
+export async function inviteSupabaseAdminMember(input: { name: string; email: string; role: ManageableAdminRole; username?: string }, actor: AdminUser) {
   ensureManager(actor);
   const client = createSupabaseAdminClient();
   const email = input.email.trim().toLowerCase();
@@ -123,12 +126,13 @@ export async function inviteSupabaseAdminMember(input: { name: string; email: st
     const status = "status" in (generated.error ?? {}) ? Number((generated.error as { status?: number }).status) : 0;
     throw new AdminUserManagementError(status === 422 ? 409 : 502, "No pudimos preparar la invitación.");
   }
-  const { error: provisionError } = await client.rpc("provision_invited_profile", { p_id: generated.user.id, p_email: email, p_name: input.name, p_role: input.role, p_actor: actor.uid });
+  if (input.username && actor.role !== "owner") throw new AdminUserManagementError(403, "Solo el Owner puede asignar un usuario de acceso.");
+  const { error: provisionError } = await client.rpc("provision_invited_profile_v2", { p_id: generated.user.id, p_email: email, p_name: input.name, p_role: input.role, p_username: input.username || "", p_actor: actor.uid });
   if (provisionError) {
     await client.auth.admin.deleteUser(generated.user.id);
     throw new AdminUserManagementError(500, "La invitación se revirtió porque el perfil no pudo provisionarse.");
   }
-  const template = buildCrmInvitationEmail(input.name, generated.link);
+  const template = buildCrmInvitationEmail(input.name, generated.link, input.username);
   const delivery = await sendEmail({
     ...template,
     type: "user_invitation",
@@ -182,7 +186,7 @@ export async function resendSupabaseAdminInvitation(uid: string, actor: AdminUse
     await complete(false, verificationType === "invite" ? "auth_invite_failed" : "auth_continuation_failed");
     throw new AdminUserManagementError(502, "No pudimos preparar una nueva invitación.");
   }
-  const template = buildCrmInvitationEmail(target.name, generated.link);
+  const template = buildCrmInvitationEmail(target.name, generated.link, target.username);
   const delivery = await sendEmail({
     ...template,
     type: "user_invitation",

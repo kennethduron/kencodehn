@@ -44,6 +44,7 @@ function mapAdminMember(doc: QueryDocumentSnapshot<DocumentData>, assignedLeadCo
     uid: doc.id,
     name: String(data.name ?? data.displayName ?? "").trim(),
     email: String(data.email ?? "").trim().toLowerCase(),
+    username: data.username ? String(data.username) : null,
     role: isAdminRole(data.role) ? data.role : null,
     active: data.active !== false,
     createdAt: toIso(data.createdAt ?? data.bootstrapCreatedAt),
@@ -154,7 +155,7 @@ function isManageableRole(role: unknown): role is ManageableAdminRole {
 
 export async function updateAdminMember(
   uid: string,
-  input: { name?: string; role?: ManageableAdminRole; active?: boolean },
+  input: { name?: string; role?: ManageableAdminRole; active?: boolean; username?: string | null },
   actor: AdminUser,
 ) {
   if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).updateSupabaseAdminMember(uid, input, actor);
@@ -247,7 +248,7 @@ function firebaseErrorCode(error: unknown) {
   return typeof error === "object" && error && "code" in error ? String(error.code) : "";
 }
 
-async function sendInvitationEmail(input: { uid: string; name: string; email: string }) {
+async function sendInvitationEmail(input: { uid: string; name: string; email: string; username?: string | null }) {
   const auth = getAdminAuth();
   if (!auth) throw new AdminUserManagementError(500, "Firebase Admin no esta configurado.");
   let credentialLink: string;
@@ -260,7 +261,7 @@ async function sendInvitationEmail(input: { uid: string; name: string; email: st
     console.warn("[Ken Code CRM invitation link warning]", firebaseErrorCode(error) || "firebase_link_failed");
     return { sent: false as const, reason: "firebase_link_failed" };
   }
-  const template = buildCrmInvitationEmail(input.name, credentialLink);
+  const template = buildCrmInvitationEmail(input.name, credentialLink, input.username);
   return sendEmail({
     ...template,
     type: "user_invitation",
@@ -270,7 +271,7 @@ async function sendInvitationEmail(input: { uid: string; name: string; email: st
 }
 
 export async function inviteAdminMember(
-  input: { name: string; email: string; role: ManageableAdminRole },
+  input: { name: string; email: string; role: ManageableAdminRole; username?: string },
   actor: AdminUser,
 ) {
   if (getCrmAuthProvider() === "supabase") return (await import("@/lib/admin/supabase-users")).inviteSupabaseAdminMember(input, actor);
@@ -325,7 +326,7 @@ export async function inviteAdminMember(
     throw error;
   }
 
-  const emailResult = await sendInvitationEmail({ uid: authUser.uid, name: input.name, email });
+  const emailResult = await sendInvitationEmail({ uid: authUser.uid, name: input.name, email, username: input.username });
   const attemptedAt = new Date().toISOString();
   await ref.set({ ...invitationDeliveryUpdate(emailResult.sent, emailResult.reason, attemptedAt), updatedAt: attemptedAt }, { merge: true });
   await addActivityLog({
@@ -380,6 +381,7 @@ export async function resendAdminInvitation(uid: string, actor: AdminUser) {
     uid,
     name: String(profile.name ?? authUser.displayName ?? "Miembro del equipo").trim(),
     email,
+    username: profile.username ? String(profile.username) : null,
   });
   const attemptedAt = new Date().toISOString();
   await ref.set({

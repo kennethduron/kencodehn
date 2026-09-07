@@ -8,6 +8,7 @@ import {
   deleteAdminMemberWithoutHistory,
   updateAdminMember,
 } from "@/lib/admin/users";
+import { validateUsername } from "@/lib/auth/username";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,7 @@ const updateUserSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   role: z.enum(MANAGEABLE_ADMIN_ROLES).optional(),
   active: z.boolean().optional(),
+  username: z.string().trim().max(32).nullable().optional(),
 }).strict().refine((input) => Object.keys(input).length > 0, { message: "No hay cambios." });
 const uidSchema = z.uuid();
 
@@ -48,6 +50,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ ok: false, message: "Cambios invalidos.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
   const { uid } = await params;
+  if (parsed.data.username) {
+    const username = validateUsername(parsed.data.username);
+    if (!username.ok) return NextResponse.json({ ok: false, message: username.reason }, { status: 400 });
+  }
   try {
     const user = await updateAdminMember(uid, parsed.data, access.admin);
     return NextResponse.json({ ok: true, user });
