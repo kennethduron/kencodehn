@@ -62,6 +62,11 @@ function publishToast(source: string, message: string, variant: ToastVariant) {
   emitToastStore();
 }
 
+export function showAppToast(message: string, variant: ToastVariant = "info") {
+  if (typeof window === "undefined") return;
+  publishToast(`app:${++toastSequence}`, message, variant);
+}
+
 function releaseToastSource(source: string) {
   toastItems = toastItems
     .map((item) => ({ ...item, sources: item.sources.filter((candidate) => candidate !== source) }))

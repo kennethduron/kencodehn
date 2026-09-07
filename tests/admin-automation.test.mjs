@@ -93,6 +93,13 @@ test("cron entrega push por UID", () => assert.match(readFileSync("src/lib/admin
 test("cron usa eventos determinísticos", () => assert.match(readFileSync("src/lib/admin/reminders.ts", "utf8"), /collection\("reminderEvents"\)\.doc\(id\)/));
 test("notification de reminder queda vinculada al destinatario de task", () => assert.match(readFileSync("src/lib/admin/reminders.ts", "utf8"), /recipientUid: claim\.task\.assignedToUid/));
 test("reminder de A no usa lista global de destinatarios", () => { const source = readFileSync("src/lib/admin/reminders.ts", "utf8"); assert.doesNotMatch(source, /listDeviceTokens|ADMIN_NOTIFICATION_EMAIL|sendPushToAdmins/); });
-test("programacion Vercel es diaria y apunta al cron correcto", () => { const config = JSON.parse(readFileSync("vercel.json", "utf8")); assert.deepEqual(config.crons, [{ path: "/api/cron/task-reminders", schedule: "0 14 * * *" }]); });
+test("programacion de tareas usa Supabase Cron cada cinco minutos", () => {
+  const config = JSON.parse(readFileSync("vercel.json", "utf8"));
+  const migration = readFileSync("supabase/migrations/20260907000300_notification_scheduler_outbox.sql", "utf8");
+  assert.equal(config.crons, undefined);
+  assert.match(migration, /task_reminder_configure_scheduler/);
+  assert.match(migration, /cron\.schedule\('ken-code-task-reminders','\*\/5 \* \* \* \*'/);
+  assert.match(migration, /task_reminder_cron_secret/);
+});
 test("indices incluyen tareas, notificaciones y actividad personal", () => { const groups = JSON.parse(readFileSync("firestore.indexes.json", "utf8")).indexes.map((index) => `${index.collectionGroup}:${index.fields.map((field) => field.fieldPath).join(",")}`); assert.ok(groups.includes("tasks:assignedToUid,createdAt")); assert.ok(groups.includes("notifications:recipientUid,createdAt")); assert.ok(groups.includes("tasks:status,dueAt")); assert.ok(groups.includes("activityLogs:recipientUid,createdAt")); });
 test("rules mantienen todas las escrituras cliente bloqueadas", () => assert.doesNotMatch(readFileSync("firestore.rules", "utf8"), /allow write: if true/));

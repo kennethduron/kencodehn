@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AdminPermission, AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
 import { NotificationDropdown } from "./notification-dropdown";
-import { ToastViewport, Tooltip } from "./ui";
+import { showAppToast, ToastViewport, Tooltip } from "./ui";
 import type { CrmAuthProvider } from "@/lib/auth/provider";
 import { subscribeToForegroundPush } from "@/lib/push/client";
 
@@ -78,7 +78,7 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
     let unsubscribe: () => void = () => undefined;
     subscribeToForegroundPush(async (payload) => {
       if (!active) return;
-      window.dispatchEvent(new Event("kc:push-received"));
+      window.dispatchEvent(new CustomEvent("kc:push-received", { detail: payload.data ?? {} }));
       if ("setAppBadge" in navigator && typeof navigator.setAppBadge === "function") navigator.setAppBadge().catch(() => undefined);
       if (payload.data?.type === "system" && "serviceWorker" in navigator) {
         const registration = await navigator.serviceWorker.ready;
@@ -88,6 +88,10 @@ export function AdminChrome({ children, admin, unreadCount = 0, authProvider = "
           badge: "/images/fav-icon.jpg",
           data: { url: payload.data.actionUrl || "/admin/configuracion/notificaciones" },
         });
+      } else {
+        const title = payload.data?.title || "Nuevo aviso de Ken Code CRM";
+        const message = payload.data?.message ? `${title}: ${payload.data.message}` : title;
+        showAppToast(message, payload.data?.type === "task_overdue" ? "warning" : "info");
       }
     }).then((next) => { unsubscribe = next; }).catch(() => undefined);
     return () => { active = false; unsubscribe(); };

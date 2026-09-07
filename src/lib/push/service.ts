@@ -61,9 +61,13 @@ export async function registerDeviceToken(input: {
     if (existing?.active === true && existing.profile_id !== input.uid) throw new Error("Device already belongs to another active account.");
     const id = existing?.id ?? randomUUID();
     const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 180 * 24 * 60 * 60_000).toISOString();
+    const deviceName = [input.platform, input.userAgent?.match(/(iPhone|iPad|Android|Windows|Macintosh|Linux)/i)?.[1]].filter(Boolean).join(" · ").slice(0, 120) || "Dispositivo";
+    await client.from("device_tokens").update({ active: false, disabled_at: now }).eq("active", true).lt("last_seen_at", new Date(Date.now() - 180 * 24 * 60 * 60_000).toISOString());
     const { error } = await client.from("device_tokens").upsert({
       id, firebase_id: `supabase:${id}`, profile_id: input.uid, token: input.token, token_hash: tokenHash,
       user_agent: input.userAgent ?? "", platform: input.platform ?? "", active: true, disabled_by: null, disabled_at: null,
+      last_seen_at: now, expires_at: expiresAt, device_name: deviceName,
       created_at: existing?.created_at ?? now, updated_at: now,
     }, { onConflict: "token_hash" });
     if (error) throw new Error(`Supabase device registration failed (${error.code ?? "unknown"}).`);
@@ -128,11 +132,13 @@ export async function listDeviceTokens(email?: string) {
     query = profileId ? query.eq("profile_id", profileId) : query.eq("active", true);
     const { data, error } = await query;
     if (error) throw new Error(`Supabase device query failed (${error.code ?? "unknown"}).`);
-    return (data ?? []).filter((row: any) => row.profiles?.active === true).map((row: any) => ({
+    const now = Date.now();
+    return (data ?? []).filter((row: any) => row.profiles?.active === true && (!row.expires_at || Date.parse(row.expires_at) > now)).map((row: any) => ({
       id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? email ?? ""), token: String(row.token ?? ""),
       role: String(row.profiles?.role ?? ""),
       userAgent: String(row.user_agent ?? ""), platform: String(row.platform ?? ""), active: row.active === true,
       createdAt: String(row.created_at ?? ""), updatedAt: String(row.updated_at ?? ""),
+      lastSeenAt: String(row.last_seen_at ?? row.updated_at ?? ""), deviceName: String(row.device_name ?? ""),
     }));
   }
   const db = getAdminDb();
@@ -300,7 +306,8 @@ export async function sendPushToUser(uid: string, input: PushPayload) {
   if (isSupabaseDataProviderEnabled()) {
     const { data, error } = await createSupabaseAdminClient().from("device_tokens").select("*,profiles!device_tokens_profile_id_fkey(email,active,role)").eq("profile_id", uid).eq("active", true).limit(50);
     if (error) throw new Error(`Supabase user device query failed (${error.code ?? "unknown"}).`);
-    const devices = (data ?? []).filter((row: any) => row.profiles?.active === true).map((row: any) => ({
+    const now = Date.now();
+    const devices = (data ?? []).filter((row: any) => row.profiles?.active === true && (!row.expires_at || Date.parse(row.expires_at) > now)).map((row: any) => ({
       id: String(row.id), uid: String(row.profile_id), email: String(row.profiles?.email ?? ""), role: String(row.profiles?.role ?? ""), token: String(row.token ?? ""),
       userAgent: String(row.user_agent ?? ""), platform: String(row.platform ?? ""), active: true,
       createdAt: String(row.created_at ?? ""), updatedAt: String(row.updated_at ?? ""),

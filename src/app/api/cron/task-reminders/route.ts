@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { createCrmRepositories } from "@/lib/data/repositories";
+import { processAssignmentNotificationEvents } from "@/lib/notifications/assignment-outbox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,10 +28,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "No autorizado." }, { status: 401 });
   }
   try {
-    const result = await (await createCrmRepositories()).reminders.process();
-    return NextResponse.json({ ok: true, result });
+    const [reminders, assignments] = await Promise.all([
+      (await createCrmRepositories()).reminders.process(),
+      processAssignmentNotificationEvents(),
+    ]);
+    return NextResponse.json({ ok: true, result: { reminders, assignments } });
   } catch (error) {
     console.error("[Ken Code task reminder cron failed]", error instanceof Error ? error.name : "unknown");
     return NextResponse.json({ ok: false, message: "No se pudo completar el procesamiento." }, { status: 500 });
   }
+}
+
+export async function POST(request: NextRequest) {
+  return GET(request);
 }

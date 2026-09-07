@@ -5,6 +5,7 @@ import type { ActivityLog, AdminLead, AdminMember, AdminNote, AdminNotification,
 import type { CrmRepositories } from "@/lib/data/repositories/types";
 import { sendLeadStatusEmail, sendTaskOverdueEmail, sendTaskReminderEmail } from "@/lib/email/service";
 import { sendPushToUser } from "@/lib/push/service";
+import { processAssignmentNotificationEvents } from "@/lib/notifications/assignment-outbox";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -45,7 +46,7 @@ export function mapSupabaseActivity(row: Row): ActivityLog {
 }
 
 export function mapSupabaseMember(row: Row): AdminMember {
-  return { uid: String(row.id), name: text(row.name), email: text(row.email), role: row.role ?? null, active: row.active === true, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at), lastLoginAt: iso(row.last_login_at), invitedAt: iso(row.invited_at), invitedByUid: row.invited_by ?? null, invitationStatus: row.invitation_status ?? null, invitationLastSentAt: iso(row.invitation_last_sent_at), assignedLeadCount: Number(row.assigned_lead_count ?? 0) };
+  return { uid: String(row.id), name: text(row.name), email: text(row.email), username: row.username ? text(row.username) : null, role: row.role ?? null, active: row.active === true, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at), lastLoginAt: iso(row.last_login_at), invitedAt: iso(row.invited_at), invitedByUid: row.invited_by ?? null, invitationStatus: row.invitation_status ?? null, invitationLastSentAt: iso(row.invitation_last_sent_at), assignedLeadCount: Number(row.assigned_lead_count ?? 0) };
 }
 
 export function mapSupabaseSettings(row: Row | null): AdminSettings {
@@ -61,7 +62,7 @@ async function rows(query: Query) {
 async function mutation(client: SupabaseLike, operation: string, payload: Record<string, unknown>) {
   const { data, error } = await client.rpc("crm_write", { p_operation: operation, p_payload: payload });
   if (error) {
-    const wrapped = new Error(error.message || "Supabase CRM mutation failed.") as Error & { status?: number };
+    const wrapped = new Error("No se pudo completar la operación solicitada.") as Error & { status?: number };
     wrapped.status = error.code === "P0002" ? 404 : error.code === "42501" ? 403 : 400;
     throw wrapped;
   }
@@ -84,6 +85,7 @@ export function createSupabaseRepositoriesWithClient(client: SupabaseLike): CrmR
       },
       async assign(id, assignedToUid, admin) {
         const result = await mutation(client, "lead_assign", { id, assignedToUid });
+        if (result.changed === true && assignedToUid) await processAssignmentNotificationEvents({ eventType: "lead_assigned", entityId: id, limit: 1 });
         let query = client.from("leads").select("*").eq("id", id);
         if (leadDataScopeForAdmin(admin) === "assigned") query = query.eq("assigned_to", admin.uid);
         const after = await rows(query.limit(1));
@@ -96,8 +98,21 @@ export function createSupabaseRepositoriesWithClient(client: SupabaseLike): CrmR
     },
     tasks: {
       async list(admin, leadId) { let query = client.from("tasks").select("*").order("created_at", { ascending: false }); if (leadId) query = query.eq("lead_id", leadId); if (taskDataScopeForAdmin(admin) === "assigned") query = query.eq("assigned_to", admin.uid); return (await rows(query)).map(mapSupabaseTask); },
-      async create(input) { const result = await mutation(client, "task_create", { input }); return String(result.id); },
-      async update(id, updates) { await mutation(client, "task_update", { id, updates }); },
+      async create(input) {
+        const result = await mutation(client, "task_create", { input });
+        const id = String(result.id);
+        await processAssignmentNotificationEvents({ eventType: "task_assigned", entityId: id, limit: 1 });
+        return id;
+      },
+      async update(id, updates) {
+        const adminClient = createSupabaseAdminClient();
+        const before = await adminClient.from("tasks").select("assigned_to").eq("id", id).maybeSingle();
+        await mutation(client, "task_update", { id, updates });
+        const after = await adminClient.from("tasks").select("assigned_to").eq("id", id).maybeSingle();
+        if (!after.error && after.data?.assigned_to && after.data.assigned_to !== before.data?.assigned_to) {
+          await processAssignmentNotificationEvents({ eventType: "task_assigned", entityId: id, limit: 1 });
+        }
+      },
       async remove(id) { await mutation(client, "task_delete", { id }); },
     },
     notifications: {
