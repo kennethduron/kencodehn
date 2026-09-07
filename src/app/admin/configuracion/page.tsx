@@ -20,7 +20,7 @@ export default async function AdminSettingsPage() {
   const unreadCount = notifications.filter((notification) => !notification.read).length;
   return (
     <AdminChrome admin={admin} unreadCount={unreadCount} authProvider={getCrmAuthProvider()}>
-      <AdminSettingsPanel initialSettings={settings} canRunMaintenance={hasPermission(admin, "maintenance:run")} />
+      <AdminSettingsPanel initialSettings={settings} canRunMaintenance={hasPermission(admin, "maintenance:run")} isOwner={admin.role === "owner"} />
     </AdminChrome>
   );
 }

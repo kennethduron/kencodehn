@@ -33,6 +33,19 @@ test("task reminders use authenticated Supabase Cron every five minutes", () => 
   assert.match(route, /export async function POST/);
 });
 
+test("Owner can activate the production scheduler without exposing its secret", () => {
+  const route = read("src/app/api/admin/settings/task-reminders/route.ts");
+  const settings = read("src/components/admin/admin-settings-panel.tsx");
+  assert.match(route, /access\.admin\.role !== "owner"/);
+  assert.match(route, /process\.env\.CRON_SECRET/);
+  assert.match(route, /task_reminder_configure_scheduler/);
+  assert.match(route, /https:\/\/kencodehn\.com\/api\/cron\/task-reminders/);
+  assert.doesNotMatch(route, /console\.(?:log|error)\([^\n]*secret/i);
+  assert.doesNotMatch(route, /NextResponse\.json\([^\n]*secret/i);
+  assert.match(settings, /Activar recordatorios programados/);
+  assert.match(settings, /isOwner/);
+});
+
 test("assignment dispatchers target one active assignee and both external channels", () => {
   for (const path of ["src/lib/notifications/task-assignment.ts", "src/lib/notifications/lead-assignment.ts"]) {
     const source = read(path);

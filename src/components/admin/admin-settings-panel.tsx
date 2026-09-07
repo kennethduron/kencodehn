@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Bell, LockKeyhole, Mail, MonitorSmartphone, Palette, ShieldCheck, Smartphone, Trash2, X } from "lucide-react";
 import type { AdminSettings } from "@/lib/admin/types";
@@ -139,7 +139,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: () =
   );
 }
 
-export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { initialSettings: AdminSettings; canRunMaintenance: boolean }) {
+export function AdminSettingsPanel({ initialSettings, canRunMaintenance, isOwner }: { initialSettings: AdminSettings; canRunMaintenance: boolean; isOwner: boolean }) {
   const [settings, setSettings] = useState(initialSettings);
   const [savingKey, setSavingKey] = useState<SettingKey | null>(null);
   const [pendingToggle, setPendingToggle] = useState<SettingKey | null>(null);
@@ -152,6 +152,20 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
   const [cleanupConfirmation, setCleanupConfirmation] = useState("");
   const [isLoadingCleanupSummary, setIsLoadingCleanupSummary] = useState(false);
   const [isCleaningCrm, setIsCleaningCrm] = useState(false);
+  const [schedulerConfiguredAt, setSchedulerConfiguredAt] = useState<string | null>(null);
+  const [schedulerLoading, setSchedulerLoading] = useState(isOwner);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    fetch("/api/admin/settings/task-reminders", { cache: "no-store" })
+      .then(async (response) => ({ response, body: await response.json() }))
+      .then(({ response, body }) => {
+        if (!response.ok) throw new Error();
+        setSchedulerConfiguredAt(body.scheduler?.configured_at || null);
+      })
+      .catch(() => showToast("No pudimos consultar la automatización de recordatorios.", "error"))
+      .finally(() => setSchedulerLoading(false));
+  }, [isOwner]);
 
   function showToast(message: string, variant: "success" | "error" | "info" = "success") {
     setToastVariant(variant);
@@ -254,6 +268,21 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
     }
   }
 
+  async function activateTaskScheduler() {
+    setSchedulerLoading(true);
+    try {
+      const response = await fetch("/api/admin/settings/task-reminders", { method: "POST" });
+      const body = await response.json();
+      if (!response.ok || !body.ok) throw new Error();
+      setSchedulerConfiguredAt(body.scheduler?.configuredAt || new Date().toISOString());
+      showToast("Recordatorios programados cada 5 minutos.");
+    } catch {
+      showToast("No pudimos activar la automatización de recordatorios.", "error");
+    } finally {
+      setSchedulerLoading(false);
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <Toast message={toast} variant={toastVariant} />
@@ -317,6 +346,11 @@ export function AdminSettingsPanel({ initialSettings, canRunMaintenance }: { ini
           <div className="flex items-start gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl border border-kc-cyan/25 bg-kc-cyan/10 text-kc-cyan"><Bell size={19}/></span><div><h2 className="font-display text-xl font-black text-kc-text">Recordatorios de cobro</h2><p className="mt-1 text-sm leading-6 text-kc-muted">Administra reglas de 7 días, 3 días, vencimiento y atraso sin ejecutar las automatizaciones manualmente.</p></div></div>
           <Link href="/admin/configuracion/cobros" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-kc-electric px-4 text-sm font-black text-white">Configurar recordatorios</Link>
         </section>
+        {isOwner ? <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+          <div className="flex items-start gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl border border-kc-lime/25 bg-kc-lime/10 text-kc-lime"><MonitorSmartphone size={19}/></span><div><h2 className="font-display text-xl font-black text-kc-text">Automatización de tareas</h2><p className="mt-1 text-sm leading-6 text-kc-muted">Revisa los recordatorios cada 5 minutos para respetar la hora configurada.</p></div></div>
+          <p className="mt-4 text-sm font-bold text-kc-text">{schedulerLoading ? "Consultando estado..." : schedulerConfiguredAt ? "Activa · revisión cada 5 minutos" : "Pendiente de activación"}</p>
+          {!schedulerConfiguredAt ? <button type="button" onClick={activateTaskScheduler} disabled={schedulerLoading} className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-kc-lime px-4 text-sm font-black text-kc-bg disabled:opacity-60">Activar recordatorios programados</button> : null}
+        </section> : null}
         <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
           <div className="flex items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-kc-lime/25 bg-kc-lime/10 text-kc-lime">
