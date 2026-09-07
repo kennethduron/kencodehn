@@ -6,11 +6,19 @@ export const recipientListSchema = z.array(emailAddressSchema).max(50);
 export const safeSubjectSchema = z.string().trim().max(998).refine((value) => !/[\r\n]/.test(value), "Asunto inválido");
 export const uuidSchema = z.string().uuid();
 
-export function sanitizeMailHtml(value: string) {
+export function sanitizeMailHtml(value: string, options: { signatureContent?: boolean } = {}) {
+  const signatureContent = options.signatureContent === true;
   return sanitizeHtmlLibrary(value, {
-    allowedTags: ["p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li", "blockquote", "h2", "h3", "a", "span", "div"],
-    allowedAttributes: { a: ["href", "title"], span: [], div: [] },
+    allowedTags: ["p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li", "blockquote", "h2", "h3", "a", "span", "div", ...(signatureContent ? ["img"] : [])],
+    allowedAttributes: {
+      a: ["href", "title"],
+      span: [],
+      div: ["data-kc-signature"],
+      blockquote: ["data-kc-quoted-history"],
+      ...(signatureContent ? { img: ["src", "alt", "width", "height"] } : {}),
+    },
     allowedSchemes: ["http", "https", "mailto"],
+    allowedSchemesByTag: { img: ["https"] },
     transformTags: { a: sanitizeHtmlLibrary.simpleTransform("a", { target: "_blank", rel: "noopener noreferrer" }) },
     disallowedTagsMode: "discard",
     enforceHtmlBoundary: true,

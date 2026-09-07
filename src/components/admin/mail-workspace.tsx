@@ -34,6 +34,7 @@ import type { AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
 import { ConfirmDialog, Toast, Tooltip } from "./ui";
 import { RichTextEditor } from "./rich-text-editor";
+import { draftFingerprint, isMeaningfulDraft, type DraftAutosavePayload } from "@/lib/mail/draft-autosave";
 
 type Identity = { id?: string; email: string; display_name: string; mail_identity_assignments?: Array<{ is_primary: boolean }> };
 type Template = {
@@ -48,6 +49,9 @@ type Signature = {
   name: string;
   body_html: string;
   is_default: boolean;
+  source?: "personal" | "corporate";
+  logo_url?: string | null;
+  template_html?: string;
 };
 type Relation = {
   name?: string;
@@ -113,6 +117,7 @@ type Message = {
     | "failed"
     | "bounced"
     | "complained";
+  attachments?: Array<{ id: string; filename: string; content_type: string; size_bytes: number }>;
 };
 type Initial = {
   folder: string;
@@ -143,6 +148,14 @@ type Context = {
   projectName?: string;
   moduleName?: string;
   proposalNumber?: string;
+};
+type ComposeMeta = {
+  threadId: string | null;
+  leadId: string | null;
+  clientId: string | null;
+  projectId: string | null;
+  addOnId: string | null;
+  proposalId: string | null;
 };
 const folderItems = [
   { id: "inbox", label: "Recibidos", icon: Inbox },
@@ -218,6 +231,15 @@ export function MailWorkspace({
   const [subject, setSubject] = useState("");
   const [html, setHtml] = useState("");
   const [draft, setDraft] = useState<{ id?: string; version?: number }>({});
+  const [composeMeta, setComposeMeta] = useState<ComposeMeta>({
+    threadId: initial.selected?.thread.id || null,
+    leadId: composeContext.leadId || initial.selected?.thread.lead_id || null,
+    clientId: composeContext.clientId || initial.selected?.thread.client_id || null,
+    projectId: composeContext.projectId || initial.selected?.thread.project_id || null,
+    addOnId: composeContext.addOnId || initial.selected?.thread.add_on_id || null,
+    proposalId: composeContext.proposalId || initial.selected?.thread.proposal_id || null,
+  });
+  const [selectedSignatureId, setSelectedSignatureId] = useState("");
   const [attachments, setAttachments] = useState<
     Array<{ id: string; filename: string; size_bytes: number }>
   >([]);
@@ -226,6 +248,12 @@ export function MailWorkspace({
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState(false);
   const signatureApplied = useRef(false);
+  const draftRef = useRef(draft);
+  const autosaveInFlight = useRef(false);
+  const queuedAutosave = useRef<{ fingerprint: string; payload: DraftAutosavePayload } | null>(null);
+  const lastSavedFingerprint = useRef("");
+  const closeAfterAutosave = useRef(false);
+  const composeTrigger = useRef<HTMLElement | null>(null);
   const sendRequestId = useRef<string | null>(null);
   const selected = initial.selected;
   const lastMessage = selected?.messages.at(-1);
@@ -235,65 +263,81 @@ export function MailWorkspace({
   const moduleContext = relation(selected?.thread.project_add_ons);
   const proposalContext = relation(selected?.thread.add_on_proposals);
 
+  useEffect(() => { draftRef.current = draft; }, [draft]);
+
+  function finishClosingComposer() {
+    closeAfterAutosave.current = false;
+    setCompose(false);
+    window.setTimeout(() => composeTrigger.current?.focus(), 0);
+  }
+
+  async function persistAutosave(entry: { fingerprint: string; payload: DraftAutosavePayload }) {
+    if (autosaveInFlight.current) {
+      queuedAutosave.current = entry;
+      return;
+    }
+    if (entry.fingerprint === lastSavedFingerprint.current) return;
+    autosaveInFlight.current = true;
+    const currentDraft = draftRef.current;
+    const response = await fetch("/api/admin/mail", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save_draft", id: currentDraft.id, version: currentDraft.version, ...entry.payload }),
+    }).catch(() => null);
+    if (response?.ok) {
+      const body = await response.json();
+      draftRef.current = body.draft;
+      setDraft(body.draft);
+      lastSavedFingerprint.current = entry.fingerprint;
+    } else {
+      setError("No pudimos guardar los cambios. La redacción sigue abierta para proteger su borrador.");
+    }
+    autosaveInFlight.current = false;
+    const queued = queuedAutosave.current;
+    queuedAutosave.current = null;
+    if (queued && queued.fingerprint !== lastSavedFingerprint.current) {
+      void persistAutosave(queued);
+    } else if (closeAfterAutosave.current && entry.fingerprint === lastSavedFingerprint.current) {
+      finishClosingComposer();
+    }
+  }
+
+  function currentAutosaveEntry() {
+    const payload: DraftAutosavePayload = {
+      identityId: identityId || null,
+      signatureId: selectedSignatureId || null,
+      threadId: composeMeta.threadId,
+      to: addresses(to), cc: addresses(cc), bcc: addresses(bcc), subject, html,
+      context: { leadId: composeMeta.leadId, clientId: composeMeta.clientId, projectId: composeMeta.projectId, addOnId: composeMeta.addOnId, proposalId: composeMeta.proposalId },
+    };
+    return { fingerprint: draftFingerprint(payload), payload };
+  }
+
+  function requestCloseComposer() {
+    const isCompletelyEmpty = !isMeaningfulDraft(currentAutosaveEntry().payload);
+    if (isCompletelyEmpty) return finishClosingComposer();
+    const entry = currentAutosaveEntry();
+    if (entry.fingerprint === lastSavedFingerprint.current) return finishClosingComposer();
+    closeAfterAutosave.current = true;
+    void persistAutosave(entry);
+  }
+
   useEffect(() => {
     if (!compose) return;
-    const isCompletelyEmpty =
-      !draft.id &&
-      !identityId &&
-      !to &&
-      !cc &&
-      !bcc &&
-      !subject &&
-      !html &&
-      !attachments.length &&
-      !selected?.thread.id &&
-      !composeContext.leadId &&
-      !composeContext.clientId &&
-      !composeContext.projectId &&
-      !composeContext.addOnId &&
-      !composeContext.proposalId;
+    const isCompletelyEmpty = !isMeaningfulDraft(currentAutosaveEntry().payload);
     if (isCompletelyEmpty) return;
-    const timer = setTimeout(async () => {
-      const response = await fetch("/api/admin/mail", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "save_draft",
-          id: draft.id,
-          version: draft.version,
-          identityId: identityId || null,
-          threadId: selected?.thread.id || null,
-          to: addresses(to),
-          cc: addresses(cc),
-          bcc: addresses(bcc),
-          subject,
-          html,
-          context: {
-            leadId: composeContext.leadId || null,
-            clientId: composeContext.clientId || null,
-            projectId: composeContext.projectId || null,
-            addOnId: composeContext.addOnId || null,
-            proposalId: composeContext.proposalId || null,
-          },
-        }),
-      });
-      if (response.ok) {
-        const body = await response.json();
-        setDraft(body.draft);
-      }
-    }, 1500);
+    const entry = currentAutosaveEntry();
+    if (entry.fingerprint === lastSavedFingerprint.current) return;
+    const timer = setTimeout(() => void persistAutosave(entry), 1500);
     return () => clearTimeout(timer);
   }, [
     bcc,
     cc,
     compose,
-    composeContext,
-    attachments.length,
-    draft.id,
-    draft.version,
+    composeMeta,
     html,
     identityId,
-    selected?.thread.id,
+    selectedSignatureId,
     subject,
     to,
   ]);
@@ -315,7 +359,9 @@ export function MailWorkspace({
     setBusy(false);
     if (!response.ok)
       return setError(body.error || "No pudimos descartar el borrador.");
-    setDraft({});
+      setDraft({});
+    draftRef.current = {};
+    lastSavedFingerprint.current = "";
     setAttachments([]);
     setIdentityId("");
     setTo("");
@@ -331,20 +377,39 @@ export function MailWorkspace({
   }
 
   function openReply(mode: "reply" | "replyAll" | "forward") {
-    if (!lastMessage) return;
+    if (!lastMessage || !selected) return;
+    const quotedContainer = document.createElement("div");
+    quotedContainer.innerHTML = lastMessage.body_html;
+    quotedContainer.querySelectorAll("[data-kc-signature]").forEach((element) => element.remove());
+    const quotedHtml = quotedContainer.innerHTML;
+    composeTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    signatureApplied.current = false;
+    closeAfterAutosave.current = false;
+    setDraft({});
+    draftRef.current = {};
+    lastSavedFingerprint.current = "";
+    setAttachments([]);
+    setComposeMeta({
+      threadId: selected.thread.id,
+      leadId: selected.thread.lead_id || null,
+      clientId: selected.thread.client_id || null,
+      projectId: selected.thread.project_id || null,
+      addOnId: selected.thread.add_on_id || null,
+      proposalId: selected.thread.proposal_id || null,
+    });
     setCompose(true);
     setSubject(
       mode === "forward"
         ? /^fwd:/i.test(lastMessage.subject)
           ? lastMessage.subject
-          : `Fwd: ${lastMessage.subject}`
+          : `Reenviado: ${lastMessage.subject}`
         : /^re:/i.test(lastMessage.subject)
           ? lastMessage.subject
           : `Re: ${lastMessage.subject}`,
     );
     if (mode === "forward") {
       setTo("");
-      setHtml(`<br><br><blockquote>${lastMessage.body_html}</blockquote>`);
+      setHtml(`<br><br><blockquote data-kc-quoted-history="true">${quotedHtml}</blockquote>`);
     } else {
       const own = new Set(initial.identities.map((item) => item.email));
       const targets = [
@@ -357,7 +422,7 @@ export function MailWorkspace({
           : []),
       ].filter((email): email is string => Boolean(email) && !own.has(email!));
       setTo([...new Set(targets)].join(", "));
-      setHtml(`<br><br><blockquote>${lastMessage.body_html}</blockquote>`);
+      setHtml(`<br><br><blockquote data-kc-quoted-history="true">${quotedHtml}</blockquote>`);
     }
   }
   async function act(action: string, threadId: string, value?: boolean) {
@@ -400,7 +465,7 @@ export function MailWorkspace({
           requestId:
             sendRequestId.current ||
             (sendRequestId.current = crypto.randomUUID()),
-          threadId: selected?.thread.id,
+          threadId: composeMeta.threadId || undefined,
           draftId: draft.id,
           identityId,
           to: addresses(to),
@@ -408,6 +473,7 @@ export function MailWorkspace({
           bcc: addresses(bcc),
           subject,
           html,
+          signatureId: selectedSignatureId || null,
         }),
       });
       body = await response.json();
@@ -434,18 +500,19 @@ export function MailWorkspace({
         body: JSON.stringify({
           action: "save_draft",
           identityId: identityId || null,
-          threadId: selected?.thread.id || null,
+          threadId: composeMeta.threadId,
           to: addresses(to),
           cc: addresses(cc),
           bcc: addresses(bcc),
           subject,
           html,
+          signatureId: selectedSignatureId || null,
           context: {
-            leadId: composeContext.leadId || null,
-            clientId: composeContext.clientId || null,
-            projectId: composeContext.projectId || null,
-            addOnId: composeContext.addOnId || null,
-            proposalId: composeContext.proposalId || null,
+            leadId: composeMeta.leadId,
+            clientId: composeMeta.clientId,
+            projectId: composeMeta.projectId,
+            addOnId: composeMeta.addOnId,
+            proposalId: composeMeta.proposalId,
           },
         }),
       });
@@ -455,6 +522,7 @@ export function MailWorkspace({
         return setError(body.error);
       }
       currentDraft = body.draft;
+      draftRef.current = currentDraft;
       setDraft(currentDraft);
     }
     const form = new FormData();
@@ -471,6 +539,8 @@ export function MailWorkspace({
     setNotice("Adjunto guardado en el borrador.");
   }
   async function openDraft(id: string) {
+    composeTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeAfterAutosave.current = false;
     setBusy(true);
     setError("");
     const response = await fetch(`/api/admin/mail?folder=drafts&draft=${id}`, {
@@ -482,6 +552,7 @@ export function MailWorkspace({
       return setError(body.error || "No pudimos abrir el borrador.");
     const item = body.selectedDraft;
     setDraft({ id: item.id, version: item.version });
+    draftRef.current = { id: item.id, version: item.version };
     setIdentityId(initial.identities.some((identity) => identity.id === item.identity_id) ? item.identity_id || "" : "");
     setTo(
       (item.to_addresses || [])
@@ -506,8 +577,35 @@ export function MailWorkspace({
     );
     setSubject(item.subject || "");
     setHtml(item.body_html || "");
+    setSelectedSignatureId(item.signature_selection || "");
     setAttachments(item.attachments || []);
-    signatureApplied.current = true;
+    const restoredMeta: ComposeMeta = {
+      threadId: item.thread_id || null,
+      leadId: item.lead_id || null,
+      clientId: item.client_id || null,
+      projectId: item.project_id || null,
+      addOnId: item.add_on_id || null,
+      proposalId: item.proposal_id || null,
+    };
+    setComposeMeta(restoredMeta);
+    lastSavedFingerprint.current = draftFingerprint({
+      identityId: item.identity_id || null,
+      signatureId: item.signature_selection || null,
+      threadId: restoredMeta.threadId,
+      to: (item.to_addresses || []).map((address: { email?: string }) => address.email).filter(Boolean),
+      cc: (item.cc_addresses || []).map((address: { email?: string }) => address.email).filter(Boolean),
+      bcc: (item.bcc_addresses || []).map((address: { email?: string }) => address.email).filter(Boolean),
+      subject: item.subject || "",
+      html: item.body_html || "",
+      context: {
+        leadId: restoredMeta.leadId,
+        clientId: restoredMeta.clientId,
+        projectId: restoredMeta.projectId,
+        addOnId: restoredMeta.addOnId,
+        proposalId: restoredMeta.proposalId,
+      },
+    });
+    signatureApplied.current = Boolean(item.signature_selection);
     setCompose(true);
   }
   async function assignThread(profileId: string) {
@@ -588,37 +686,60 @@ export function MailWorkspace({
   function applySignature(id: string) {
     const signature = initial.signatures.find((item) => item.id === id);
     if (!signature) return;
-    const marker = `data-kc-signature=\"${signature.id}\"`;
-    setHtml((value) =>
-      value.includes(marker)
-        ? value
-        : `${value}${value ? "<br><br>" : ""}<div data-kc-signature=\"${signature.id}\">${signature.body_html}</div>`,
-    );
+    setSelectedSignatureId(signature.id);
     signatureApplied.current = true;
   }
+  function signaturePreviewHtml(signature: Signature) {
+    if (signature.source !== "corporate" || !signature.template_html) return signature.body_html;
+    const selectedIdentity = initial.identities.find((item) => item.id === identityId);
+    const safe = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
+    const values: Record<string, string> = {
+      USER_NAME: admin.displayName || admin.preferredName || admin.email.split("@")[0],
+      ROLE_OR_TITLE: admin.jobTitle || ({ owner: "Owner", admin: "Administrador", manager: "Gerente", sales_agent: "Agente de ventas", viewer: "Consulta" }[admin.role]),
+      CORPORATE_EMAIL: selectedIdentity?.email || "",
+      COMPANY_NAME: "Ken Code",
+      COMPANY_WEB: "kencodehn.com",
+    };
+    return signature.template_html.replace(/\{\{\s*(USER_NAME|ROLE_OR_TITLE|CORPORATE_EMAIL|COMPANY_NAME|COMPANY_WEB)\s*\}\}/g, (_, key: string) => safe(values[key] || ""));
+  }
   useEffect(() => {
-    if (!compose || signatureApplied.current || html.trim()) return;
-    const signature = initial.signatures.find(
-      (item) =>
-        item.is_default &&
-        (!item.identity_id || item.identity_id === identityId),
-    );
+    if (!compose || signatureApplied.current) return;
+    const compatible = initial.signatures.filter((item) => !item.identity_id || item.identity_id === identityId);
+    const signature = compatible.find((item) => item.is_default && item.source === "corporate" && item.identity_id === identityId)
+      || compatible.find((item) => item.is_default && item.source === "corporate" && !item.identity_id)
+      || compatible.find((item) => item.is_default && item.identity_id === identityId)
+      || compatible.find((item) => item.is_default);
     if (signature) applySignature(signature.id);
-  }, [compose, html, identityId, initial.signatures]);
+  }, [compose, identityId, initial.signatures]);
+
+  useEffect(() => {
+    if (!selected?.thread.id) return;
+    fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "read", threadId: selected.thread.id }) }).catch(() => undefined);
+  }, [selected?.thread.id]);
 
   useEffect(() => {
     if (!compose) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setCompose(false);
+      if (event.key === "Escape") requestCloseComposer();
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [compose]);
+  }, [
+    bcc,
+    cc,
+    compose,
+    composeMeta,
+    html,
+    identityId,
+    selectedSignatureId,
+    subject,
+    to,
+  ]);
   async function attachProposalPdf() {
     if (!composeContext.proposalId || !composeContext.addOnId) return;
     setBusy(true);
@@ -669,7 +790,7 @@ export function MailWorkspace({
           </Tooltip>
           <button
             type="button"
-            onClick={() => setCompose(true)}
+            onClick={(event) => { composeTrigger.current = event.currentTarget; closeAfterAutosave.current = false; setCompose(true); }}
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-black text-white"
           >
             <PenLine size={17} /> Redactar
@@ -1039,6 +1160,11 @@ export function MailWorkspace({
                       className="prose prose-sm mt-4 max-w-none break-words text-sm leading-6"
                       dangerouslySetInnerHTML={{ __html: message.body_html }}
                     />
+                    {message.attachments?.length ? <div className="mt-4 grid gap-2 border-t border-slate-100 pt-3" aria-label="Adjuntos del mensaje">
+                      {message.attachments.map((attachment) => <a key={attachment.id} href={`/api/admin/mail/attachments?id=${encodeURIComponent(attachment.id)}`} className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-blue-800 hover:border-blue-300" download>
+                        <Paperclip size={16} className="shrink-0" aria-hidden="true" /><span className="min-w-0 flex-1 break-all">{attachment.filename}</span><span className="shrink-0 text-xs font-normal text-kc-muted">{attachment.content_type.split("/").at(-1)?.toUpperCase()} · {Math.ceil(attachment.size_bytes / 1024)} KB</span>
+                      </a>)}
+                    </div> : null}
                   </article>
                 ))}
               </div>
@@ -1140,7 +1266,7 @@ export function MailWorkspace({
         >
           <button
             className="absolute inset-0"
-            onClick={() => setCompose(false)}
+            onClick={() => requestCloseComposer()}
             aria-label="Cerrar redacción"
           />
           <form
@@ -1152,7 +1278,7 @@ export function MailWorkspace({
               <Tooltip label="Cerrar redacción" placement="bottom">
                 <button
                   type="button"
-                  onClick={() => setCompose(false)}
+                  onClick={() => requestCloseComposer()}
                   className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white/10"
                   aria-label="Cerrar redacción"
                   title="Cerrar redacción"
@@ -1170,6 +1296,7 @@ export function MailWorkspace({
                     value={identityId}
                     onChange={(e) => {
                       setIdentityId(e.target.value);
+                      setSelectedSignatureId("");
                       signatureApplied.current = false;
                     }}
                     required
@@ -1252,12 +1379,12 @@ export function MailWorkspace({
                       <FileSignature size={14} /> Firma
                     </span>
                     <select
-                      defaultValue=""
+                      value={selectedSignatureId}
                       onChange={(e) => applySignature(e.target.value)}
                       className="min-h-11 rounded-xl border px-3 text-sm"
                     >
-                      <option value="">Insertar firma</option>
-                      {initial.signatures.map((signature) => (
+                      <option value="">Firma automática</option>
+                      {initial.signatures.filter((signature) => !signature.identity_id || signature.identity_id === identityId).map((signature) => (
                         <option key={signature.id} value={signature.id}>
                           {signature.name}
                         </option>
@@ -1265,6 +1392,7 @@ export function MailWorkspace({
                     </select>
                   </label>
                 ) : null}
+                {selectedSignatureId ? (() => { const signature = initial.signatures.find((item) => item.id === selectedSignatureId); return signature ? <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><p className="border-b border-slate-200 px-3 py-2 text-xs font-bold text-kc-muted">Vista previa de la firma · {signature.source === "corporate" ? "Corporativa protegida" : "Personal"}</p><div className="max-w-full overflow-x-auto p-3 text-sm" dangerouslySetInnerHTML={{ __html: signaturePreviewHtml(signature) }} /></section> : null; })() : null}
                 {composeContext.proposalId && composeContext.addOnId ? (
                   <button
                     type="button"

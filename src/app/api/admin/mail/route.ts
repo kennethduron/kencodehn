@@ -35,6 +35,7 @@ const sendSchema = z
     threadId: uuidSchema.optional(),
     draftId: uuidSchema.optional(),
     identityId: uuidSchema,
+    signatureId: z.string().regex(/^(personal|corporate):[0-9a-f-]{36}$/).nullable().optional(),
     to: recipientListSchema.min(1),
     cc: recipientListSchema.default([]),
     bcc: recipientListSchema.default([]),
@@ -52,6 +53,7 @@ const draftSchema = z
     id: uuidSchema.optional(),
     version: z.number().int().positive().optional(),
     identityId: uuidSchema.nullable(),
+    signatureId: z.string().regex(/^(personal|corporate):[0-9a-f-]{36}$/).nullable().optional(),
     threadId: uuidSchema.nullable(),
     to: recipientListSchema,
     cc: recipientListSchema,
@@ -135,7 +137,7 @@ function mailError(reason: unknown) {
     return NextResponse.json(
       {
         error:
-          "El proveedor no pudo enviar el correo. El borrador permanece disponible.",
+          "No pudimos enviar el correo. El borrador permanece disponible para volver a intentarlo.",
       },
       { status: 502 },
     );
@@ -210,6 +212,7 @@ export async function POST(request: NextRequest) {
       owner_id: auth.admin.uid,
       thread_id: draft.data.threadId,
       identity_id: draft.data.identityId,
+      signature_selection: draft.data.signatureId || null,
       to_addresses: draft.data.to.map((email) => ({ email })),
       cc_addresses: draft.data.cc.map((email) => ({ email })),
       bcc_addresses: draft.data.bcc.map((email) => ({ email })),

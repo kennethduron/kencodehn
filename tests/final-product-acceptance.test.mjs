@@ -49,7 +49,7 @@ test("visual editor renders rich HTML instead of exposing markup", () => {
 });
 
 test("signatures and templates also use the visual editor", () => {
-  assert.equal((settings.match(/<RichTextEditor/g) || []).length, 2);
+  assert.equal((settings.match(/<RichTextEditor/g) || []).length, 3);
   assert.doesNotMatch(settings, /<strong>Nombre<\/strong>|font-mono/);
 });
 
@@ -143,7 +143,9 @@ test("profile reports field-specific errors without accepting security fields", 
 });
 
 test("login maps safe auth states and exposes an accessible recovery link", () => {
-  assert.match(login, /signInWithPassword\(\{ email: email\.trim\(\)\.toLowerCase\(\), password \}\)/);
+  assert.match(login, /fetch\("\/api\/auth\/login"/);
+  assert.match(login, /JSON\.stringify\(\{ identifier, password \}\)/);
+  assert.match(login, /supabase\.auth\.setSession/);
   assert.match(login, /href="\/recuperar-contrasena"/);
   assert.match(login, /underline.*focus-visible:ring-2/);
   assert.match(login, /Mostrar contraseña/);
