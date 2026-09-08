@@ -49,14 +49,14 @@ No debe crearse otra tarea QA ni enviarse Push o correo adicional únicamente pa
 - Tarea legítima observada: procesada naturalmente para el Owner, sin modificación de fecha, responsable o estado.
 - Programador: activo cada 5 minutos; 142 ejecuciones exitosas y 0 fallidas en la última comprobación.
 
-## Checkpoints humanos restantes
+## Estado de checkpoints humanos
 
 Estos estados deben actualizarse únicamente con evidencia humana o con una prueba expresamente autorizada para ese propósito:
 
 | Checkpoint | Estado actual |
 |---|---|
-| Mail real: salida, entrada/respuesta, adjunto y firma externa | Pendiente de consolidar evidencia humana |
-| Acceso controlado por username y por email; recuperación de contraseña | Pendiente de consolidar evidencia humana |
+| Mail real: salida, entrada/respuesta, adjunto y firma externa | PASS humano oficial |
+| Acceso controlado por username y por email; recuperación de contraseña | PASS humano oficial |
 
 ## Checkpoint técnico de Mail real
 
@@ -75,7 +75,9 @@ Estos estados deben actualizarse únicamente con evidencia humana o con una prue
 - Adjunto único: `QA-MAIL-CHECKPOINT-2026-09-08.txt`, `text/plain`, 190 bytes; quedó vinculado al mensaje y disponible en Enviados.
 - Snapshot de firma: fuente corporativa, versión 1, identidad, HTML y URL del logo conservados en el mensaje.
 - Idempotencia: un mensaje con ese asunto, cero borradores QA después del envío y ningún envío adicional.
-- Verificación humana pendiente: abrir el correo en `kencodehn@gmail.com`, confirmar visualmente el logo en el cliente externo y responder en el mismo hilo para consolidar la entrada/respuesta.
+- Verificación humana: correo recibido, logo visible, firma correcta y adjunto visible/abrible; PASS oficial del Owner.
+- Entrada/respuesta: recibida en Ken Code Mail dentro del mismo thread; PASS humano y técnico.
+- Evidencia técnica de threading: dos mensajes en `ec7e8703-ef0a-4d6b-8b0b-01b2b1a0a048`, direcciones `outbound`/`inbound`, estados `delivered`/`received`, y `In-Reply-To` de la respuesta igual al `Message-ID` saliente.
 
 ## Checkpoint técnico de username del Owner
 
@@ -89,4 +91,24 @@ Estos estados deben actualizarse únicamente con evidencia humana o con una prue
 - Acceso por contraseña preservado; proveedor `email` y correo verificado.
 - Recuperación preparada sobre el correo verificado; no se inició recuperación ni se cambió contraseña.
 - El endpoint de login resuelve el username sólo en servidor y devuelve el mismo error genérico sin exponer el correo asociado.
-- Checkpoint humano pendiente: username + contraseña, correo + contraseña y recuperación mediante el correo verificado.
+- Checkpoint humano: login con `kennethduron`, login con `kencodehn@gmail.com` y recuperación mediante el correo verificado; los tres PASS oficiales del Owner.
+- Cuentas duplicadas o problemas de acceso observados: ninguno.
+
+## Cierre humano oficial
+
+El Owner confirmó el 8 de septiembre de 2026:
+
+| Prueba | Resultado |
+|---|---|
+| Login con `kennethduron` | PASS |
+| Login con `kencodehn@gmail.com` | PASS |
+| Recuperación mediante correo verificado | PASS |
+| Correo QA recibido | PASS |
+| Logo de firma visible fuera del CRM | PASS |
+| Firma correcta | PASS |
+| Adjunto visible y abrible | PASS |
+| Respuesta recibida en Ken Code Mail | PASS |
+| Threading en la misma conversación | PASS |
+| Cuentas duplicadas o problemas de acceso | Ninguno |
+
+**Estado final:** `PRODUCTION IMPLEMENTATION + HUMAN QA — PASS`

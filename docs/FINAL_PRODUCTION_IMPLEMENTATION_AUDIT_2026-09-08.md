@@ -8,7 +8,7 @@
 
 **Proyecto Supabase:** `nvtrgrltyzrkljarvwff`
 
-**Estado:** **SOFTWARE IMPLEMENTATION PASS — HUMAN ACCESS QA PENDING**
+**Estado:** **PRODUCTION IMPLEMENTATION + HUMAN QA — PASS**
 
 Este informe compara la auditoría del 7 de septiembre con el código y la producción actuales. No se creó una segunda tarea QA, no se ejecutó manualmente ningún cron y no se enviaron Push o correos para repetir el checkpoint físico.
 
@@ -50,9 +50,9 @@ Este informe compara la auditoría del 7 de septiembre con el código y la produ
 25. **Reducción de escrituras:** antes se observaron 245 actualizaciones en siete días; la regresión prueba cero guardados por cambio exclusivo de versión. Falta una ventana operativa de siete días para una comparación real equivalente.
 26. **Adjuntos:** metadata autorizada y enlaces de descarga visibles en el thread; PASS de software.
 27. **Salida real:** un único correo QA autorizado enviado de `kenneth@kencodehn.com` a `kencodehn@gmail.com`; visible en Enviados; PASS.
-28. **Entrada real/respuesta:** webhook y threading pasan regresiones; cero mensajes nuevos desde el despliegue; checkpoint humano pendiente.
+28. **Entrada real/respuesta:** respuesta recibida desde `kencodehn@gmail.com` en Ken Code Mail, asociada al mismo thread; PASS humano y técnico.
 29. **Threading:** Message-ID, In-Reply-To, References y candidatos acotados; PASS.
-30. **Entrega:** el proveedor marcó el mensaje QA como `delivered`; thread, Message-ID y proveedor quedaron registrados; PASS técnico. La confirmación visual en el buzón destinatario y una respuesta humana siguen pendientes.
+30. **Entrega:** el proveedor marcó el mensaje QA como `delivered`; el Owner confirmó recepción, logo, firma y adjunto; la respuesta quedó `received` y enlazada mediante `In-Reply-To`; PASS.
 
 ## E. Firmas
 
@@ -62,7 +62,7 @@ Este informe compara la auditoría del 7 de septiembre con el código y la produ
 34. **Carga de imagen:** PNG/JPG/WebP, límite de 500 KB y conversión segura con Sharp; PASS.
 35. **Reemplazo:** nueva versión inmutable y asset validado; PASS local.
 36. **Eliminación:** logo anulable en versión posterior; PASS de software.
-37. **Entrega externa:** logo WebP de 600×600 y 23,996 bytes accesible públicamente fuera del CRM e incluido en el snapshot del correo entregado; PASS técnico. Confirmación visual en el cliente de correo pendiente del Owner.
+37. **Entrega externa:** logo WebP de 600×600 y 23,996 bytes accesible públicamente, incluido en el snapshot y confirmado visualmente por el Owner en el cliente externo; PASS.
 38. **Snapshot:** `signature_snapshot` conserva selección, versión, HTML y logo; PASS.
 39. **Reply/forward:** elimina firmas del bloque citado e inserta una firma antes del historial; PASS.
 40. **Permisos:** publicación corporativa solo Owner; firma personal para usuario Mail; PASS.
@@ -82,12 +82,12 @@ Este informe compara la auditoría del 7 de septiembre con el código y la produ
 48. **Asignación:** UI de Equipo y RPC Owner; PASS de software.
 49. **Normalización:** trim y minúsculas; PASS.
 50. **Unicidad:** índice único canónico y prueba concurrente local; PASS.
-51. **Login por email:** correo de Auth, contraseña configurada, proveedor email y cuenta activa preservados; checkpoint humano pendiente.
-52. **Login por username:** `kennethduron` configurado exclusivamente para el Owner, sin conflictos y con resolución únicamente server-side; checkpoint humano de producción pendiente.
+51. **Login por email:** correo de Auth, contraseña configurada, proveedor email y cuenta activa preservados; login humano con `kencodehn@gmail.com` PASS.
+52. **Login por username:** `kennethduron` configurado exclusivamente para el Owner, sin conflictos y con resolución únicamente server-side; login humano PASS.
 53. **Error genérico:** no revela si existe el email o username; PASS.
 54. **Enumeración:** retardo mínimo y registro acotado de intentos; PASS.
 55. **Invitación:** puede comunicar username sin incluir contraseña; PASS de software.
-56. **Recuperación:** correo verificado y flujo basado en el correo de Auth preservados; PASS estructural, checkpoint humano pendiente. No se inició recuperación ni se modificó contraseña.
+56. **Recuperación:** correo verificado y flujo basado en el correo de Auth preservados; checkpoint humano PASS. La configuración automatizada no inició recuperación ni modificó la contraseña.
 57. **Inactivo:** sesión y resolución de username cierran acceso; PASS.
 58. **Reutilización:** historial reserva nombres anteriores por 180 días; PASS.
 
@@ -172,15 +172,14 @@ Este informe compara la auditoría del 7 de septiembre con el código y la produ
 111. **P0 original:** 0.
 112. **P0 restante:** 0. Integridad: cero balances negativos, cero cobros cancelados con monto pagado y cero recordatorios pendientes para cobros cancelados.
 113. **P1 original:** 8.
-114. **P1 restante:** 0 en software; salida real de Mail, firma, imagen, adjunto, entrega y configuración del username cerradas técnicamente. Persisten las pruebas humanas de acceso y la confirmación visual/respuesta en el buzón destinatario.
+114. **P1 restante:** 0. Salida, entrega, entrada/respuesta, firma, imagen, adjunto, username, login por username/email y recuperación cerrados con evidencia técnica y humana.
 115. **P2 restante:** telemetría Push recibido/abierto, Server-Timing/trazas por ruta, cobertura completa de loading granular, adjuntos/imágenes gobernados en plantillas y equivalencia de la preferencia Push de billing para personal.
 116. **P3 restante:** revisión editorial continua de textos internos de email y prefijos interoperables de asunto; no bloquea operación.
 
-## Checkpoints que faltan para el estado final
+## Checkpoints finales
 
-- **Mail humano:** confirmar visualmente el mensaje y logo en `kencodehn@gmail.com` y responder en el mismo hilo para validar entrada/respuesta.
-- **Acceso humano:** validar `kennethduron` + contraseña, correo + contraseña y recuperación mediante el correo verificado.
+- **Mail humano:** recepción, logo, firma, adjunto, respuesta y threading; PASS.
+- **Acceso humano:** `kennethduron` + contraseña, correo + contraseña y recuperación mediante el correo verificado; PASS.
+- **Cuentas duplicadas o problemas de acceso observados:** ninguno.
 
-Hasta recibir esas dos evidencias humanas, el estado oficial permanece:
-
-**SOFTWARE IMPLEMENTATION PASS — HUMAN ACCESS QA PENDING**
+**PRODUCTION IMPLEMENTATION + HUMAN QA — PASS**
