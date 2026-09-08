@@ -11,8 +11,9 @@ const ownerId = "f2d4ab72-a373-53c3-8b9e-b8cf97174ed2";
 const objectPath = `corporate/${ownerId}/qa-kencode-logo-2026-09-08.webp`;
 
 function authorized(request: NextRequest) {
-  const expected = process.env.TASK_REMINDER_CRON_SECRET?.trim() ?? "";
-  const received = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  const normalize = (value: string | undefined | null) => (value ?? "").trim().replace(/^["']|["']$/g, "");
+  const expected = normalize(process.env.CRON_SECRET);
+  const received = normalize(request.headers.get("authorization")?.replace(/^Bearer\s+/i, ""));
   const expectedBuffer = Buffer.from(expected);
   const receivedBuffer = Buffer.from(received);
   return expectedBuffer.length > 0
