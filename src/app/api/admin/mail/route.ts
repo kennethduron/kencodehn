@@ -4,6 +4,7 @@ import { requirePermissionsFromRequest } from "@/lib/admin/auth";
 import { hasPermission } from "@/lib/admin/authorization";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
+  assessMailThreadPermanentDeletion,
   listMail,
   loadDraft,
   loadThread,
@@ -90,7 +91,11 @@ const stateSchema = z
   })
   .strict();
 const permanentDeleteSchema = z
-  .object({ action: z.literal("hard_delete"), threadId: uuidSchema })
+  .object({
+    action: z.literal("hard_delete"),
+    threadId: uuidSchema,
+    reason: z.string().trim().min(3).max(500),
+  })
   .strict();
 const assignSchema = z
   .object({
@@ -123,10 +128,15 @@ function mailError(reason: unknown) {
   if (message.includes("RETENTION_REQUIRED"))
     return NextResponse.json(
       {
-        error:
-          "Esta conversación debe conservarse porque está vinculada a actividad, seguimiento o adjuntos de Ken Code.",
+        error: message.split("MAIL_RETENTION_REQUIRED:")[1] ||
+          "Esta conversación contiene historial empresarial que debe conservarse.",
       },
       { status: 409 },
+    );
+  if (message.includes("DELETE_REASON_REQUIRED"))
+    return NextResponse.json(
+      { error: "Escriba un motivo breve para la eliminación definitiva." },
+      { status: 400 },
     );
   if (message.includes("NOT_FOUND"))
     return NextResponse.json(
@@ -160,9 +170,18 @@ export async function GET(request: NextRequest) {
   const cursor = request.nextUrl.searchParams.get("cursor");
   const threadId = request.nextUrl.searchParams.get("thread");
   const draftId = request.nextUrl.searchParams.get("draft");
+  const eligibility = request.nextUrl.searchParams.get("eligibility");
   if (!folder.success)
     return NextResponse.json({ error: "Carpeta inválida." }, { status: 400 });
   try {
+    if (eligibility === "hard_delete") {
+      if (!threadId || !uuidSchema.safeParse(threadId).success)
+        return NextResponse.json({ error: "Conversación inválida." }, { status: 400 });
+      const assessment = await assessMailThreadPermanentDeletion(auth.admin, threadId);
+      return NextResponse.json(assessment, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
     const list = await listMail(
       auth.admin,
       folder.data as MailFolder,
@@ -358,11 +377,12 @@ export async function POST(request: NextRequest) {
   const permanentDelete = permanentDeleteSchema.safeParse(body);
   if (permanentDelete.success) {
     try {
-      await permanentlyDeleteMailThread(
+      const cleanup = await permanentlyDeleteMailThread(
         auth.admin,
         permanentDelete.data.threadId,
+        permanentDelete.data.reason,
       );
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, ...cleanup });
     } catch (error) {
       return mailError(error);
     }

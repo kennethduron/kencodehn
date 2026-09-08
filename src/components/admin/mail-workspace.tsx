@@ -158,6 +158,12 @@ type ComposeMeta = {
   addOnId: string | null;
   proposalId: string | null;
 };
+type MailDeletionAssessment = {
+  canDelete: boolean;
+  reasonCode: string;
+  reason: string;
+  attachmentCount: number;
+};
 const folderItems = [
   { id: "inbox", label: "Recibidos", icon: Inbox },
   { id: "sent", label: "Enviados", icon: Send },
@@ -248,6 +254,8 @@ export function MailWorkspace({
   const [followTitle, setFollowTitle] = useState("Dar seguimiento al correo");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState(false);
+  const [deleteAssessment, setDeleteAssessment] = useState<MailDeletionAssessment | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
   const signatureApplied = useRef(false);
   const draftRef = useRef(draft);
   const autosaveInFlight = useRef(false);
@@ -426,21 +434,39 @@ export function MailWorkspace({
       setHtml(`<br><br><blockquote data-kc-quoted-history="true">${quotedHtml}</blockquote>`);
     }
   }
+  async function preparePermanentDelete(threadId: string) {
+    setBusy(true);
+    setError("");
+    const response = await fetch(`/api/admin/mail?eligibility=hard_delete&thread=${encodeURIComponent(threadId)}`, { cache: "no-store" });
+    const body = await response.json();
+    setBusy(false);
+    if (!response.ok) return setError(body.error || "No pudimos comprobar esta conversación.");
+    if (!body.canDelete) return setError(body.reason || "Esta conversación debe conservarse.");
+    setDeleteAssessment(body);
+    setDeleteReason("");
+    setConfirmPermanentDelete(true);
+  }
   async function act(action: string, threadId: string, value?: boolean) {
     setBusy(true);
     const response = await fetch("/api/admin/mail", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, threadId, value }),
+      body: JSON.stringify(action === "hard_delete"
+        ? { action, threadId, reason: deleteReason }
+        : { action, threadId, value }),
     });
+    const body = await response.json();
     setBusy(false);
     if (!response.ok) {
-      const body = await response.json();
       return setError(body.error);
     }
     if (action === "hard_delete") {
       setConfirmPermanentDelete(false);
-      setNotice("Conversación eliminada definitivamente.");
+      setDeleteAssessment(null);
+      setDeleteReason("");
+      setNotice(body.cleanupPending
+        ? "Conversación eliminada. La limpieza del adjunto quedó registrada para reintento."
+        : "Conversación eliminada definitivamente.");
       router.push(folderHref("trash"));
       router.refresh();
       return;
@@ -1087,7 +1113,7 @@ export function MailWorkspace({
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => setConfirmPermanentDelete(true)}
+                        onClick={() => void preparePermanentDelete(selected.thread.id)}
                         className="grid h-10 w-10 place-items-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700"
                         aria-label="Eliminar definitivamente"
                         title="Eliminar definitivamente"
@@ -1488,15 +1514,38 @@ export function MailWorkspace({
       <ConfirmDialog
         open={confirmPermanentDelete}
         title="Eliminar conversación definitivamente"
-        description="Esta conversación se eliminará de Ken Code Mail y no podrá recuperarse. Las conversaciones vinculadas a actividad comercial, seguimientos o adjuntos protegidos no pueden eliminarse."
+        description={deleteAssessment?.reason || "Comprobando si esta conversación puede eliminarse…"}
         confirmText="Eliminar definitivamente"
         variant="danger"
         loading={busy}
-        onCancel={() => setConfirmPermanentDelete(false)}
+        confirmDisabled={deleteReason.trim().length < 3}
+        onCancel={() => {
+          setConfirmPermanentDelete(false);
+          setDeleteAssessment(null);
+          setDeleteReason("");
+        }}
         onConfirm={() => {
           if (selected) void act("hard_delete", selected.thread.id);
         }}
-      />
+      >
+        <label className="block text-sm font-bold text-kc-text">
+          Motivo de eliminación
+          <textarea
+            data-dialog-initial-focus
+            value={deleteReason}
+            onChange={(event) => setDeleteReason(event.target.value)}
+            maxLength={500}
+            rows={3}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 font-normal text-kc-text outline-none focus:border-kc-cyan"
+            placeholder="Ejemplo: conversación de prueba sin historial comercial"
+          />
+        </label>
+        {deleteAssessment?.attachmentCount ? (
+          <p className="mt-2 text-xs text-kc-muted">
+            Se eliminarán también {deleteAssessment.attachmentCount} adjunto(s) sin referencias activas.
+          </p>
+        ) : null}
+      </ConfirmDialog>
     </div>
   );
 }

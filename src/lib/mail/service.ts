@@ -112,20 +112,47 @@ export async function loadThread(admin: AdminUser, threadId: string) {
   return { thread, messages: (messages || []).map((message) => ({ ...message, attachments: attachments.get(message.id) || [] })) };
 }
 
-export async function permanentlyDeleteMailThread(admin: AdminUser, threadId: string) {
+export type MailDeletionAssessment = { canDelete: boolean; reasonCode: string; reason: string; attachmentCount: number };
+
+export async function assessMailThreadPermanentDeletion(admin: AdminUser, threadId: string): Promise<MailDeletionAssessment> {
   if (admin.role !== "owner") throw new Error("MAIL_HARD_DELETE_FORBIDDEN");
   if (!(await mayAccessThread(admin, threadId))) throw new Error("MAIL_FORBIDDEN");
+  const client = createSupabaseAdminClient();
+  const result = await client.rpc("assess_mail_thread_permanent_deletion", { p_thread: threadId, p_actor: admin.uid });
+  if (result.error) throw result.error;
+  const assessment = Array.isArray(result.data) ? result.data[0] : result.data;
+  if (!assessment) throw new Error("MAIL_NOT_FOUND");
+  return { canDelete: assessment.can_delete === true, reasonCode: String(assessment.reason_code || "unknown"), reason: String(assessment.reason || "No pudimos comprobar esta conversación."), attachmentCount: Number(assessment.attachment_count || 0) };
+}
+
+export async function permanentlyDeleteMailThread(admin: AdminUser, threadId: string, reason: string) {
+  const assessment = await assessMailThreadPermanentDeletion(admin, threadId);
+  if (!assessment.canDelete) throw new Error(`MAIL_RETENTION_REQUIRED:${assessment.reason}`);
   const client = createSupabaseAdminClient();
   const { data, error } = await client.rpc("permanently_delete_mail_thread", {
     p_thread: threadId,
     p_actor: admin.uid,
+    p_reason: reason,
   });
   if (error) {
-    if (error.code === "55000" || error.code === "22023") throw new Error("MAIL_RETENTION_REQUIRED");
+    if (error.code === "55000") {
+      const current = await assessMailThreadPermanentDeletion(admin, threadId).catch(() => null);
+      throw new Error(`MAIL_RETENTION_REQUIRED:${current?.reason || "Esta conversación contiene historial empresarial que debe conservarse."}`);
+    }
+    if (error.code === "22023") throw new Error("MAIL_DELETE_REASON_REQUIRED");
     if (error.code === "P0002") throw new Error("MAIL_NOT_FOUND");
     throw error;
   }
-  return { removedAttachmentPaths: Array.isArray(data) ? data : [] };
+  const removedAttachmentPaths = Array.isArray(data) ? data.map(String) : [];
+  let cleanupPending = false;
+  if (removedAttachmentPaths.length) {
+    const removed = await client.storage.from("mail-attachments").remove(removedAttachmentPaths);
+    cleanupPending = Boolean(removed.error);
+    await client.from("mail_storage_cleanup_queue").update(cleanupPending
+      ? { last_error: "storage_remove_failed" }
+      : { completed_at: new Date().toISOString(), last_error: null }).in("storage_path", removedAttachmentPaths);
+  }
+  return { removedAttachmentPaths, cleanupPending };
 }
 
 async function resolveSignature(admin: AdminUser, identityId: string, selection?: string | null) {

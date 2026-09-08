@@ -261,6 +261,7 @@ type ConfirmDialogProps = {
   cancelText?: string;
   variant?: "danger" | "default";
   loading?: boolean;
+  confirmDisabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
   children?: React.ReactNode;
@@ -274,6 +275,7 @@ export function ConfirmDialog({
   cancelText = "Cancelar",
   variant = "default",
   loading = false,
+  confirmDisabled = false,
   onCancel,
   onConfirm,
   children,
@@ -322,7 +324,8 @@ export function ConfirmDialog({
   }, [loading, onCancel]);
   useEffect(() => {
     if (!open) return;
-    confirmRef.current?.focus();
+    const requestedFocus = panelRef.current?.querySelector<HTMLElement>("[data-dialog-initial-focus]");
+    (requestedFocus ?? confirmRef.current)?.focus();
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !loadingRef.current) onCancelRef.current();
       if (event.key === "Tab") {
@@ -367,7 +370,7 @@ export function ConfirmDialog({
           <button type="button" onClick={onCancel} disabled={loading} className="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-black text-kc-text transition hover:border-kc-cyan/35 disabled:cursor-not-allowed disabled:opacity-50">
             {cancelText}
           </button>
-          <button ref={confirmRef} type="button" onClick={onConfirm} disabled={loading} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}>
+          <button ref={confirmRef} type="button" onClick={onConfirm} disabled={loading || confirmDisabled} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}>
             {loading ? <Loader2 size={16} className="animate-spin" /> : null}
             {confirmText}
           </button>
