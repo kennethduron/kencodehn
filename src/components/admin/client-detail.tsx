@@ -31,7 +31,7 @@ import {
   ClientPaymentsSection,
 } from "./billing-detail-sections";
 import { formatMinor } from "@/lib/billing/money";
-import { todayInHonduras } from "@/lib/time";
+import { normalizeIntlWhitespace, todayInHonduras } from "@/lib/time";
 import { ClientTaskSection, type ClientTask } from "./client-task-section";
 
 const tabs = [
@@ -51,7 +51,7 @@ const businessDateTimeFormatter = new Intl.DateTimeFormat("es-HN", {
 });
 
 function formatBusinessDateTime(value: string) {
-  return businessDateTimeFormatter.format(new Date(value));
+  return normalizeIntlWhitespace(businessDateTimeFormatter.format(new Date(value)));
 }
 
 async function mutate(operation: string, payload: Record<string, unknown>) {

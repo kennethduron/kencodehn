@@ -18,6 +18,8 @@ const mailService = read("src/lib/mail/service.ts");
 const mailUi = read("src/components/admin/mail-workspace.tsx");
 const users = read("src/lib/admin/supabase-users.ts");
 const teamUi = read("src/components/admin/team-panel.tsx");
+const timeHelpers = read("src/lib/time.ts");
+const clientDetail = read("src/components/admin/client-detail.tsx");
 const ui = read("src/components/admin/ui.tsx");
 
 test("task write supports Client and Prospect relations", () => {
@@ -207,6 +209,13 @@ test("dialog textarea receives stable initial focus and confirm cannot double-su
   assert.match(mailUi, /data-dialog-initial-focus/);
   assert.match(ui, /querySelector<HTMLElement>\("\[data-dialog-initial-focus\]"\)/);
   assert.match(ui, /disabled=\{loading \|\| confirmDisabled\}/);
+});
+
+test("Mail and Team date labels hydrate consistently across browser engines", () => {
+  assert.match(timeHelpers, /replace\(\/\[\\u00a0\\u202f\]\//);
+  assert.match(teamUi, /normalizeIntlWhitespace/);
+  assert.match(mailUi, /formatHondurasDateTime/);
+  assert.match(clientDetail, /normalizeIntlWhitespace/);
 });
 
 test("destructive eligibility is assessed server-side without row-list N+1", () => {

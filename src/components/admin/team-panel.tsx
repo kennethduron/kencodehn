@@ -4,7 +4,7 @@ import { Check, Loader2, MailPlus, RefreshCw, ShieldCheck, Trash2, UserCheck, Us
 import { useMemo, useState } from "react";
 import type { AdminMember } from "@/lib/admin/types";
 import type { ManageableAdminRole } from "@/lib/admin/authorization";
-import { HONDURAS_TIME_ZONE } from "@/lib/time";
+import { HONDURAS_TIME_ZONE, normalizeIntlWhitespace } from "@/lib/time";
 import { ConfirmDialog, Toast } from "./ui";
 
 const ROLE_OPTIONS: Array<{ value: ManageableAdminRole; label: string }> = [
@@ -29,11 +29,11 @@ function invitationPending(member: AdminMember) {
 
 function formatDate(value: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("es-HN", {
+  return normalizeIntlWhitespace(new Intl.DateTimeFormat("es-HN", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: HONDURAS_TIME_ZONE,
-  }).format(new Date(value));
+  }).format(new Date(value)));
 }
 
 type PendingStatusChange = { member: AdminMember; active: boolean } | null;

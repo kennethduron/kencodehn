@@ -1,6 +1,10 @@
 export const HONDURAS_TIME_ZONE = "America/Tegucigalpa";
 export const HONDURAS_TIME_ZONE_LABEL = "hora de Honduras";
 
+export function normalizeIntlWhitespace(value: string) {
+  return value.replace(/[\u00a0\u202f]/g, " ");
+}
+
 function parts(value: string) {
   return value.split("-").map((part) => Number(part));
 }
@@ -64,24 +68,24 @@ export function addDaysInHonduras(days: number, now = new Date()) {
 
 export function formatHondurasDate(value?: string | null) {
   if (!value) return "Sin fecha";
-  return new Intl.DateTimeFormat("es-HN", {
+  return normalizeIntlWhitespace(new Intl.DateTimeFormat("es-HN", {
     timeZone: HONDURAS_TIME_ZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(new Date(value)));
 }
 
 export function formatHondurasDateTime(value?: string | null) {
   if (!value) return "Sin fecha";
-  return new Intl.DateTimeFormat("es-HN", {
+  return normalizeIntlWhitespace(new Intl.DateTimeFormat("es-HN", {
     timeZone: HONDURAS_TIME_ZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(new Date(value)));
 }
 
 export function getHondurasDatePart(value?: string | null) {
