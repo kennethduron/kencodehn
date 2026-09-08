@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (!existingAttachment.data) {
       const content = Buffer.from("KEN CODE CRM — QA MAIL CHECKPOINT\nDate: 2026-09-08\nAuthorized sender: kenneth@kencodehn.com\nAuthorized recipient: kencodehn@gmail.com\nThis attachment contains no client or financial data.\n", "utf8");
       const uploaded = await client.storage.from("mail-attachments").upload(attachmentPath, content, {
-        contentType: "text/plain; charset=utf-8",
+        contentType: "text/plain",
         upsert: false,
       });
       if (uploaded.error) return NextResponse.json({ error: "No pudimos cargar el adjunto QA." }, { status: 500 });
