@@ -16,6 +16,7 @@ const now = new Date().toISOString();
 const ownerId = crypto.randomUUID();
 const salesId = crypto.randomUUID();
 const pendingId = crypto.randomUUID();
+const loggedUnusedId = crypto.randomUUID();
 const createdAuthIds: string[] = [];
 let identityId = "";
 const threadIds: string[] = [];
@@ -41,23 +42,41 @@ try {
   const ownerEmail = `owner.micro.${runId}@example.test`;
   const salesEmail = `sales.micro.${runId}@example.test`;
   const pendingEmail = `pending.micro.${runId}@example.test`;
+  const loggedUnusedEmail = `unused.micro.${runId}@example.test`;
   await createUser(ownerId, ownerEmail, true);
   await createUser(salesId, salesEmail, true);
   await createUser(pendingId, pendingEmail, false);
+  await createUser(loggedUnusedId, loggedUnusedEmail, true);
   const profiles = await service.from("profiles").insert([
     { id: ownerId, name: "Owner local", email: ownerEmail, role: "owner", active: true },
     { id: salesId, name: "Sales local", email: salesEmail, role: "sales_agent", active: true, invitation_status: "accepted", last_login_at: now },
     { id: pendingId, name: "Pending local", email: pendingEmail, role: "viewer", active: true, invitation_status: "sent", invited_at: now, invited_by: ownerId },
+    { id: loggedUnusedId, name: "Logged unused local", email: loggedUnusedEmail, role: "viewer", active: true, invitation_status: "accepted", last_login_at: now, username: `unused${runId}`, username_canonical: `unused${runId}` },
   ]);
   if (profiles.error) throw profiles.error;
 
   const owner = await login(ownerEmail);
   const sales = await login(salesEmail);
+  await login(loggedUnusedEmail);
   const identity = await service.from("mail_identities").insert({ local_part: `micro-${runId}`, display_name: "Micro local", created_by: ownerId }).select("id,email").single();
   if (identity.error) throw identity.error;
   identityId = identity.data.id;
   const assignment = await service.from("mail_identity_assignments").insert({ identity_id: identityId, profile_id: salesId, is_primary: true, assigned_by: ownerId });
   if (assignment.error) throw assignment.error;
+  const unusedAssignment = await service.from("mail_identity_assignments").insert({ identity_id: identityId, profile_id: loggedUnusedId, is_primary: false, assigned_by: ownerId });
+  if (unusedAssignment.error) throw unusedAssignment.error;
+  const unusedPreferences = await service.from("user_notification_preferences").insert({ profile_id: loggedUnusedId });
+  if (unusedPreferences.error) throw unusedPreferences.error;
+  const unusedDevice = await service.from("device_tokens").insert({
+    firebase_id: `unused:${runId}`,
+    profile_id: loggedUnusedId,
+    token: `unused-device-token-${runId}`,
+    token_hash: `0123456789abcdef0123456789abcdef${runId}`,
+    platform: "local",
+    created_at: now,
+    updated_at: now,
+  });
+  if (unusedDevice.error) throw unusedDevice.error;
 
   const sentThread = await service.from("mail_threads").insert({ identity_id: identityId, subject: "Sent lifecycle", state: "inbox", assigned_to: salesId, created_by: salesId }).select("id").single();
   if (sentThread.error) throw sentThread.error;
@@ -120,23 +139,46 @@ try {
     body_html: "<p>Trash local fixture</p>",
     body_text: "Trash local fixture",
     received_at: now,
-  });
+  }).select("id").single();
   if (trashMessage.error) throw trashMessage.error;
-  assert.ok((await owner.rpc("permanently_delete_mail_thread", { p_thread: trashThread.data.id, p_actor: ownerId })).error, "browser roles must not hard-delete mail");
+  const attachmentPath = `${trashThread.data.id}/${trashMessage.data.id}/${crypto.randomUUID()}`;
+  const uploadedAttachment = await service.storage.from("mail-attachments").upload(attachmentPath, new TextEncoder().encode("local safe-delete attachment"), { contentType: "text/plain" });
+  if (uploadedAttachment.error) throw uploadedAttachment.error;
+  const attachmentRow = await service.from("mail_attachments").insert({
+    message_id: trashMessage.data.id,
+    storage_path: attachmentPath,
+    filename: "local-safe-delete.txt",
+    content_type: "text/plain",
+    size_bytes: 28,
+  });
+  if (attachmentRow.error) throw attachmentRow.error;
+  const attachmentAssessment = await service.rpc("assess_mail_thread_permanent_deletion", { p_thread: trashThread.data.id, p_actor: ownerId });
+  if (attachmentAssessment.error) throw attachmentAssessment.error;
+  assert.equal(attachmentAssessment.data?.[0]?.can_delete, true);
+  assert.equal(attachmentAssessment.data?.[0]?.attachment_count, 1);
+  assert.ok((await owner.rpc("permanently_delete_mail_thread", { p_thread: trashThread.data.id, p_actor: ownerId, p_reason: "Local authorization check" })).error, "browser roles must not hard-delete mail");
   const restored = await service.from("mail_threads").update({ state: "inbox" }).eq("id", trashThread.data.id).select("state").single();
   if (restored.error) throw restored.error;
   assert.equal(restored.data.state, "inbox");
   await service.from("mail_threads").update({ state: "trash" }).eq("id", trashThread.data.id);
-  const hardDeleted = await service.rpc("permanently_delete_mail_thread", { p_thread: trashThread.data.id, p_actor: ownerId });
+  const hardDeleted = await service.rpc("permanently_delete_mail_thread", { p_thread: trashThread.data.id, p_actor: ownerId, p_reason: "Local lifecycle fixture" });
   if (hardDeleted.error) throw hardDeleted.error;
-  assert.deepEqual(hardDeleted.data, []);
+  assert.deepEqual(hardDeleted.data, [attachmentPath]);
+  const attachmentCleanup = await service.storage.from("mail-attachments").remove([attachmentPath]);
+  if (attachmentCleanup.error) throw attachmentCleanup.error;
+  await service.from("mail_storage_cleanup_queue").update({ completed_at: now }).eq("storage_path", attachmentPath);
+  assert.ok((await service.storage.from("mail-attachments").download(attachmentPath)).error);
   assert.equal((await service.from("mail_threads").select("id").eq("id", trashThread.data.id)).data?.length, 0);
+  assert.equal((await service.from("mail_audit_events").select("id").eq("action", "mail_thread_permanently_deleted").contains("safe_metadata", { threadReference: trashThread.data.id })).data?.length, 1);
   threadIds.pop();
 
   assert.ok((await owner.rpc("assess_member_permanent_deletion", { p_target: pendingId, p_actor: ownerId })).error, "browser roles must not assess destructive eligibility");
   const pendingAssessment = await service.rpc("assess_member_permanent_deletion", { p_target: pendingId, p_actor: ownerId });
   if (pendingAssessment.error) throw pendingAssessment.error;
   assert.equal(pendingAssessment.data?.[0]?.can_delete, true);
+  const loggedUnusedAssessment = await service.rpc("assess_member_permanent_deletion", { p_target: loggedUnusedId, p_actor: ownerId });
+  if (loggedUnusedAssessment.error) throw loggedUnusedAssessment.error;
+  assert.equal(loggedUnusedAssessment.data?.[0]?.can_delete, true, "login and auxiliary access state must not block deletion");
   const activeAssessment = await service.rpc("assess_member_permanent_deletion", { p_target: salesId, p_actor: ownerId });
   if (activeAssessment.error) throw activeAssessment.error;
   assert.equal(activeAssessment.data?.[0]?.can_delete, false);
@@ -149,13 +191,24 @@ try {
   createdAuthIds.splice(createdAuthIds.indexOf(pendingId), 1);
   assert.equal((await service.from("profiles").select("id").eq("id", pendingId)).data?.length, 0);
 
+  const deletedLoggedUnused = await service.auth.admin.deleteUser(loggedUnusedId, false);
+  if (deletedLoggedUnused.error) throw deletedLoggedUnused.error;
+  createdAuthIds.splice(createdAuthIds.indexOf(loggedUnusedId), 1);
+  assert.equal((await service.from("profiles").select("id").eq("id", loggedUnusedId)).data?.length, 0);
+  assert.equal((await service.from("device_tokens").select("id").eq("profile_id", loggedUnusedId)).data?.length, 0);
+  assert.equal((await service.from("user_notification_preferences").select("profile_id").eq("profile_id", loggedUnusedId)).data?.length, 0);
+  assert.equal((await service.from("mail_identity_assignments").select("profile_id").eq("profile_id", loggedUnusedId)).data?.length, 0);
+  assert.equal((await service.from("username_history").select("id").eq("username_canonical", `unused${runId}`)).data?.length, 1);
+  const deletedLogin = await createClient(apiUrl, publishableKey, { auth: { persistSession: false } }).auth.signInWithPassword({ email: loggedUnusedEmail, password });
+  assert.ok(deletedLogin.error, "deleted Auth account must not sign in");
+
   assert.equal((await service.from("email_logs").select("id", { count: "exact", head: true })).count, 0);
   assert.equal((await service.from("push_logs").select("id", { count: "exact", head: true })).count, 0);
   console.log(JSON.stringify({
     target: "loopback-only",
     sent: { outboundIndexed: "PASS", replyPreserved: "PASS", deliveryState: "PASS" },
     trash: { restore: "PASS", permanentDelete: "PASS", browserRpc: "DENIED" },
-    members: { unusedEligible: "PASS", historyBlocked: "PASS", ownerProtected: "PASS", authProfileCascade: "PASS" },
+    members: { pendingUnusedEligible: "PASS", loggedUnusedEligible: "PASS", auxiliaryStateCleaned: "PASS", historyBlocked: "PASS", ownerProtected: "PASS", authProfileCascade: "PASS" },
     rls: { owner: "PASS", assignedSales: "PASS", destructiveRpc: "SERVICE_ROLE_ONLY" },
     externalDeliveries: { email: 0, push: 0 },
   }, null, 2));
@@ -163,7 +216,7 @@ try {
   for (const threadId of threadIds) {
     await service.from("mail_follow_ups").delete().eq("thread_id", threadId);
     await service.from("mail_threads").update({ state: "trash", lead_id: null, client_id: null, project_id: null, add_on_id: null, proposal_id: null }).eq("id", threadId);
-    await service.rpc("permanently_delete_mail_thread", { p_thread: threadId, p_actor: ownerId });
+    await service.rpc("permanently_delete_mail_thread", { p_thread: threadId, p_actor: ownerId, p_reason: "Local fixture cleanup" });
   }
   if (identityId) {
     await service.from("mail_identity_assignments").delete().eq("identity_id", identityId);

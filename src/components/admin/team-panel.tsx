@@ -257,7 +257,7 @@ export function TeamPanel({ initialMembers, currentUserUid, currentUserRole }: {
                   {busy ? <Loader2 size={16} className="animate-spin" /> : member.active ? <UserX size={16} /> : <UserCheck size={16} />}
                   {member.active ? "Desactivar" : "Activar"}
                 </button>
-                {!immutableOwner && !isSelf && !member.lastLoginAt ? (
+                {!immutableOwner && !isSelf ? (
                   <button
                     type="button"
                     disabled={busy}

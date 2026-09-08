@@ -12,6 +12,8 @@ const users = read("src/lib/admin/supabase-users.ts");
 const chrome = read("src/components/admin/admin-chrome.tsx");
 const ui = read("src/components/admin/ui.tsx");
 const migration = read("supabase/migrations/20260902000800_final_micro_closure.sql");
+const mailDeleteMigration = read("supabase/migrations/20260908000200_mail_safe_permanent_delete.sql");
+const teamDeleteMigration = read("supabase/migrations/20260908000300_team_safe_permanent_delete.sql");
 const pushService = read("src/lib/push/service.ts");
 
 test("Sent filters outbound threads in SQL before pagination", () => {
@@ -46,20 +48,22 @@ test("Trash remains recoverable", () => {
 
 test("permanent mail deletion is explicit and Owner-only", () => {
   assert.match(mailUi, /Eliminar conversación definitivamente/);
-  assert.match(mailUi, /no podrá recuperarse/);
+  assert.match(mailUi, /deleteAssessment\?\.reason/);
   assert.match(service, /admin\.role !== "owner"/);
-  assert.match(migration, /role = 'owner'/);
+  assert.match(mailDeleteMigration, /active and role='owner'/);
 });
 
 test("permanent mail deletion retains linked business history", () => {
-  assert.match(migration, /linked business mail must be retained/);
-  assert.match(migration, /lead_id is not null.*client_id is not null.*project_id is not null/s);
-  assert.match(mailRoute, /vinculada a actividad, seguimiento o adjuntos/);
+  assert.match(mailDeleteMigration, /v_thread\.client_id is not null/);
+  assert.match(mailDeleteMigration, /v_thread\.lead_id is not null/);
+  assert.match(mailDeleteMigration, /v_thread\.project_id is not null/);
+  assert.match(mailRoute, /MAIL_RETENTION_REQUIRED:/);
 });
 
-test("permanent mail deletion protects referenced attachments", () => {
-  assert.match(migration, /mail attachments are retained by policy/);
-  assert.match(migration, /attachmentCount', 0/);
+test("attachment-only Mail is eligible and storage cleanup is durable", () => {
+  assert.match(mailDeleteMigration, /v_count>0/);
+  assert.match(mailDeleteMigration, /mail_storage_cleanup_queue/);
+  assert.match(service, /storage\.from\("mail-attachments"\)\.remove/);
 });
 
 test("mail hard-delete RPC is unavailable to browser roles", () => {
@@ -90,16 +94,17 @@ test("mobile never depends on hover-only labels", () => {
   assert.match(mailUi, /Reenviar/);
 });
 
-test("unused member deletion requires proof of no login", () => {
-  assert.match(migration, /last_login_at is not null/);
-  assert.match(migration, /auth\.users where id = p_target and last_sign_in_at is not null/);
-  assert.match(migration, /invitation_status = 'accepted'/);
+test("authentication history alone does not block member deletion", () => {
+  assert.doesNotMatch(teamDeleteMigration, /last_login_at is not null/);
+  assert.doesNotMatch(teamDeleteMigration, /last_sign_in_at is not null/);
+  assert.doesNotMatch(teamDeleteMigration, /invitation_status = 'accepted'/);
 });
 
-test("member deletion checks every real profile foreign key", () => {
-  assert.match(migration, /from pg_constraint constraint_row/);
-  assert.match(migration, /confrelid = 'public\.profiles'::regclass/);
-  assert.match(migration, /migration_id_map/);
+test("member deletion uses explicit business blockers and auxiliary cleanup", () => {
+  assert.match(teamDeleteMigration, /mail_messages where sent_by=p_target/);
+  assert.match(teamDeleteMigration, /payments where recorded_by=p_target/);
+  assert.match(teamDeleteMigration, /tasks[\s\S]*status in \('in_progress','completed','overdue','cancelled'\)/);
+  assert.match(teamDeleteMigration, /delete from public\.migration_id_map/);
 });
 
 test("invitation-only evidence is preserved without blocking unused-member deletion", () => {
@@ -109,13 +114,14 @@ test("invitation-only evidence is preserved without blocking unused-member delet
 });
 
 test("Owner remains protected and member deletion is Owner-only", () => {
-  assert.match(migration, /v_target\.role = 'owner' or p_target = p_actor/);
+  assert.match(teamDeleteMigration, /v_role='owner'/);
+  assert.match(teamDeleteMigration, /p_target=p_actor/);
   assert.match(userRoute, /access\.admin\.role !== "owner"/);
   assert.match(teamUi, /immutableOwner/);
 });
 
 test("history-bearing members receive a business explanation and deactivation alternative", () => {
-  assert.match(migration, /actividad registrada.*Puede desactivar su acceso/);
+  assert.match(teamDeleteMigration, /Puede desactivar su acceso/);
   assert.match(teamUi, /Desactivar/);
   assert.match(teamUi, /payload\.assessment\.reason/);
 });

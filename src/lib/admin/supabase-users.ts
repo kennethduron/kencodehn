@@ -45,6 +45,7 @@ function ensureOwner(actor: AdminUser) {
 
 export type MemberDeletionAssessment = {
   canDelete: boolean;
+  reasonCode: string;
   reason: string;
 };
 
@@ -63,8 +64,20 @@ export async function assessSupabaseAdminMemberDeletion(
   if (!assessment) throw new AdminUserManagementError(404, "Miembro no encontrado.");
   return {
     canDelete: assessment.can_delete === true,
+    reasonCode: String(assessment.reason_code || "unknown"),
     reason: String(assessment.reason || "No pudimos determinar si el miembro puede eliminarse."),
   };
+}
+
+function signatureAssetPath(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const marker = "/storage/v1/object/public/mail-signature-assets/";
+    const path = new URL(value).pathname;
+    return path.startsWith(marker) ? decodeURIComponent(path.slice(marker.length)) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteSupabaseAdminMemberWithoutHistory(uid: string, actor: AdminUser) {
@@ -72,6 +85,11 @@ export async function deleteSupabaseAdminMemberWithoutHistory(uid: string, actor
   const assessment = await assessSupabaseAdminMemberDeletion(uid, actor);
   if (!assessment.canDelete) throw new AdminUserManagementError(409, assessment.reason);
   const client = createSupabaseAdminClient();
+  const [profileResult, signatureResult] = await Promise.all([
+    client.from("profiles").select("display_name,name,profile_photo_path").eq("id", uid).maybeSingle(),
+    client.from("mail_signatures").select("logo_url").eq("profile_id", uid),
+  ]);
+  if (!profileResult.data) throw new AdminUserManagementError(404, "Miembro no encontrado.");
   const deleted = await client.auth.admin.deleteUser(uid, false);
   if (deleted.error) {
     throw new AdminUserManagementError(
@@ -79,7 +97,34 @@ export async function deleteSupabaseAdminMemberWithoutHistory(uid: string, actor
       "Este miembro tiene actividad registrada y debe conservarse para mantener el historial de Ken Code. Puede desactivar su acceso.",
     );
   }
-  return { uid };
+  const cleanupErrors: string[] = [];
+  if (profileResult.data.profile_photo_path) {
+    const photoCleanup = await client.storage.from("profile-photos").remove([profileResult.data.profile_photo_path]);
+    if (photoCleanup.error) cleanupErrors.push("profile_photo");
+  }
+  const signaturePaths = [...new Set((signatureResult.data || []).map((item) => signatureAssetPath(item.logo_url)).filter((item): item is string => Boolean(item)))];
+  for (const path of signaturePaths) {
+    const publicUrl = client.storage.from("mail-signature-assets").getPublicUrl(path).data.publicUrl;
+    const [personalReference, corporateReference] = await Promise.all([
+      client.from("mail_signatures").select("id", { count: "exact", head: true }).eq("logo_url", publicUrl),
+      client.from("corporate_mail_signatures").select("id", { count: "exact", head: true }).eq("logo_url", publicUrl),
+    ]);
+    if ((personalReference.count || 0) + (corporateReference.count || 0) === 0) {
+      const assetCleanup = await client.storage.from("mail-signature-assets").remove([path]);
+      if (assetCleanup.error) cleanupErrors.push("signature_asset");
+    }
+  }
+  const audit = await client.from("member_deletion_audit").update({
+    deleted_by: actor.uid,
+    reason: "Cuenta sin actividad empresarial eliminada por el Owner.",
+    safe_metadata: {
+      eligibility: assessment.reasonCode,
+      accessRevoked: true,
+      auxiliaryStorageCleanupPending: cleanupErrors.length > 0,
+    },
+  }).eq("deleted_member_id", uid);
+  if (audit.error) console.error("[Ken Code CRM member deletion audit error]", audit.error);
+  return { uid, auditRecorded: !audit.error, cleanupPending: cleanupErrors.length > 0 };
 }
 
 export async function listSupabaseAdminMembers() {
