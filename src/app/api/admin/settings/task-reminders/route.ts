@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+const productionOrigin = "https://kencodehn.com";
 const productionEndpoint = "https://kencodehn.com/api/cron/task-reminders";
 
 function unavailable() {
@@ -30,6 +31,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (process.env.VERCEL_ENV !== "production" || request.headers.get("origin") !== productionOrigin) {
+    return NextResponse.json({ ok: false, message: "Solicitud no permitida." }, { status: 403 });
+  }
   const access = await requirePermissionsFromRequest(request, "settings:manage");
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   if (access.admin.role !== "owner") return NextResponse.json({ ok: false, message: "Solo el Owner puede configurar esta automatización." }, { status: 403 });
