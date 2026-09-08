@@ -88,7 +88,7 @@ const groups: Array<{
   },
   {
     title: "Recordatorios de tareas",
-    description: "Ajusta qué recordatorios revisa el sistema automáticamente cada 10 minutos.",
+    description: "Ajusta qué recordatorios revisa el sistema automáticamente cada 5 minutos.",
     icon: MonitorSmartphone,
     items: [
       { key: "taskReminder1DayEnabled", label: "Recordarme 1 día antes", description: "Recibe un aviso automático antes de que venza una tarea." },
