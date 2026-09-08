@@ -10,13 +10,20 @@ const taskUpdateSchema = z.object({
   title: z.string().trim().min(2).max(180).optional(),
   description: z.string().trim().max(1200).optional(),
   leadId: z.string().trim().nullable().optional(),
+  relationType: z.enum(["lead", "client"]).nullable().optional(),
+  relationId: z.uuid().nullable().optional(),
   assignedToUid: z.string().trim().min(1).nullable().optional(),
   date: z.string().trim().min(4).max(20).optional(),
   time: z.string().trim().min(3).max(10).optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
   status: z.enum(["pending", "in_progress", "completed", "cancelled", "overdue"]).optional(),
   type: z.enum(["call", "whatsapp", "email", "meeting", "proposal", "follow_up"]).optional(),
-}).strict();
+}).strict().refine((value) => {
+  const hasType = value.relationType !== undefined;
+  const hasId = value.relationId !== undefined;
+  if (!hasType && !hasId) return true;
+  return hasType && hasId && (value.relationType === null) === (value.relationId === null);
+}, { message: "Relacion invalida." });
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const access = await requirePermissionsFromRequest(request, "tasks:edit");

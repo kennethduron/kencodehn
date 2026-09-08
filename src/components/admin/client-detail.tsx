@@ -3,9 +3,7 @@
 import {
   Activity,
   ArrowLeft,
-  CalendarDays,
   CheckCircle2,
-  ClipboardList,
   CreditCard,
   FolderKanban,
   History,
@@ -34,6 +32,7 @@ import {
 } from "./billing-detail-sections";
 import { formatMinor } from "@/lib/billing/money";
 import { todayInHonduras } from "@/lib/time";
+import { ClientTaskSection, type ClientTask } from "./client-task-section";
 
 const tabs = [
   ["overview", "Resumen"],
@@ -105,10 +104,13 @@ export function ClientDetail({
   canAssign,
   canManageBilling,
   canRegisterHistory,
+  currentUserUid,
+  canEditTasks,
+  canAssignTasks,
 }: {
   client: CommercialClient;
   projects: CommercialProject[];
-  tasks: Record<string, any>[];
+  tasks: ClientTask[];
   activity: CommercialActivity[];
   assignments: SellerAssignmentEvent[];
   billingReceivables: BillingReceivable[];
@@ -119,6 +121,9 @@ export function ClientDetail({
   canAssign: boolean;
   canManageBilling: boolean;
   canRegisterHistory: boolean;
+  currentUserUid: string;
+  canEditTasks: boolean;
+  canAssignTasks: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<(typeof tabs)[number][0]>("overview");
@@ -509,30 +514,7 @@ export function ClientDetail({
         <ClientPaymentsSection payments={billingPayments} />
       ) : null}
       {tab === "tasks" ? (
-        tasks.length ? (
-          <div className="grid gap-3">
-            {tasks.map((task) => (
-              <article key={task.id} className="kc-admin-card p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <ClipboardList size={18} className="text-kc-cyan" />
-                  <h2 className="font-black text-kc-text">{task.title}</h2>
-                  <span className="rounded-full border px-2 py-1 text-xs font-bold text-kc-muted">
-                    {task.status}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-kc-muted">
-                  {task.due_at
-                    ? formatBusinessDateTime(task.due_at)
-                    : "Sin fecha"}
-                </p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <EmptyFuture icon={CalendarDays} title="Sin tareas del cliente">
-            Las tareas comerciales asociadas al cliente aparecerán aquí.
-          </EmptyFuture>
-        )
+        <ClientTaskSection client={client} initialTasks={tasks} members={members} currentUserUid={currentUserUid} canEdit={canEditTasks} canAssign={canAssignTasks} />
       ) : null}
       {tab === "communications" ? (
         <div className="kc-admin-card grid min-h-64 place-items-center p-8 text-center">

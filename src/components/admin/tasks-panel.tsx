@@ -3,11 +3,12 @@
 import { FormEvent, useMemo, useState } from "react";
 import { CalendarDays, Check, Clock3, Edit3, Ellipsis, Filter, Plus, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { AdminLead, AdminTask, TaskAssignee, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
+import type { AdminTask, TaskAssignee, TaskPriority, TaskStatus, TaskType } from "@/lib/admin/types";
 import { shortDate, taskPriorityLabels, taskStatusLabels, taskTypeLabels, timeAgo } from "./admin-labels";
 import { TaskPriorityBadge, TaskStatusBadge } from "./status-badge";
 import { ConfirmDialog, Toast, Tooltip } from "./ui";
 import { addDaysInHonduras, HONDURAS_TIME_ZONE_LABEL, todayInHonduras } from "@/lib/time";
+import { TaskRelationPicker, type TaskRelationOption } from "./task-relation-picker";
 
 type ViewMode = "list" | "calendar";
 type DateFilter = "all" | "today" | "overdue" | "upcoming";
@@ -17,6 +18,11 @@ const emptyTask: Partial<AdminTask> = {
   description: "",
   leadId: null,
   leadName: null,
+  clientId: null,
+  clientName: null,
+  relationType: null,
+  relationId: null,
+  relationName: null,
   date: "",
   time: "09:00",
   type: "follow_up",
@@ -41,14 +47,12 @@ function weekDays() {
 
 export function TasksPanel({
   initialTasks,
-  leads,
   assignees,
   currentUserUid,
   canAssign,
   canDelete,
 }: {
   initialTasks: AdminTask[];
-  leads: AdminLead[];
   assignees: TaskAssignee[];
   currentUserUid: string;
   canAssign: boolean;
@@ -61,6 +65,7 @@ export function TasksPanel({
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [view, setView] = useState<ViewMode>("list");
   const [draft, setDraft] = useState<Partial<AdminTask>>(emptyTask);
+  const [draftRelation, setDraftRelation] = useState<TaskRelationOption | null>(null);
   const [editing, setEditing] = useState<AdminTask | null>(null);
   const [toast, setToast] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "error" | "info">("success");
@@ -89,14 +94,14 @@ export function TasksPanel({
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const selectedLead = leads.find((lead) => lead.id === draft.leadId);
     const response = await fetch("/api/admin/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: draft.title,
         description: draft.description || "",
-        leadId: selectedLead?.id ?? null,
+        relationType: draftRelation?.type ?? null,
+        relationId: draftRelation?.id ?? null,
         assignedToUid: canAssign ? draft.assignedToUid || currentUserUid : currentUserUid,
         date: draft.date,
         time: draft.time,
@@ -109,6 +114,7 @@ export function TasksPanel({
     if (result.ok) {
       setTasks(result.tasks);
       setDraft(emptyTask);
+      setDraftRelation(null);
       showToast("Tarea creada correctamente.");
       return;
     }
@@ -119,7 +125,8 @@ export function TasksPanel({
     const payload = {
       title: updates.title,
       description: updates.description,
-      leadId: updates.leadId,
+      relationType: updates.relationType,
+      relationId: updates.relationId,
       date: updates.date,
       time: updates.time,
       priority: updates.priority,
@@ -179,7 +186,7 @@ export function TasksPanel({
           <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-kc-muted">{taskTypeLabels[task.type]}</span>
         </div>
         <h2 className="mt-4 font-display text-2xl font-black text-kc-text">{task.title}</h2>
-        <p className="mt-2 text-sm font-bold text-kc-cyan">{task.leadName || "Sin lead relacionado"}</p>
+        <p className="mt-2 text-sm font-bold text-kc-cyan">{task.relationName || "Sin relación"}</p>
         <p className="mt-1 text-xs font-bold text-kc-muted">Responsable: {task.assignedToName || task.assignedToEmail || "Sin responsable"}</p>
         <p className="mt-3 line-clamp-2 min-h-12 text-sm leading-6 text-kc-muted">{task.description || taskTypeLabels[task.type]}</p>
         <div className="mt-4 rounded-xl border border-white/10 bg-kc-bg/50 p-3">
@@ -243,10 +250,7 @@ export function TasksPanel({
 
       <form onSubmit={create} className="kc-admin-card grid gap-3 p-4 lg:grid-cols-6">
         <input value={draft.title || ""} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Título de la tarea" className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none lg:col-span-2" required />
-        <select value={draft.leadId || ""} onChange={(event) => setDraft((current) => ({ ...current, leadId: event.target.value || null }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none">
-          <option value="">Sin lead</option>
-          {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name}</option>)}
-        </select>
+        <div className="lg:col-span-2"><TaskRelationPicker value={draftRelation} onChange={setDraftRelation} /></div>
         <input type="date" value={draft.date || ""} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none" required />
         <input type="time" value={draft.time || "09:00"} onChange={(event) => setDraft((current) => ({ ...current, time: event.target.value }))} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-sm text-kc-text outline-none" required />
         {canAssign ? (
@@ -325,10 +329,7 @@ export function TasksPanel({
             <input value={editing.title} onChange={(event) => setEditing({ ...editing, title: event.target.value })} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-kc-text" required />
             <textarea value={editing.description} onChange={(event) => setEditing({ ...editing, description: event.target.value })} className="min-h-24 rounded-xl border border-white/10 bg-kc-bg px-4 py-3 text-kc-text" />
             <div className="grid gap-3 sm:grid-cols-2">
-              <select value={editing.leadId || ""} onChange={(event) => setEditing({ ...editing, leadId: event.target.value || null })} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-kc-text">
-                <option value="">Sin lead</option>
-                {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name}</option>)}
-              </select>
+              <TaskRelationPicker value={editing.relationType && editing.relationId ? { type: editing.relationType, id: editing.relationId, label: editing.relationName || "Relación actual" } : null} onChange={(relation) => setEditing({ ...editing, relationType: relation?.type ?? null, relationId: relation?.id ?? null, relationName: relation?.label ?? null, leadId: relation?.type === "lead" ? relation.id : null, clientId: relation?.type === "client" ? relation.id : null })} />
               <select value={editing.type} onChange={(event) => setEditing({ ...editing, type: event.target.value as TaskType })} className="min-h-12 rounded-xl border border-white/10 bg-kc-bg px-4 text-kc-text">
                 {Object.entries(taskTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>

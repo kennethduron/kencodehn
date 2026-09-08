@@ -17,7 +17,7 @@ export type CrmRepositories = {
     add(leadId: string, body: string, admin: AdminUser): Promise<string>;
   };
   tasks: {
-    list(admin: AdminUser, leadId?: string): Promise<AdminTask[]>;
+    list(admin: AdminUser, leadId?: string, clientId?: string): Promise<AdminTask[]>;
     create(input: Partial<AdminTask>, admin: AdminUser): Promise<string>;
     update(id: string, updates: Partial<AdminTask>, admin: AdminUser): Promise<void>;
     remove(id: string, admin: AdminUser): Promise<void>;

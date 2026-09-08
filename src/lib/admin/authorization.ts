@@ -172,6 +172,8 @@ export type TaskOwnership = {
   assignedToUid?: string | null;
   leadId?: string | null;
   leadAssignedToUid?: string | null;
+  clientId?: string | null;
+  clientAssignedToUid?: string | null;
 };
 
 export type NotificationDataScope = "personal_with_legacy" | "personal" | "none";
@@ -239,7 +241,9 @@ export function canAccessTask(admin: AdminUser, task: TaskOwnership) {
   const scope = taskDataScopeForAdmin(admin);
   if (scope === "global") return true;
   if (scope !== "assigned" || task.assignedToUid !== admin.uid) return false;
-  return !task.leadId || task.leadAssignedToUid === admin.uid;
+  if (task.leadId && task.leadAssignedToUid !== admin.uid) return false;
+  if (task.clientId && task.clientAssignedToUid !== admin.uid) return false;
+  return true;
 }
 
 export function canAssignTask(admin: AdminUser) {

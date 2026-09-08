@@ -102,6 +102,11 @@ export type AdminTask = {
   description: string;
   leadId: string | null;
   leadName: string | null;
+  clientId: string | null;
+  clientName: string | null;
+  relationType: "lead" | "client" | null;
+  relationId: string | null;
+  relationName: string | null;
   date: string;
   time: string;
   timezone: string;

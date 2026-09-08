@@ -9,20 +9,26 @@ const taskSchema = z.object({
   title: z.string().trim().min(2).max(180),
   description: z.string().trim().max(1200).default(""),
   leadId: z.string().trim().nullable().optional(),
+  relationType: z.enum(["lead", "client"]).nullable().optional(),
+  relationId: z.uuid().nullable().optional(),
   assignedToUid: z.string().trim().min(1).nullable().optional(),
   date: z.string().trim().min(4).max(20),
   time: z.string().trim().min(3).max(10),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   status: z.enum(["pending", "in_progress", "completed", "cancelled", "overdue"]).default("pending"),
   type: z.enum(["call", "whatsapp", "email", "meeting", "proposal", "follow_up"]).default("follow_up"),
-}).strict();
+}).strict().refine((value) => {
+  if (value.relationType === undefined && value.relationId === undefined) return true;
+  return (value.relationType === null) === (value.relationId === null);
+}, { message: "Relación inválida." });
 
 export async function GET(request: NextRequest) {
   const access = await requirePermissionsFromRequest(request, "tasks:view");
   if (!access.ok) return NextResponse.json({ ok: false, message: access.message }, { status: access.status });
   const admin = access.admin;
   const leadId = request.nextUrl.searchParams.get("leadId") ?? undefined;
-  const tasks = await (await createCrmRepositories()).tasks.list(admin, leadId);
+  const clientId = request.nextUrl.searchParams.get("clientId") ?? undefined;
+  const tasks = await (await createCrmRepositories()).tasks.list(admin, leadId, clientId);
   return NextResponse.json({ ok: true, tasks });
 }
 

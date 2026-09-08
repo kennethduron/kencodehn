@@ -5,6 +5,7 @@ import { ClientDetail } from "@/components/admin/client-detail";
 import { ModuleSummary } from "@/components/admin/module-summary";
 import {
   canAssignCommercialOwner,
+  canAssignTask,
   hasPermission,
 } from "@/lib/admin/authorization";
 import {
@@ -68,6 +69,9 @@ export default async function ClientPage({
           canAssign={canAssignCommercialOwner(admin)}
           canManageBilling={hasPermission(admin, "billing_settings:manage")}
           canRegisterHistory={admin.role === "owner" || admin.role === "admin"}
+          currentUserUid={admin.uid}
+          canEditTasks={hasPermission(admin, "tasks:edit")}
+          canAssignTasks={canAssignTask(admin)}
         />
         <ModuleSummary items={addOns} />
       </div>

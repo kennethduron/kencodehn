@@ -18,7 +18,7 @@ export default async function AdminTasksPage() {
   if (!hasPermission(admin, "tasks:view")) redirect("/admin/leads");
 
   const repositories = await createCrmRepositories();
-  const [tasks, leads, notifications, members] = await Promise.all([repositories.tasks.list(admin), repositories.leads.list(admin), repositories.notifications.list(admin), repositories.users.list()]);
+  const [tasks, notifications, members] = await Promise.all([repositories.tasks.list(admin), repositories.notifications.list(admin), repositories.users.list()]);
   const assignees = members
     .filter((member) => member.active && (member.role === "owner" || member.role === "admin" || member.role === "sales_agent"))
     .filter((member) => canAssignTask(admin) || member.uid === admin.uid)
@@ -29,7 +29,6 @@ export default async function AdminTasksPage() {
     <AdminChrome admin={admin} unreadCount={unreadCount} authProvider={getCrmAuthProvider()}>
       <TasksPanel
         initialTasks={tasks}
-        leads={leads}
         assignees={assignees}
         currentUserUid={admin.uid}
         canAssign={canAssignTask(admin)}

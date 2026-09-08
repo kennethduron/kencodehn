@@ -34,7 +34,12 @@ export function mapSupabaseNote(row: Row): AdminNote {
 }
 
 export function mapSupabaseTask(row: Row): AdminTask {
-  return { id: String(row.id), title: text(row.title), description: text(row.description), leadId: row.lead_id ?? null, leadName: row.lead_name ?? null, date: text(row.due_date), time: text(row.due_time).slice(0, 5), timezone: text(row.timezone) || "America/Tegucigalpa", dueAt: iso(row.due_at), priority: row.priority, status: row.status, type: row.type, reminderAt: iso(row.reminder_at), reminder1DaySentAt: iso(row.reminder_one_day_sent_at), reminder1HourSentAt: iso(row.reminder_one_hour_sent_at), dueNotificationSentAt: iso(row.due_notification_sent_at), completedAt: iso(row.completed_at), overdueEmailSentAt: iso(row.overdue_email_sent_at), overdueNotifiedAt: iso(row.overdue_notified_at), assignedToUid: row.assigned_to ?? null, assignedToName: row.assigned_to_name ?? null, assignedToEmail: row.assigned_to_email ?? null, assignedAt: iso(row.assigned_at), assignedByUid: row.assigned_by ?? null, assignedByEmail: row.assigned_by_email ?? null, createdByUid: row.created_by ?? null, createdByEmail: text(row.created_by_email), createdBy: text(row.created_by_email), completedByUid: row.completed_by ?? null, completedByEmail: row.completed_by_email ?? null, createdAt: text(row.created_at), updatedAt: text(row.updated_at) };
+  const lead = Array.isArray(row.leads) ? row.leads[0] : row.leads;
+  const client = Array.isArray(row.clients) ? row.clients[0] : row.clients;
+  const leadName = text(lead?.business || lead?.name || row.lead_name) || null;
+  const clientName = text(client?.company || client?.name) || null;
+  const relationType = row.client_id ? "client" as const : row.lead_id ? "lead" as const : null;
+  return { id: String(row.id), title: text(row.title), description: text(row.description), leadId: row.lead_id ?? null, leadName, clientId: row.client_id ?? null, clientName, relationType, relationId: row.client_id ?? row.lead_id ?? null, relationName: clientName ?? leadName, date: text(row.due_date), time: text(row.due_time).slice(0, 5), timezone: text(row.timezone) || "America/Tegucigalpa", dueAt: iso(row.due_at), priority: row.priority, status: row.status, type: row.type, reminderAt: iso(row.reminder_at), reminder1DaySentAt: iso(row.reminder_one_day_sent_at), reminder1HourSentAt: iso(row.reminder_one_hour_sent_at), dueNotificationSentAt: iso(row.due_notification_sent_at), completedAt: iso(row.completed_at), overdueEmailSentAt: iso(row.overdue_email_sent_at), overdueNotifiedAt: iso(row.overdue_notified_at), assignedToUid: row.assigned_to ?? null, assignedToName: row.assigned_to_name ?? null, assignedToEmail: row.assigned_to_email ?? null, assignedAt: iso(row.assigned_at), assignedByUid: row.assigned_by ?? null, assignedByEmail: row.assigned_by_email ?? null, createdByUid: row.created_by ?? null, createdByEmail: text(row.created_by_email), createdBy: text(row.created_by_email), completedByUid: row.completed_by ?? null, completedByEmail: row.completed_by_email ?? null, createdAt: text(row.created_at), updatedAt: text(row.updated_at) };
 }
 
 export function mapSupabaseNotification(row: Row): AdminNotification {
@@ -97,9 +102,10 @@ export function createSupabaseRepositoriesWithClient(client: SupabaseLike): CrmR
       async add(leadId, body) { const result = await mutation(client, "note_add", { leadId, body }); return String(result.id); },
     },
     tasks: {
-      async list(admin, leadId) { let query = client.from("tasks").select("*").order("created_at", { ascending: false }); if (leadId) query = query.eq("lead_id", leadId); if (taskDataScopeForAdmin(admin) === "assigned") query = query.eq("assigned_to", admin.uid); return (await rows(query)).map(mapSupabaseTask); },
+      async list(admin, leadId, clientId) { let query = client.from("tasks").select("*,leads(name,business),clients(name,company)").order("created_at", { ascending: false }); if (leadId) query = query.eq("lead_id", leadId); if (clientId) { const related = await rows(client.from("clients").select("origin_lead_id").eq("id", clientId).limit(1)); const originLeadId = related[0]?.origin_lead_id; query = originLeadId ? query.or(`client_id.eq.${clientId},lead_id.eq.${originLeadId}`) : query.eq("client_id", clientId); } if (taskDataScopeForAdmin(admin) === "assigned") query = query.eq("assigned_to", admin.uid); return (await rows(query)).map(mapSupabaseTask); },
       async create(input) {
-        const result = await mutation(client, "task_create", { input });
+        const { data: result, error } = await client.rpc("task_write_v2", { p_operation: "task_create", p_payload: { input } });
+        if (error) throw Object.assign(new Error("No se pudo completar la operación solicitada."), { status: error.code === "P0002" ? 404 : error.code === "42501" ? 403 : 400 });
         const id = String(result.id);
         await processAssignmentNotificationEvents({ eventType: "task_assigned", entityId: id, limit: 1 });
         return id;
@@ -107,7 +113,8 @@ export function createSupabaseRepositoriesWithClient(client: SupabaseLike): CrmR
       async update(id, updates) {
         const adminClient = createSupabaseAdminClient();
         const before = await adminClient.from("tasks").select("assigned_to").eq("id", id).maybeSingle();
-        await mutation(client, "task_update", { id, updates });
+        const changed = await client.rpc("task_write_v2", { p_operation: "task_update", p_payload: { id, updates } });
+        if (changed.error) throw Object.assign(new Error("No se pudo completar la operación solicitada."), { status: changed.error.code === "P0002" ? 404 : changed.error.code === "42501" ? 403 : 400 });
         const after = await adminClient.from("tasks").select("assigned_to").eq("id", id).maybeSingle();
         if (!after.error && after.data?.assigned_to && after.data.assigned_to !== before.data?.assigned_to) {
           await processAssignmentNotificationEvents({ eventType: "task_assigned", entityId: id, limit: 1 });

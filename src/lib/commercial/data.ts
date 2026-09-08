@@ -54,18 +54,21 @@ export async function listCommercialClients() {
 
 export async function getCommercialClient(id: string) {
   const client = await createSupabaseServerClient();
-  const [clientRows, projectRows, taskRows, activityRows, assignmentRows] = await Promise.all([
-    rows(client.from("clients").select("*").eq("id", id).limit(1)),
+  const clientRows = await rows(client.from("clients").select("*").eq("id", id).limit(1));
+  if (!clientRows[0]) return null;
+  const originLeadId = nullableText(clientRows[0].origin_lead_id);
+  let taskQuery = client.from("tasks").select("id,title,status,priority,type,due_at,due_date,due_time,assigned_to,assigned_to_name");
+  taskQuery = originLeadId ? taskQuery.or(`client_id.eq.${id},lead_id.eq.${originLeadId}`) : taskQuery.eq("client_id", id);
+  const [projectRows, taskRows, activityRows, assignmentRows] = await Promise.all([
     rows(client.from("projects").select("*").eq("client_id", id).order("created_at", { ascending: false })),
-    rows(client.from("tasks").select("id,title,status,priority,due_at,assigned_to").eq("client_id", id).order("created_at", { ascending: false })),
+    rows(taskQuery.order("created_at", { ascending: false })),
     rows(client.from("activity_logs").select("id,entity_type,action,title,description,actor_id,actor_email,created_at").eq("client_id", id).order("created_at", { ascending: false }).limit(150)),
     rows(client.from("seller_assignment_events").select("*").eq("client_id", id).order("created_at", { ascending: false })),
   ]);
-  if (!clientRows[0]) return null;
   return {
     client: mapClient(clientRows[0]),
     projects: projectRows.map(mapProject),
-    tasks: taskRows,
+    tasks: taskRows.map((row) => ({ id: String(row.id), title: text(row.title), status: text(row.status), priority: text(row.priority), type: text(row.type), due_at: nullableText(row.due_at), date: nullableText(row.due_date) || "", time: nullableText(row.due_time)?.slice(0, 5) || "", assigned_to_name: nullableText(row.assigned_to_name) })),
     activity: activityRows.map(mapActivity),
     assignments: assignmentRows.map((row): SellerAssignmentEvent => ({
       id: String(row.id), entityType: row.entity_type, previousSellerId: nullableText(row.previous_seller_id), newSellerId: nullableText(row.new_seller_id), actorId: String(row.actor_id), actorEmail: text(row.actor_email), reason: text(row.reason), createdAt: text(row.created_at),
