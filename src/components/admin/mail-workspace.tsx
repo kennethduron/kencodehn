@@ -252,6 +252,10 @@ function readableSize(bytes: number) {
   return `${Math.max(1, Math.ceil(bytes / 1024))} KB`;
 }
 
+function formatMailListDate(value: string) {
+  return new Intl.DateTimeFormat("es-HN", { day: "numeric", month: "short", timeZone: "America/Tegucigalpa" }).format(new Date(value));
+}
+
 type ContextEntry = { label: string; value: string; href?: string };
 
 function CrmContextCard({
@@ -906,7 +910,7 @@ export function MailWorkspace({
           </h1>
         </div>
         <div className="flex shrink-0 gap-2">
-          {hasPermission(admin, "mail:manage_identities") ? <Tooltip label="Configuración">
+          <Tooltip label="Configuración">
             <Link
               href="/admin/mail/configuracion"
               className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700"
@@ -915,7 +919,7 @@ export function MailWorkspace({
             >
               <Settings size={19} aria-hidden="true" />
             </Link>
-          </Tooltip> : null}
+          </Tooltip>
           <button
             type="button"
             onClick={(event) => { composeTrigger.current = event.currentTarget; closeAfterAutosave.current = false; setCompose(true); }}
@@ -1023,7 +1027,7 @@ export function MailWorkspace({
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center justify-between gap-2">
                           <span className={`truncate text-sm text-slate-900 ${unread ? "font-black" : "font-bold"}`}>{initial.folder === "sent" ? `Para: ${party}` : party}</span>
-                          <time className={`shrink-0 text-[.67rem] ${unread ? "font-bold text-blue-700" : "text-kc-muted"}`}>{formatHondurasDateTime(date)}</time>
+                          <time className={`shrink-0 text-[.67rem] ${unread ? "font-bold text-blue-700" : "text-kc-muted"}`} dateTime={date}>{formatMailListDate(date)}</time>
                         </div>
                         <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
                           <strong className={`min-w-0 flex-1 truncate text-xs text-slate-800 ${unread ? "font-black" : "font-bold"}`}>{thread.subject}</strong>
