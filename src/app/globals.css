@@ -479,19 +479,19 @@ select:focus-visible {
   .kc-mail-action { width: 2.35rem; justify-content: center; padding: 0; }
 }
 @media (max-width: 1024px) {
-  .kc-mail-shell { grid-template-columns: minmax(18rem, 21rem) minmax(0, 1fr); }
+  .kc-mail-shell { display: block; }
   .kc-mail-folders { position: fixed; inset: 0 auto 0 0; z-index: 70; width: min(82vw, 18rem); padding-top: max(1rem, env(safe-area-inset-top)); transform: translateX(-105%); transition: transform 180ms ease; box-shadow: 0 25px 60px rgba(15,23,42,.28); }
   .kc-mail-folders.is-open { transform: translateX(0); }
+  .kc-mail-list { display: block; height: 100%; }
+  .kc-mail-list.has-selection { display: none; }
+  .kc-mail-detail { display: none; }
+  .kc-mail-detail.is-open { display: flex; height: 100%; }
 }
 @media (max-width: 767px) {
   .kc-mail-page-header { margin-bottom: 0.65rem; }
   .kc-mail-page-header h1 { font-size: 1.35rem; }
   .kc-mail-page-header p { display: none; }
   .kc-mail-shell { display: block; height: calc(100dvh - 8.5rem); min-height: 28rem; border-radius: 1rem; }
-  .kc-mail-list { display: block; }
-  .kc-mail-list.has-selection { display: none; }
-  .kc-mail-detail { display: none; }
-  .kc-mail-detail.is-open { display: flex; height: 100%; }
   .kc-mail-list:not(.has-selection) { height: 100%; }
   .kc-mail-conversation-scroll { max-height: none; }
   .kc-mail-action { min-height: 2.75rem; }

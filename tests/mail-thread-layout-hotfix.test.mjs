@@ -57,8 +57,9 @@ test("thread content and attachments use the expanded reader width safely", () =
 
 test("phone, tablet and short-height rules remain active", () => {
   assert.match(css, /@media \(max-width: 1280px\)/);
-  assert.match(css, /@media \(max-width: 1024px\)/);
+  assert.match(css, /@media \(max-width: 1024px\)[\s\S]*\.kc-mail-shell \{ display: block; \}[\s\S]*\.kc-mail-list\.has-selection \{ display: none; \}[\s\S]*\.kc-mail-detail\.is-open \{ display: flex; height: 100%; \}/);
   assert.match(css, /@media \(max-width: 767px\)/);
   assert.match(css, /@media \(max-height: 650px\) and \(orientation: landscape\)/);
   assert.match(css, /\.kc-mail-action \{ min-height: 2\.75rem; \}/);
+  assert.match(workspace, /className="[^"]*xl:hidden"[\s\S]*aria-label="Volver a conversaciones"/);
 });

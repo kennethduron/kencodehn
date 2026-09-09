@@ -1079,7 +1079,7 @@ export function MailWorkspace({
                 <div className="flex min-w-0 items-start gap-2 px-3 pb-2 pt-3 sm:px-4">
                   <Link
                     href={folderHref(initial.folder)}
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 lg:hidden"
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 xl:hidden"
                     aria-label="Volver a conversaciones"
                   >
                     <ArrowLeft size={18} aria-hidden="true" />
