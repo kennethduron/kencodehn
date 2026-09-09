@@ -486,6 +486,7 @@ select:focus-visible {
   .kc-mail-list.has-selection { display: none; }
   .kc-mail-detail { display: none; }
   .kc-mail-detail.is-open { display: flex; height: 100%; }
+  .kc-mail-follow-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 767px) {
   .kc-mail-page-header { margin-bottom: 0.65rem; }
@@ -525,6 +526,7 @@ select:focus-visible {
   .kc-mail-compose-field { gap: 0.45rem; padding-inline: 0.75rem; }
   .kc-mail-compose-label { width: 2.75rem; }
   .kc-mail-composer footer { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
+  .kc-mail-follow-up { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 374px) {
   .kc-mail-page-header button { padding-inline: 0.8rem; }
