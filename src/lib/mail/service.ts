@@ -75,9 +75,9 @@ export async function listMail(admin: AdminUser, folder: MailFolder, search: str
     return { folder, drafts: drafts || [], threads: [], identities: identityRows || [], templates: templates || [], signatures: signatures || [], assignees: assignees || [], nextCursor: drafts?.length === 26 ? drafts.at(-1)?.updated_at : null };
   }
   const messageSelection = folder === "sent"
-    ? "mail_messages!inner(id,direction,delivery_status,from_address,to_addresses,sent_at,created_at)"
-    : "mail_messages(id,direction,delivery_status,from_address,to_addresses,sent_at,created_at)";
-  let query = client.from("mail_threads").select(`id,subject,state,assigned_to,is_important,follow_up_at,snippet,latest_message_at,last_outbound_at,identity_id,lead_id,client_id,project_id,add_on_id,proposal_id,mail_identities(email,display_name),mail_read_states(unread),${messageSelection}`).limit(26);
+    ? "mail_messages!inner(id,direction,delivery_status,from_address,to_addresses,sent_at,created_at,mail_attachments(id))"
+    : "mail_messages(id,direction,delivery_status,from_address,to_addresses,sent_at,created_at,mail_attachments(id))";
+  let query = client.from("mail_threads").select(`id,subject,state,assigned_to,is_important,follow_up_at,snippet,latest_message_at,last_outbound_at,identity_id,lead_id,client_id,project_id,add_on_id,proposal_id,mail_identities(email,display_name),mail_read_states(profile_id,unread),${messageSelection}`).eq("mail_read_states.profile_id", admin.uid).limit(26);
   if (!maySuperviseMail(admin)) query = identities.length ? query.or(`assigned_to.eq.${admin.uid},identity_id.in.(${identities.join(",")})`) : query.eq("assigned_to", admin.uid);
   if (folder === "sent") query = query.neq("state", "trash").not("last_outbound_at", "is", null).eq("mail_messages.direction", "outbound"); else if (folder === "archived") query = query.eq("state", "archived"); else if (folder === "trash") query = query.eq("state", "trash"); else query = query.eq("state", "inbox");
   if (folder === "follow-up") query = query.not("follow_up_at", "is", null);

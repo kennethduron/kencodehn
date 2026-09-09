@@ -8,7 +8,10 @@ import {
   AtSign,
   CalendarPlus,
   Check,
+  ChevronDown,
+  ChevronRight,
   Clock3,
+  ExternalLink,
   FileSignature,
   FileText,
   Forward,
@@ -88,13 +91,16 @@ type Thread = {
   project_add_ons?: Relation | Relation[];
   add_on_proposals?: Relation | Relation[];
   mail_identities?: Identity | Identity[];
+  mail_read_states?: Array<{ profile_id: string; unread: boolean }>;
   mail_messages?: Array<{
+    id: string;
     direction: string;
     delivery_status?: Message["delivery_status"];
-    from_address: { email?: string };
+    from_address: { email?: string; name?: string };
     to_addresses: Array<{ email?: string }>;
     sent_at?: string | null;
     created_at: string;
+    mail_attachments?: Array<{ id: string }>;
   }>;
 };
 type Message = {
@@ -197,7 +203,7 @@ const deliveryLabels: Record<Message["delivery_status"], string> = {
   sent: "Enviado",
   delayed: "Entrega demorada",
   delivered: "Entregado",
-  failed: "Error",
+  failed: "No entregado",
   bounced: "Rebotado",
   complained: "Marcado como spam",
 };
@@ -210,6 +216,75 @@ function latestOutbound(thread: Thread) {
         String(left.sent_at || left.created_at),
       ),
     )[0];
+}
+
+function latestMessage(thread: Thread) {
+  return [...(thread.mail_messages || [])].sort((left, right) =>
+    String(right.sent_at || right.created_at).localeCompare(
+      String(left.sent_at || left.created_at),
+    ),
+  )[0];
+}
+
+function conversationParty(thread: Thread, folder: string) {
+  const message = folder === "sent" ? latestOutbound(thread) : latestMessage(thread);
+  if (!message) return identityOf(thread)?.display_name || identityOf(thread)?.email || "Ken Code";
+  if (folder === "sent" || message.direction === "outbound") {
+    return message.to_addresses.map((address) => address.email).filter(Boolean).join(", ") || "Sin destinatario";
+  }
+  return message.from_address.name || message.from_address.email || "Remitente";
+}
+
+function initials(value: string) {
+  const clean = value.includes("@") ? value.split("@")[0] : value;
+  const parts = clean.trim().split(/[\s._-]+/).filter(Boolean);
+  return `${parts[0]?.[0] || "K"}${parts.length > 1 ? parts.at(-1)?.[0] || "" : ""}`.toUpperCase();
+}
+
+function avatarTone(value: string) {
+  const tones = ["bg-blue-100 text-blue-800", "bg-cyan-100 text-cyan-800", "bg-violet-100 text-violet-800", "bg-emerald-100 text-emerald-800", "bg-amber-100 text-amber-800"];
+  const index = [...value].reduce((total, character) => total + character.charCodeAt(0), 0) % tones.length;
+  return tones[index];
+}
+
+function readableSize(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.ceil(bytes / 1024))} KB`;
+}
+
+type ContextEntry = { label: string; value: string; href?: string };
+
+function CrmContextCard({
+  entries,
+  responsible,
+  followUpAt,
+  headingId,
+}: {
+  entries: ContextEntry[];
+  responsible?: string;
+  followUpAt?: string | null;
+  headingId: string;
+}) {
+  return (
+    <section className="kc-mail-context-card rounded-2xl border border-slate-200 bg-slate-50/80 p-4" aria-labelledby={headingId}>
+      <div className="flex items-center gap-2">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-100 text-blue-700"><AtSign size={16} aria-hidden="true" /></span>
+        <h3 id={headingId} className="text-sm font-black text-slate-900">Contexto en CRM</h3>
+      </div>
+      <dl className="mt-4 grid gap-3">
+        {entries.map((item) => (
+          <div key={`${item.label}-${item.value}`} className="min-w-0">
+            <dt className="text-[.68rem] font-bold uppercase tracking-[.08em] text-slate-500">{item.label}</dt>
+            <dd className="mt-0.5 min-w-0 text-sm font-bold text-slate-900">
+              {item.href ? <Link href={item.href} className="inline-flex max-w-full items-center gap-1 text-blue-700 hover:underline"><span className="truncate">{item.value}</span><ExternalLink size={13} className="shrink-0" aria-hidden="true" /></Link> : <span className="block truncate">{item.value}</span>}
+            </dd>
+          </div>
+        ))}
+        {responsible ? <div><dt className="text-[.68rem] font-bold uppercase tracking-[.08em] text-slate-500">Responsable</dt><dd className="mt-0.5 truncate text-sm font-bold text-slate-900">{responsible}</dd></div> : null}
+        {followUpAt ? <div><dt className="text-[.68rem] font-bold uppercase tracking-[.08em] text-slate-500">Seguimiento</dt><dd className="mt-0.5 text-sm font-bold text-emerald-700">{formatHondurasDateTime(followUpAt)}</dd></div> : null}
+      </dl>
+    </section>
+  );
 }
 
 export function MailWorkspace({
@@ -745,6 +820,13 @@ export function MailWorkspace({
   }, [selected?.thread.id]);
 
   useEffect(() => {
+    if (!mobileFolders) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [mobileFolders]);
+
+  useEffect(() => {
     if (!compose) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -792,87 +874,68 @@ export function MailWorkspace({
     return `/admin/mail?folder=${id}`;
   }
 
+  const contextEntries: ContextEntry[] = selected ? [
+    selected.thread.client_id && clientContext ? { label: "Cliente", value: clientContext.company || clientContext.name || "Cliente", href: `/admin/clientes/${selected.thread.client_id}` } : null,
+    selected.thread.lead_id && leadContext ? { label: "Prospecto", value: leadContext.company || leadContext.name || "Prospecto", href: `/admin/leads/${selected.thread.lead_id}` } : null,
+    selected.thread.project_id && projectContext ? { label: "Proyecto", value: projectContext.name || "Proyecto", href: `/admin/proyectos/${selected.thread.project_id}` } : null,
+    selected.thread.add_on_id && moduleContext ? { label: "Módulo", value: moduleContext.name || "Módulo", href: `/admin/modulos/${selected.thread.add_on_id}` } : null,
+    proposalContext ? { label: "Propuesta", value: proposalContext.proposal_number || proposalContext.title || "Propuesta" } : null,
+  ].filter((item): item is ContextEntry => Boolean(item)) : [];
+  const responsible = initial.assignees.find((person) => person.id === selected?.thread.assigned_to);
+  const responsibleName = responsible?.display_name || responsible?.name || (selected?.thread.assigned_to === admin.uid ? admin.displayName || admin.email : undefined);
+  const activeFolderCount = initial.folder === "drafts" ? initial.drafts.length : initial.threads.length;
+  const activeFolderCountLabel = `${Math.min(activeFolderCount, 25)}${initial.nextCursor ? "+" : ""}`;
+  const composerContextEntries: ContextEntry[] = [
+    composeMeta.clientId ? { label: "Cliente", value: composeContext.businessName || composeContext.clientName || clientContext?.company || clientContext?.name || "Cliente", href: `/admin/clientes/${composeMeta.clientId}` } : null,
+    composeMeta.leadId ? { label: "Prospecto", value: composeContext.clientName || leadContext?.company || leadContext?.name || "Prospecto", href: `/admin/leads/${composeMeta.leadId}` } : null,
+    composeMeta.projectId ? { label: "Proyecto", value: composeContext.projectName || projectContext?.name || "Proyecto", href: `/admin/proyectos/${composeMeta.projectId}` } : null,
+    composeMeta.addOnId ? { label: "Módulo", value: composeContext.moduleName || moduleContext?.name || "Módulo", href: `/admin/modulos/${composeMeta.addOnId}` } : null,
+    composeMeta.proposalId ? { label: "Propuesta", value: composeContext.proposalNumber || proposalContext?.proposal_number || proposalContext?.title || "Propuesta" } : null,
+  ].filter((item): item is ContextEntry => Boolean(item));
+
   return (
-    <div className="min-w-0">
+    <div className="kc-mail-page min-w-0">
       <Toast message={error || notice} variant={error ? "error" : "success"} />
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="kc-mail-page-header mb-3 flex min-w-0 items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[.2em] text-blue-700">
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-blue-700">
             Comunicación comercial
           </p>
-          <h1 className="font-display text-3xl font-black sm:text-4xl">
+          <h1 className="font-display text-2xl font-black sm:text-3xl">
             Ken Code Mail
           </h1>
         </div>
-        <div className="flex gap-2">
-          <Tooltip label="Configuración">
+        <div className="flex shrink-0 gap-2">
+          {hasPermission(admin, "mail:manage_identities") ? <Tooltip label="Configuración">
             <Link
               href="/admin/mail/configuracion"
-              className="grid h-11 w-11 place-items-center rounded-xl border bg-white"
+              className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700"
               aria-label="Configuración de Mail"
               title="Configuración de Mail"
             >
               <Settings size={19} aria-hidden="true" />
             </Link>
-          </Tooltip>
+          </Tooltip> : null}
           <button
             type="button"
             onClick={(event) => { composeTrigger.current = event.currentTarget; closeAfterAutosave.current = false; setCompose(true); }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-black text-white"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-black text-white shadow-sm hover:bg-blue-800"
           >
             <PenLine size={17} /> Redactar
           </button>
         </div>
       </div>
-      {selected &&
-      (clientContext ||
-        leadContext ||
-        projectContext ||
-        moduleContext ||
-        proposalContext) ? (
-        <dl className="mb-3 flex flex-wrap gap-x-5 gap-y-2 rounded-xl border bg-white p-3 text-xs">
-          <div>
-            <dt className="font-bold text-kc-muted">Cliente</dt>
-            <dd className="font-black">
-              {clientContext?.company ||
-                clientContext?.name ||
-                leadContext?.company ||
-                leadContext?.name ||
-                "Sin vincular"}
-            </dd>
-          </div>
-          {projectContext ? (
-            <div>
-              <dt className="font-bold text-kc-muted">Proyecto</dt>
-              <dd className="font-black">{projectContext.name}</dd>
-            </div>
-          ) : null}
-          {moduleContext ? (
-            <div>
-              <dt className="font-bold text-kc-muted">Módulo</dt>
-              <dd className="font-black">{moduleContext.name}</dd>
-            </div>
-          ) : null}
-          {proposalContext ? (
-            <div>
-              <dt className="font-bold text-kc-muted">Propuesta</dt>
-              <dd className="font-black">
-                {proposalContext.proposal_number || proposalContext.title}
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      ) : null}
       <div className="kc-mail-shell overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {mobileFolders ? <button type="button" className="kc-mail-folder-scrim fixed inset-0 z-[65] bg-slate-950/35 lg:hidden" onClick={() => setMobileFolders(false)} aria-label="Cerrar carpetas" /> : null}
         <aside
-          className={`kc-mail-folders border-r border-slate-200 bg-slate-50 p-3 ${mobileFolders ? "is-open" : ""}`}
+          className={`kc-mail-folders border-r border-slate-200 bg-slate-50/90 p-3 ${mobileFolders ? "is-open" : ""}`}
         >
-          <div className="mb-2 flex items-center justify-between lg:hidden">
-            <strong>Carpetas</strong>
+          <div className="mb-2 flex items-center justify-between">
+            <strong className="text-sm text-slate-900">Correo</strong>
             <button
               type="button"
               onClick={() => setMobileFolders(false)}
-              className="grid h-10 w-10 place-items-center"
+              className="grid h-10 w-10 place-items-center rounded-lg hover:bg-white lg:hidden"
               aria-label="Cerrar carpetas"
             >
               <X size={18} aria-hidden="true" />
@@ -883,123 +946,105 @@ export function MailWorkspace({
               key={id}
               href={folderHref(id)}
               onClick={() => setMobileFolders(false)}
-              className={`flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm font-bold ${initial.folder === id ? "bg-blue-700 text-white" : "text-slate-700 hover:bg-white"}`}
+              aria-current={initial.folder === id ? "page" : undefined}
+              className={`kc-mail-folder-link relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-bold ${initial.folder === id ? "bg-blue-100 text-blue-800" : "text-slate-700 hover:bg-white hover:text-slate-950"}`}
             >
-              <Icon size={17} /> {label}
+              <Icon size={17} aria-hidden="true" /> <span className="min-w-0 flex-1 truncate">{label}</span>
+              {initial.folder === id ? <span className="rounded-full bg-white/80 px-2 py-0.5 text-[.68rem] font-black text-blue-700" aria-label={`${activeFolderCountLabel} elementos`}>{activeFolderCountLabel}</span> : null}
             </Link>
           ))}
+          <div className="mt-5 border-t border-slate-200 pt-4">
+            <p className="px-3 text-[.67rem] font-black uppercase tracking-[.14em] text-slate-400">Espacio de trabajo</p>
+            <p className="mt-2 px-3 text-xs leading-5 text-slate-500">Correo comercial conectado con clientes y proyectos.</p>
+          </div>
         </aside>
         <section
           className={`kc-mail-list min-w-0 border-r border-slate-200 ${selected ? "has-selection" : ""}`}
         >
-          <div className="flex min-h-14 items-center gap-2 border-b border-slate-200 p-2">
-            <button
-              type="button"
-              onClick={() => setMobileFolders(true)}
-              className="grid h-10 w-10 place-items-center rounded-xl border lg:hidden"
-              aria-label="Ver carpetas"
-            >
-              <Menu size={18} />
-            </button>
-            <form className="relative min-w-0 flex-1">
-              <Search
-                size={16}
-                className="absolute left-3 top-3 text-slate-400"
-              />
-              <input
-                name="q"
-                defaultValue={query.get("q") || ""}
-                placeholder="Buscar correo..."
-                className="min-h-10 w-full rounded-xl border pl-9 pr-3 text-sm"
-              />
-              <input type="hidden" name="folder" value={initial.folder} />
-            </form>
+          <div className="kc-mail-list-toolbar border-b border-slate-200 p-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileFolders(true)}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-200 lg:hidden"
+                aria-label="Ver carpetas"
+              >
+                <Menu size={18} aria-hidden="true" />
+              </button>
+              <form className="relative min-w-0 flex-1" role="search">
+                <Search size={17} className="pointer-events-none absolute left-3 top-3.5 text-slate-400" aria-hidden="true" />
+                <input
+                  name="q"
+                  defaultValue={query.get("q") || ""}
+                  placeholder="Buscar correo..."
+                  aria-label="Buscar correo"
+                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                />
+                <input type="hidden" name="folder" value={initial.folder} />
+              </form>
+            </div>
+            {initial.folder !== "drafts" ? <nav className="mt-2 flex gap-2 overflow-x-auto" aria-label="Filtros de correo">
+              <Link href={folderHref(initial.folder === "follow-up" ? "inbox" : initial.folder)} className={`inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 text-xs font-bold ${initial.folder !== "follow-up" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}>Todos</Link>
+              <Link href={folderHref("follow-up")} className={`inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border px-3 text-xs font-bold ${initial.folder === "follow-up" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}><Clock3 size={14} aria-hidden="true" /> Seguimiento</Link>
+            </nav> : null}
           </div>
-          <div className="max-h-[calc(100dvh-14rem)] overflow-y-auto">
+          <div className="kc-mail-conversation-scroll overflow-y-auto">
             {initial.folder === "drafts"
               ? initial.drafts.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => void openDraft(item.id)}
-                    className="w-full border-b border-slate-100 p-4 text-left hover:bg-slate-50"
+                    className="kc-mail-row flex w-full min-w-0 gap-3 border-b border-slate-100 px-3 py-3 text-left hover:bg-slate-50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
                   >
-                    <div className="flex justify-between gap-3">
-                      <strong className="truncate text-sm">
-                        {item.subject || "(Sin asunto)"}
-                      </strong>
-                      <span className="shrink-0 text-xs text-kc-muted">
-                        {formatHondurasDate(item.updated_at)}
-                      </span>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600"><FileText size={17} aria-hidden="true" /></span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 justify-between gap-2">
+                        <strong className="truncate text-sm text-slate-900">{item.subject || "(Sin asunto)"}</strong>
+                        <time className="shrink-0 text-[.68rem] text-kc-muted">{formatHondurasDate(item.updated_at)}</time>
+                      </div>
+                      <p className="mt-1 truncate text-xs text-kc-muted">Para: {item.to_addresses.map((address) => address.email).join(", ") || "Sin destinatario"}</p>
                     </div>
-                    <p className="mt-1 truncate text-xs text-kc-muted">
-                      Para:{" "}
-                      {item.to_addresses
-                        .map((address) => address.email)
-                        .join(", ") || "Sin destinatario"}
-                    </p>
                   </button>
                 ))
-              : initial.threads.map((thread) => (
-                  <Link
-                    key={thread.id}
-                    href={`${pathname}?folder=${initial.folder}&thread=${thread.id}`}
-                    className={`block border-b border-slate-100 p-4 hover:bg-slate-50 ${selected?.thread.id === thread.id ? "bg-blue-50" : ""}`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="truncate text-xs font-black text-blue-700">
-                        {initial.folder === "sent"
-                          ? `Para: ${latestOutbound(thread)?.to_addresses
-                              .map((address) => address.email)
-                              .filter(Boolean)
-                              .join(", ") || "Sin destinatario"}`
-                          : identityOf(thread)?.email || "Ken Code"}
-                      </span>
-                      <time className="shrink-0 text-[.68rem] text-kc-muted">
-                        {formatHondurasDateTime(
-                          initial.folder === "sent"
-                            ? thread.last_outbound_at ||
-                                latestOutbound(thread)?.sent_at ||
-                                latestOutbound(thread)?.created_at ||
-                                thread.latest_message_at
-                            : thread.latest_message_at,
-                        )}
-                      </time>
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <strong className="min-w-0 flex-1 truncate text-sm">
-                        {thread.subject}
-                      </strong>
-                      {thread.is_important ? (
-                        <Star
-                          size={14}
-                          className="fill-amber-400 text-amber-600"
-                        />
-                      ) : null}
-                      {initial.folder === "sent" &&
-                      latestOutbound(thread)?.delivery_status ? (
-                        <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[.65rem] font-black text-slate-700">
-                          {
-                            deliveryLabels[
-                              latestOutbound(thread)!
-                                .delivery_status as Message["delivery_status"]
-                            ]
-                          }
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-kc-muted">
-                      {thread.snippet || "Sin vista previa"}
-                    </p>
-                  </Link>
-                ))}
+              : initial.threads.map((thread) => {
+                  const party = conversationParty(thread, initial.folder);
+                  const unread = thread.mail_read_states?.find((state) => state.profile_id === admin.uid)?.unread === true;
+                  const hasAttachments = thread.mail_messages?.some((message) => message.mail_attachments?.length);
+                  const date = initial.folder === "sent" ? thread.last_outbound_at || latestOutbound(thread)?.sent_at || latestOutbound(thread)?.created_at || thread.latest_message_at : thread.latest_message_at;
+                  return <Link
+                      key={thread.id}
+                      href={`${pathname}?folder=${initial.folder}&thread=${thread.id}`}
+                      aria-current={selected?.thread.id === thread.id ? "true" : undefined}
+                      className={`kc-mail-row relative flex min-w-0 gap-3 border-b border-slate-100 px-3 py-3 hover:bg-slate-50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 ${selected?.thread.id === thread.id ? "is-selected bg-blue-50" : unread ? "bg-blue-50/35" : "bg-white"}`}
+                    >
+                      {unread ? <span className="absolute left-1 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-blue-600" aria-label="No leído" /> : null}
+                      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-black ${avatarTone(party)}`} aria-hidden="true">{initials(party)}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
+                          <span className={`truncate text-sm text-slate-900 ${unread ? "font-black" : "font-bold"}`}>{initial.folder === "sent" ? `Para: ${party}` : party}</span>
+                          <time className={`shrink-0 text-[.67rem] ${unread ? "font-bold text-blue-700" : "text-kc-muted"}`}>{formatHondurasDateTime(date)}</time>
+                        </div>
+                        <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                          <strong className={`min-w-0 flex-1 truncate text-xs text-slate-800 ${unread ? "font-black" : "font-bold"}`}>{thread.subject}</strong>
+                          {hasAttachments ? <Paperclip size={13} className="shrink-0 text-slate-500" aria-label="Con adjuntos" /> : null}
+                          {thread.follow_up_at ? <Clock3 size={13} className="shrink-0 text-violet-600" aria-label="En seguimiento" /> : null}
+                          {thread.is_important ? <Star size={14} className="shrink-0 fill-amber-400 text-amber-500" aria-label="Importante" /> : null}
+                        </div>
+                        <div className="mt-1 flex min-w-0 items-center gap-2">
+                          <p className="min-w-0 flex-1 truncate text-xs text-kc-muted">{thread.snippet || "Sin vista previa"}</p>
+                          {initial.folder === "sent" && latestOutbound(thread)?.delivery_status ? <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[.62rem] font-bold text-emerald-700">{deliveryLabels[latestOutbound(thread)!.delivery_status as Message["delivery_status"]]}</span> : null}
+                        </div>
+                      </div>
+                    </Link>;
+                })}
             {!initial.threads.length && !initial.drafts.length ? (
               <div className="grid min-h-56 place-items-center p-6 text-center">
                 <div>
-                  <Mail className="mx-auto text-slate-300" />
-                  <p className="mt-3 font-bold">Esta carpeta está vacía</p>
+                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-500"><Mail size={22} aria-hidden="true" /></span>
+                  <p className="mt-3 font-bold">{query.get("q") ? "No se encontraron conversaciones" : "Esta carpeta está vacía"}</p>
                   <p className="mt-1 text-sm text-kc-muted">
-                    Las conversaciones aparecerán aquí.
+                    {query.get("q") ? "Pruebe con otro nombre, correo o asunto." : "Las conversaciones aparecerán aquí."}
                   </p>
                 </div>
               </div>
@@ -1021,22 +1066,23 @@ export function MailWorkspace({
         >
           {selected ? (
             <>
-              <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-4 backdrop-blur">
-                <div className="flex items-start gap-2">
+              <header className="kc-mail-thread-header border-b border-slate-200 bg-white">
+                <div className="flex min-w-0 items-start gap-2 px-3 pb-2 pt-3 sm:px-4">
                   <Link
                     href={folderHref(initial.folder)}
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border lg:hidden"
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 lg:hidden"
                     aria-label="Volver a conversaciones"
                   >
                     <ArrowLeft size={18} aria-hidden="true" />
                   </Link>
                   <div className="min-w-0 flex-1">
-                    <h2 className="break-words font-display text-lg font-black">
+                    <h2 className="break-words font-display text-lg font-black leading-tight text-slate-950 sm:text-xl">
                       {selected.thread.subject}
                     </h2>
-                    <p className="mt-1 truncate text-xs text-kc-muted">
-                      {identityOf(selected.thread)?.email}
-                    </p>
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-xs text-kc-muted">
+                      <span className="truncate">{selected.messages.length} {selected.messages.length === 1 ? "mensaje" : "mensajes"}</span>
+                      {selected.thread.follow_up_at ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800">En seguimiento</span> : null}
+                    </div>
                   </div>
                   <Tooltip label={selected.thread.is_important ? "Quitar importante" : "Marcar como importante"} placement="bottom">
                     <button
@@ -1049,171 +1095,56 @@ export function MailWorkspace({
                           !selected.thread.is_important,
                         )
                       }
-                      className="grid h-10 w-10 place-items-center rounded-xl border"
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 ${selected.thread.is_important ? "bg-amber-50 text-amber-600" : "text-slate-600"}`}
                       aria-label={selected.thread.is_important ? "Quitar importante" : "Marcar como importante"}
                       title={selected.thread.is_important ? "Quitar importante" : "Marcar como importante"}
                     >
-                      <Star size={17} aria-hidden="true" />
+                      <Star size={17} className={selected.thread.is_important ? "fill-amber-400" : ""} aria-hidden="true" />
                     </button>
                   </Tooltip>
-                  <Tooltip label="Marcar como no leído" placement="bottom">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => act("unread", selected.thread.id)}
-                      className="grid h-10 w-10 place-items-center rounded-xl border"
-                      aria-label="Marcar como no leído"
-                      title="Marcar como no leído"
-                    >
-                      <MailOpen size={17} aria-hidden="true" />
-                    </button>
-                  </Tooltip>
-                  {selected.thread.state !== "inbox" ? (
-                    <Tooltip label="Restaurar" placement="bottom">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => act("restore", selected.thread.id)}
-                        className="grid h-10 w-10 place-items-center rounded-xl border"
-                        aria-label="Restaurar"
-                        title="Restaurar"
-                      >
-                        <Inbox size={17} aria-hidden="true" />
-                      </button>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip label="Archivar" placement="bottom">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => act("archive", selected.thread.id)}
-                        className="grid h-10 w-10 place-items-center rounded-xl border"
-                        aria-label="Archivar"
-                        title="Archivar"
-                      >
-                        <Archive size={17} aria-hidden="true" />
-                      </button>
-                    </Tooltip>
-                  )}
-                  {selected.thread.state !== "trash" ? (
-                    <Tooltip label="Mover a Papelera" placement="bottom">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => act("trash", selected.thread.id)}
-                        className="grid h-10 w-10 place-items-center rounded-xl border text-rose-700"
-                        aria-label="Mover a Papelera"
-                        title="Mover a Papelera"
-                      >
-                        <Trash2 size={17} aria-hidden="true" />
-                      </button>
-                    </Tooltip>
-                  ) : admin.role === "owner" ? (
-                    <Tooltip label="Eliminar definitivamente" placement="bottom">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void preparePermanentDelete(selected.thread.id)}
-                        className="grid h-10 w-10 place-items-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700"
-                        aria-label="Eliminar definitivamente"
-                        title="Eliminar definitivamente"
-                      >
-                        <Trash2 size={17} aria-hidden="true" />
-                      </button>
-                    </Tooltip>
-                  ) : null}
+                </div>
+                <div className="kc-mail-thread-actions flex min-w-0 gap-1.5 overflow-x-auto border-t border-slate-100 px-3 py-2 sm:px-4" aria-label="Acciones de conversación">
+                  <button type="button" onClick={() => openReply("reply")} className="kc-mail-action"><Reply size={15} aria-hidden="true" /><span>Responder</span></button>
+                  <button type="button" onClick={() => openReply("replyAll")} className="kc-mail-action"><ReplyAll size={15} aria-hidden="true" /><span>Responder a todos</span></button>
+                  <button type="button" onClick={() => openReply("forward")} className="kc-mail-action"><Forward size={15} aria-hidden="true" /><span>Reenviar</span></button>
+                  <button type="button" disabled={busy} onClick={() => act("unread", selected.thread.id)} className="kc-mail-action"><MailOpen size={15} aria-hidden="true" /><span>No leído</span></button>
+                  {selected.thread.state !== "inbox" ? <button type="button" disabled={busy} onClick={() => act("restore", selected.thread.id)} className="kc-mail-action"><Inbox size={15} aria-hidden="true" /><span>Restaurar</span></button> : <Tooltip label="Archivar" placement="bottom"><button type="button" disabled={busy} onClick={() => act("archive", selected.thread.id)} className="kc-mail-action"><Archive size={15} aria-hidden="true" /><span>Archivar</span></button></Tooltip>}
+                  {selected.thread.state !== "trash" ? <Tooltip label="Mover a Papelera" placement="bottom"><button type="button" disabled={busy} onClick={() => act("trash", selected.thread.id)} className="kc-mail-action text-rose-700" aria-label="Mover a Papelera" title="Mover a Papelera"><Trash2 size={15} aria-hidden="true" /><span>Papelera</span></button></Tooltip> : admin.role === "owner" ? <Tooltip label="Eliminar definitivamente" placement="bottom"><button type="button" disabled={busy} onClick={() => void preparePermanentDelete(selected.thread.id)} className="kc-mail-action text-rose-700" aria-label="Eliminar definitivamente" title="Eliminar definitivamente"><Trash2 size={15} aria-hidden="true" /><span>Eliminar</span></button></Tooltip> : null}
+                  <a href="#mail-follow-up" className="kc-mail-action"><CalendarPlus size={15} aria-hidden="true" /><span>Seguimiento</span></a>
                 </div>
               </header>
-              <div className="max-h-[calc(100dvh-18rem)] space-y-3 overflow-y-auto p-3 sm:p-5">
-                {selected.messages.map((message) => (
-                  <article
-                    key={message.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <strong className="block break-all text-sm">
-                          {message.from_address.name ||
-                            message.from_address.email}
-                        </strong>
-                        <span className="block break-all text-xs text-kc-muted">
-                          {message.from_address.email}
-                        </span>
-                      </div>
-                      <time className="text-xs text-kc-muted">
-                        {formatHondurasDateTime(
-                          message.received_at ||
-                            message.sent_at ||
-                            message.created_at,
-                        )}
-                      </time>
-                    </div>
-                    {message.direction === "outbound" ? (
-                      <p
-                        className={`mt-2 text-xs font-bold ${
-                          ["failed", "bounced", "complained"].includes(
-                            message.delivery_status,
-                          )
-                            ? "text-rose-700"
-                            : message.delivery_status === "delayed"
-                              ? "text-amber-700"
-                              : message.delivery_status === "delivered"
-                                ? "text-emerald-700"
-                                : "text-kc-muted"
-                        }`}
-                      >
-                        {{
-                          sent: "Enviado",
-                          queued: "En cola",
-                          delayed: "Entrega demorada",
-                          delivered: "Entregado",
-                          failed: "No entregado",
-                          bounced: "Rebotado",
-                          complained: "Marcado como spam",
-                          received: "Recibido",
-                        }[message.delivery_status]}
-                      </p>
-                    ) : null}
-                    {message.has_remote_images ? (
-                      <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-                        Imágenes externas bloqueadas para proteger su
-                        privacidad.
-                      </p>
-                    ) : null}
-                    <div
-                      className="prose prose-sm mt-4 max-w-none break-words text-sm leading-6"
-                      dangerouslySetInnerHTML={{ __html: message.body_html }}
-                    />
-                    {message.attachments?.length ? <div className="mt-4 grid gap-2 border-t border-slate-100 pt-3" aria-label="Adjuntos del mensaje">
-                      {message.attachments.map((attachment) => <a key={attachment.id} href={`/api/admin/mail/attachments?id=${encodeURIComponent(attachment.id)}`} className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-blue-800 hover:border-blue-300" download>
-                        <Paperclip size={16} className="shrink-0" aria-hidden="true" /><span className="min-w-0 flex-1 break-all">{attachment.filename}</span><span className="shrink-0 text-xs font-normal text-kc-muted">{attachment.content_type.split("/").at(-1)?.toUpperCase()} · {Math.ceil(attachment.size_bytes / 1024)} KB</span>
-                      </a>)}
-                    </div> : null}
-                  </article>
-                ))}
-              </div>
-              <footer className="border-t border-slate-200 p-3">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => openReply("reply")}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold"
-                  >
-                    <Reply size={16} /> Responder
-                  </button>
-                  <button
-                    onClick={() => openReply("replyAll")}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold"
-                  >
-                    <ReplyAll size={16} /> Responder a todos
-                  </button>
-                  <button
-                    onClick={() => openReply("forward")}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold"
-                  >
-                    <Forward size={16} /> Reenviar
-                  </button>
-                </div>
-                <div className="mt-3 grid gap-2 border-t pt-3 sm:grid-cols-2">
+              <div className="kc-mail-thread-layout min-h-0">
+                <div className="kc-mail-thread-scroll min-w-0 overflow-y-auto bg-slate-50/40 p-3 sm:p-4">
+                  <div className="mx-auto grid max-w-4xl gap-3">
+                    {selected.messages.map((message) => {
+                      const sender = message.from_address.name || message.from_address.email || "Remitente";
+                      return <article key={message.id} className={`kc-mail-message min-w-0 rounded-2xl border p-4 shadow-sm ${message.direction === "outbound" ? "border-blue-100 bg-blue-50/35" : "border-slate-200 bg-white"}`}>
+                        <div className="flex min-w-0 items-start gap-3">
+                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-black ${avatarTone(sender)}`} aria-hidden="true">{initials(sender)}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                              <div className="min-w-0"><strong className="block truncate text-sm text-slate-950">{sender}</strong><span className="block truncate text-xs text-kc-muted">{message.from_address.email}</span></div>
+                              <div className="flex shrink-0 items-center gap-2"><time className="text-[.7rem] text-kc-muted">{formatHondurasDateTime(message.received_at || message.sent_at || message.created_at)}</time>{message.direction === "outbound" ? <span className={`rounded-full px-2 py-0.5 text-[.65rem] font-bold ${["failed", "bounced", "complained"].includes(message.delivery_status) ? "bg-rose-100 text-rose-700" : message.delivery_status === "delayed" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{deliveryLabels[message.delivery_status]}</span> : null}</div>
+                            </div>
+                            <p className="mt-1 truncate text-xs text-kc-muted">Para: {message.to_addresses.map((address) => address.email).filter(Boolean).join(", ") || "Sin destinatario"}</p>
+                          </div>
+                        </div>
+                        {message.has_remote_images ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">Imágenes externas bloqueadas para proteger su privacidad.</p> : null}
+                        <div className="kc-mail-message-html prose prose-sm mt-4 max-w-none break-words text-sm leading-6" dangerouslySetInnerHTML={{ __html: message.body_html }} />
+                        {message.attachments?.length ? <div className="mt-4 grid gap-2 border-t border-slate-100 pt-3" aria-label="Adjuntos del mensaje">
+                          {message.attachments.map((attachment) => <a key={attachment.id} href={`/api/admin/mail/attachments?id=${encodeURIComponent(attachment.id)}`} className="flex min-h-12 min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-blue-800 hover:border-blue-300" download>
+                            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-rose-50 text-rose-700"><FileText size={17} aria-hidden="true" /></span><span className="min-w-0 flex-1 truncate">{attachment.filename}</span><span className="shrink-0 text-xs font-normal text-kc-muted">{attachment.content_type.split("/").at(-1)?.toUpperCase()} · {readableSize(attachment.size_bytes)}</span>
+                          </a>)}
+                        </div> : null}
+                      </article>;
+                    })}
+                    {contextEntries.length || responsibleName || selected.thread.follow_up_at ? <details className="kc-mail-context-mobile rounded-2xl border border-slate-200 bg-white">
+                      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-black"><span className="inline-flex items-center gap-2"><AtSign size={16} className="text-blue-700" aria-hidden="true" /> Contexto en CRM</span><ChevronDown size={17} aria-hidden="true" /></summary>
+                      <div className="border-t border-slate-100 p-3"><CrmContextCard headingId="crm-context-mobile-title" entries={contextEntries} responsible={responsibleName} followUpAt={selected.thread.follow_up_at} /></div>
+                    </details> : null}
+                    <button type="button" onClick={() => openReply("reply")} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-500 shadow-sm hover:border-blue-300 hover:text-blue-700"><Reply size={17} aria-hidden="true" /><span className="min-w-0 flex-1">Escriba una respuesta...</span><ChevronRight size={17} aria-hidden="true" /></button>
+                  </div>
+                  <div id="mail-follow-up" className="mx-auto mt-3 grid max-w-4xl gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
                   {hasPermission(admin, "mail:assign_threads") ? (
                     <label className="grid gap-1 text-xs font-bold">
                       <span className="inline-flex items-center gap-1">
@@ -1263,13 +1194,21 @@ export function MailWorkspace({
                       </button>
                     </div>
                   </div>
+                  </div>
                 </div>
-              </footer>
+                {contextEntries.length || responsibleName || selected.thread.follow_up_at ? <aside className="kc-mail-context min-w-0 border-l border-slate-200 bg-white p-3"><CrmContextCard headingId="crm-context-desktop-title" entries={contextEntries} responsible={responsibleName} followUpAt={selected.thread.follow_up_at} /></aside> : null}
+              </div>
+              <nav className="kc-mail-mobile-actions" aria-label="Acciones rápidas">
+                <button type="button" onClick={() => openReply("reply")}><Reply size={18} aria-hidden="true" /><span>Responder</span></button>
+                <button type="button" onClick={() => openReply("replyAll")}><ReplyAll size={18} aria-hidden="true" /><span>A todos</span></button>
+                <button type="button" onClick={() => openReply("forward")}><Forward size={18} aria-hidden="true" /><span>Reenviar</span></button>
+                {selected.thread.state === "inbox" ? <button type="button" disabled={busy} onClick={() => act("archive", selected.thread.id)}><Archive size={18} aria-hidden="true" /><span>Archivar</span></button> : <button type="button" disabled={busy} onClick={() => act("restore", selected.thread.id)}><Inbox size={18} aria-hidden="true" /><span>Restaurar</span></button>}
+              </nav>
             </>
           ) : (
-            <div className="grid min-h-[32rem] place-items-center p-8 text-center">
-              <div>
-                <AtSign className="mx-auto text-slate-300" size={34} />
+            <div className="grid h-full min-h-[28rem] place-items-center bg-gradient-to-br from-white to-blue-50/40 p-8 text-center">
+              <div className="max-w-sm">
+                <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-blue-50 text-blue-500 ring-8 ring-blue-50/50"><Mail size={34} aria-hidden="true" /></span>
                 <h2 className="mt-4 font-display text-xl font-black">
                   Seleccione una conversación
                 </h2>
@@ -1283,39 +1222,43 @@ export function MailWorkspace({
       </div>
       {compose ? (
         <div
-          className="fixed inset-0 z-[80] flex h-[100dvh] items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[80] flex h-[100dvh] items-end justify-center bg-slate-950/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Redactar correo"
+          aria-labelledby="mail-composer-title"
         >
           <button
             className="absolute inset-0"
             onClick={() => requestCloseComposer()}
             aria-label="Cerrar redacción"
+            tabIndex={-1}
           />
           <form
             onSubmit={send}
-            className="kc-mail-composer relative flex h-[100dvh] max-h-[100dvh] w-full max-w-3xl flex-col overflow-hidden overscroll-contain bg-white shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
+            className="kc-mail-composer relative flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col overflow-hidden overscroll-contain bg-white shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
           >
-            <header className="flex shrink-0 items-center justify-between bg-slate-900 px-4 pb-3 pt-[max(.75rem,env(safe-area-inset-top))] text-white sm:py-3">
-              <strong>Nuevo mensaje</strong>
+            <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 pb-3 pt-[max(.75rem,env(safe-area-inset-top))] text-slate-950 sm:py-3">
+              <div className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700"><Mail size={18} aria-hidden="true" /></span><h2 id="mail-composer-title" className="truncate font-display text-lg font-black">Nuevo mensaje</h2></div>
+              <div className="flex items-center gap-2">
+                {hasPermission(admin, "mail:manage_identities") ? <Link href="/admin/mail/configuracion" className="hidden min-h-10 items-center px-2 text-xs font-bold text-blue-700 hover:underline sm:inline-flex">Administrar identidades</Link> : null}
               <Tooltip label="Cerrar redacción" placement="bottom">
                 <button
                   type="button"
                   onClick={() => requestCloseComposer()}
-                  className="grid h-9 w-9 place-items-center rounded-lg hover:bg-white/10"
+                  className="grid h-10 w-10 place-items-center rounded-xl text-slate-600 hover:bg-slate-100"
                   aria-label="Cerrar redacción"
                   title="Cerrar redacción"
                 >
                   <X size={18} aria-hidden="true" />
                 </button>
               </Tooltip>
+              </div>
             </header>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              <div className="grid gap-3">
-                <label className="grid gap-1 text-xs font-bold">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="grid min-w-0 gap-0">
+                <label className="kc-mail-compose-field">
                   {!initial.identities.length ? <span role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm">No tiene una dirección de Ken Code activa asignada. Comuníquese con el Owner para configurar una.{hasPermission(admin, "mail:manage_identities") ? <Link href="/admin/mail/configuracion" className="mt-2 block min-h-11 py-3 font-bold text-blue-700">Configurar direcciones</Link> : null}</span> : null}
-                  De
+                  <span className="kc-mail-compose-label">De</span>
                   <select
                     value={identityId}
                     onChange={(e) => {
@@ -1324,7 +1267,7 @@ export function MailWorkspace({
                       signatureApplied.current = false;
                     }}
                     required
-                    className="min-h-11 rounded-xl border px-3 text-sm"
+                    className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm outline-none focus:ring-0"
                   >
                     <option value="">Seleccione una identidad</option>
                     {initial.identities.map((identity) => (
@@ -1334,59 +1277,64 @@ export function MailWorkspace({
                     ))}
                   </select>
                 </label>
-                <label className="grid gap-1 text-xs font-bold">
-                  Para
+                <div className="kc-mail-compose-field">
+                  <span className="kc-mail-compose-label">Para</span>
                   <input
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
                     required
-                    placeholder="cliente@empresa.com"
-                    className="min-h-11 rounded-xl border px-3 text-sm"
+                    placeholder="Agregar destinatarios..."
+                    autoFocus
+                    aria-label="Destinatarios"
+                    className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm font-normal outline-none focus:ring-0"
                   />
-                </label>
-                <button
+                  <button
                   type="button"
                   onClick={() => setShowCopies((value) => !value)}
-                  className="justify-self-start text-xs font-bold text-blue-700"
+                  className="min-h-10 shrink-0 px-2 text-xs font-bold text-blue-700"
                 >
-                  {showCopies ? "Ocultar CC/BCC" : "Agregar CC/BCC"}
+                  {showCopies ? "Ocultar" : "CC · BCC"}
                 </button>
+                </div>
                 {showCopies ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="grid gap-1 text-xs font-bold">
-                      CC
+                  <div className="grid border-b border-slate-200 sm:grid-cols-2">
+                    <label className="kc-mail-compose-field border-b-0 sm:border-r">
+                      <span className="kc-mail-compose-label">CC</span>
                       <input
                         value={cc}
                         onChange={(e) => setCc(e.target.value)}
-                        className="min-h-11 rounded-xl border px-3 text-sm"
+                        className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm font-normal outline-none focus:ring-0"
                       />
                     </label>
-                    <label className="grid gap-1 text-xs font-bold">
-                      BCC
+                    <label className="kc-mail-compose-field border-b-0">
+                      <span className="kc-mail-compose-label">BCC</span>
                       <input
                         value={bcc}
                         onChange={(e) => setBcc(e.target.value)}
-                        className="min-h-11 rounded-xl border px-3 text-sm"
+                        className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm font-normal outline-none focus:ring-0"
                       />
                     </label>
                   </div>
                 ) : null}
-                <label className="grid gap-1 text-xs font-bold">
-                  Asunto
+                <label className="kc-mail-compose-field">
+                  <span className="kc-mail-compose-label">Asunto</span>
                   <input
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     maxLength={998}
-                    className="min-h-11 rounded-xl border px-3 text-sm"
+                    placeholder="Asunto del correo"
+                    className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm font-normal outline-none focus:ring-0"
                   />
                 </label>
+                {composerContextEntries.length ? <section className="border-b border-slate-200 bg-slate-50/60 px-4 py-3" aria-labelledby="compose-crm-context"><div className="flex flex-wrap items-center gap-2"><span id="compose-crm-context" className="mr-1 text-xs font-black text-slate-700">Relacionado con</span>{composerContextEntries.map((item) => { const content = <><span className="text-blue-500">{item.label}:</span><span className="truncate">{item.value}</span></>; const className = "inline-flex min-h-8 min-w-0 max-w-full items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 text-xs font-bold text-blue-800"; return item.href ? <Link key={`${item.label}-${item.value}`} href={item.href} className={className}>{content}</Link> : <span key={`${item.label}-${item.value}`} className={className}>{content}</span>; })}</div></section> : null}
+                <div className="grid gap-3 border-b border-slate-200 bg-slate-50/45 p-3 sm:grid-cols-2">
                 {initial.templates.length ? (
                   <label className="grid gap-1 text-xs font-bold">
-                    Plantilla
+                    <span className="inline-flex items-center gap-1"><FileText size={14} aria-hidden="true" /> Plantilla</span>
                     <select
                       defaultValue=""
                       onChange={(e) => applyTemplate(e.target.value)}
-                      className="min-h-11 rounded-xl border px-3 text-sm"
+                      className="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm"
                     >
                       <option value="">Sin plantilla</option>
                       {initial.templates.map((template) => (
@@ -1405,7 +1353,7 @@ export function MailWorkspace({
                     <select
                       value={selectedSignatureId}
                       onChange={(e) => applySignature(e.target.value)}
-                      className="min-h-11 rounded-xl border px-3 text-sm"
+                      className="min-h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm"
                     >
                       <option value="">Firma automática</option>
                       {initial.signatures.filter((signature) => !signature.identity_id || signature.identity_id === identityId).map((signature) => (
@@ -1416,31 +1364,27 @@ export function MailWorkspace({
                     </select>
                   </label>
                 ) : null}
-                {selectedSignatureId ? (() => { const signature = initial.signatures.find((item) => item.id === selectedSignatureId); return signature ? <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><p className="border-b border-slate-200 px-3 py-2 text-xs font-bold text-kc-muted">Vista previa de la firma · {signature.source === "corporate" ? "Corporativa protegida" : "Personal"}</p><div className="max-w-full overflow-x-auto p-3 text-sm" dangerouslySetInnerHTML={{ __html: signaturePreviewHtml(signature) }} /></section> : null; })() : null}
+                </div>
                 {composeContext.proposalId && composeContext.addOnId ? (
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void attachProposalPdf()}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-800"
+                    className="m-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-800"
                   >
                     <FileText size={16} /> Adjuntar PDF de propuesta
                   </button>
                 ) : null}
-                <RichTextEditor value={html} onChange={setHtml} label="Mensaje" required />
+                <div className="min-w-0 p-3"><RichTextEditor value={html} onChange={setHtml} label="Mensaje" required minHeightClassName="min-h-48 sm:min-h-56" /></div>
+                {selectedSignatureId ? (() => { const signature = initial.signatures.find((item) => item.id === selectedSignatureId); return signature ? <section className="mx-3 mb-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><p className="border-b border-slate-200 px-3 py-2 text-xs font-bold text-kc-muted">Firma que se incluirá · {signature.source === "corporate" ? "Corporativa protegida" : "Personal"}</p><div className="kc-mail-signature-preview max-w-full overflow-x-auto p-3 text-sm" dangerouslySetInnerHTML={{ __html: signaturePreviewHtml(signature) }} /></section> : null; })() : null}
                 {attachments.length ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-2 border-t border-slate-200 bg-slate-50/60 p-3 sm:grid-cols-2" aria-label="Archivos adjuntos">
                     {attachments.map((item) => (
-                      <span
-                        key={item.id}
-                        className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold"
-                      >
-                        {item.filename} · {Math.ceil(item.size_bytes / 1024)} KB
-                      </span>
+                      <span key={item.id} className="flex min-h-12 min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-rose-50 text-rose-700"><FileText size={15} aria-hidden="true" /></span><span className="min-w-0 flex-1 truncate">{item.filename}</span><span className="shrink-0 font-normal text-kc-muted">{readableSize(item.size_bytes)}</span></span>
                     ))}
                   </div>
                 ) : null}
-                <div className="flex items-center gap-2 text-xs text-kc-muted">
+                <div className="flex items-center gap-2 px-4 pb-3 text-xs text-kc-muted">
                   <Check size={14} />{" "}
                   {draft.id
                     ? "Borrador guardado"
@@ -1448,10 +1392,10 @@ export function MailWorkspace({
                 </div>
               </div>
             </div>
-            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
+            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
               <div className="flex flex-wrap gap-2">
-                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-bold">
-                  <Paperclip size={16} /> Adjuntar
+                <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:border-blue-300 hover:text-blue-700">
+                  <Paperclip size={16} /> Adjuntar archivos
                   <input
                     type="file"
                     className="sr-only"
@@ -1498,7 +1442,7 @@ export function MailWorkspace({
               <button
                 type="submit"
                 disabled={busy || sending || !identityId}
-                className="inline-flex min-h-11 min-w-28 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-black text-white disabled:opacity-60"
+                className="inline-flex min-h-11 min-w-32 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-black text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
               >
                 {sending ? (
                   <Loader2 size={16} className="animate-spin" />
