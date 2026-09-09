@@ -260,13 +260,9 @@ type ContextEntry = { label: string; value: string; href?: string };
 
 function CrmContextCard({
   entries,
-  responsible,
-  followUpAt,
   headingId,
 }: {
   entries: ContextEntry[];
-  responsible?: string;
-  followUpAt?: string | null;
   headingId: string;
 }) {
   return (
@@ -284,8 +280,6 @@ function CrmContextCard({
             </dd>
           </div>
         ))}
-        {responsible ? <div><dt className="text-[.68rem] font-bold uppercase tracking-[.08em] text-slate-500">Responsable</dt><dd className="mt-0.5 truncate text-sm font-bold text-slate-900">{responsible}</dd></div> : null}
-        {followUpAt ? <div><dt className="text-[.68rem] font-bold uppercase tracking-[.08em] text-slate-500">Seguimiento</dt><dd className="mt-0.5 text-sm font-bold text-emerald-700">{formatHondurasDateTime(followUpAt)}</dd></div> : null}
       </dl>
     </section>
   );
@@ -898,8 +892,6 @@ export function MailWorkspace({
     selected.thread.add_on_id && moduleContext ? { label: "Módulo", value: moduleContext.name || "Módulo", href: `/admin/modulos/${selected.thread.add_on_id}` } : null,
     proposalContext ? { label: "Propuesta", value: proposalContext.proposal_number || proposalContext.title || "Propuesta" } : null,
   ].filter((item): item is ContextEntry => Boolean(item)) : [];
-  const responsible = initial.assignees.find((person) => person.id === selected?.thread.assigned_to);
-  const responsibleName = responsible?.display_name || responsible?.name || (selected?.thread.assigned_to === admin.uid ? admin.displayName || admin.email : undefined);
   const activeFolderCount = initial.folder === "drafts" ? initial.drafts.length : initial.threads.length;
   const activeFolderCountLabel = `${Math.min(activeFolderCount, 25)}${initial.nextCursor ? "+" : ""}`;
   const composerContextEntries: ContextEntry[] = [
@@ -1120,7 +1112,7 @@ export function MailWorkspace({
                     </button>
                   </Tooltip>
                 </div>
-                <div className="kc-mail-thread-actions flex min-w-0 gap-1.5 overflow-x-auto border-t border-slate-100 px-3 py-2 sm:px-4" aria-label="Acciones de conversación">
+                <div className="kc-mail-thread-actions flex min-w-0 flex-wrap gap-1.5 border-t border-slate-100 px-3 py-2 sm:px-4" aria-label="Acciones de conversación">
                   <button type="button" onClick={() => openReply("reply")} className="kc-mail-action" aria-label="Responder" title="Responder"><Reply size={15} aria-hidden="true" /><span>Responder</span></button>
                   <button type="button" onClick={() => openReply("replyAll")} className="kc-mail-action" aria-label="Responder a todos" title="Responder a todos"><ReplyAll size={15} aria-hidden="true" /><span>Responder a todos</span></button>
                   <button type="button" onClick={() => openReply("forward")} className="kc-mail-action" aria-label="Reenviar" title="Reenviar"><Forward size={15} aria-hidden="true" /><span>Reenviar</span></button>
@@ -1132,7 +1124,7 @@ export function MailWorkspace({
               </header>
               <div className="kc-mail-thread-layout min-h-0">
                 <div className="kc-mail-thread-scroll min-w-0 overflow-y-auto bg-slate-50/40 p-3 sm:p-4">
-                  <div className="mx-auto grid max-w-4xl gap-3">
+                  <div className="mx-auto grid max-w-5xl gap-3">
                     {selected.messages.map((message) => {
                       const sender = message.from_address.name || message.from_address.email || "Remitente";
                       return <article key={message.id} className={`kc-mail-message min-w-0 rounded-2xl border p-4 shadow-sm ${message.direction === "outbound" ? "border-blue-100 bg-blue-50/35" : "border-slate-200 bg-white"}`}>
@@ -1155,15 +1147,15 @@ export function MailWorkspace({
                         </div> : null}
                       </article>;
                     })}
-                    {contextEntries.length || responsibleName || selected.thread.follow_up_at ? <details className="kc-mail-context-mobile rounded-2xl border border-slate-200 bg-white">
-                      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-black"><span className="inline-flex items-center gap-2"><AtSign size={16} className="text-blue-700" aria-hidden="true" /> Contexto en CRM</span><ChevronDown size={17} aria-hidden="true" /></summary>
-                      <div className="border-t border-slate-100 p-3"><CrmContextCard headingId="crm-context-mobile-title" entries={contextEntries} responsible={responsibleName} followUpAt={selected.thread.follow_up_at} /></div>
+                    {contextEntries.length ? <details className="kc-mail-context-details rounded-2xl border border-slate-200 bg-white">
+                      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-black"><span className="inline-flex min-w-0 items-center gap-2"><AtSign size={16} className="shrink-0 text-blue-700" aria-hidden="true" /><span className="truncate">Relacionado con</span></span><ChevronDown size={17} className="shrink-0" aria-hidden="true" /></summary>
+                      <div className="border-t border-slate-100 p-3"><CrmContextCard headingId="crm-context-details-title" entries={contextEntries} /></div>
                     </details> : null}
                     <button type="button" onClick={() => openReply("reply")} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-500 shadow-sm hover:border-blue-300 hover:text-blue-700"><Reply size={17} aria-hidden="true" /><span className="min-w-0 flex-1">Escriba una respuesta...</span><ChevronRight size={17} aria-hidden="true" /></button>
                   </div>
-                  <div id="mail-follow-up" className="mx-auto mt-3 grid max-w-4xl gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
+                  <div id="mail-follow-up" className="kc-mail-follow-up mx-auto mt-3 w-full max-w-5xl min-w-0 gap-3 rounded-2xl border border-slate-200 bg-white p-3">
                   {hasPermission(admin, "mail:assign_threads") ? (
-                    <label className="grid gap-1 text-xs font-bold">
+                    <label className="grid min-w-0 gap-1 text-xs font-bold">
                       <span className="inline-flex items-center gap-1">
                         <UserRound size={14} /> Responsable
                       </span>
@@ -1173,7 +1165,7 @@ export function MailWorkspace({
                         onChange={(event) =>
                           void assignThread(event.target.value)
                         }
-                        className="min-h-10 rounded-xl border px-3 text-sm"
+                        className="min-h-11 w-full min-w-0 rounded-xl border px-3 text-sm"
                       >
                         <option value="">Sin asignar</option>
                         {initial.assignees.map((person) => (
@@ -1184,37 +1176,37 @@ export function MailWorkspace({
                       </select>
                     </label>
                   ) : null}
-                  <div className="grid gap-1 text-xs font-bold">
+                  <label className="grid min-w-0 gap-1 text-xs font-bold">
                     <span className="inline-flex items-center gap-1">
                       <CalendarPlus size={14} /> Seguimiento
                     </span>
-                    <div className="flex flex-wrap gap-2">
-                      <input
-                        type="datetime-local"
-                        value={followDue}
-                        onChange={(event) => setFollowDue(event.target.value)}
-                        className="min-h-10 min-w-0 flex-1 rounded-xl border px-2 text-sm"
-                        aria-label="Fecha de seguimiento"
-                      />
-                      <input
-                        value={followTitle}
-                        onChange={(event) => setFollowTitle(event.target.value)}
-                        className="min-h-10 min-w-0 flex-[2] rounded-xl border px-2 text-sm"
-                        aria-label="Título del seguimiento"
-                      />
-                      <button
-                        type="button"
-                        disabled={busy || readOnlyPreview || !followDue}
-                        onClick={() => void createFollowUp()}
-                        className="min-h-10 rounded-xl bg-blue-700 px-3 text-xs font-black text-white disabled:opacity-50"
-                      >
-                        Crear tarea
-                      </button>
-                    </div>
-                  </div>
+                    <input
+                      type="datetime-local"
+                      value={followDue}
+                      onChange={(event) => setFollowDue(event.target.value)}
+                      className="min-h-11 w-full min-w-0 rounded-xl border px-3 text-sm"
+                      aria-label="Fecha de seguimiento"
+                    />
+                  </label>
+                  <label className="grid min-w-0 gap-1 text-xs font-bold">
+                    <span>Dar seguimiento</span>
+                    <input
+                      value={followTitle}
+                      onChange={(event) => setFollowTitle(event.target.value)}
+                      className="min-h-11 w-full min-w-0 rounded-xl border px-3 text-sm"
+                      aria-label="Título del seguimiento"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={busy || readOnlyPreview || !followDue}
+                    onClick={() => void createFollowUp()}
+                    className="kc-mail-follow-up-action min-h-11 w-full whitespace-nowrap rounded-xl bg-blue-700 px-4 text-sm font-black text-white disabled:opacity-50"
+                  >
+                    Crear tarea
+                  </button>
                   </div>
                 </div>
-                {contextEntries.length || responsibleName || selected.thread.follow_up_at ? <aside className="kc-mail-context min-w-0 border-l border-slate-200 bg-white p-3"><CrmContextCard headingId="crm-context-desktop-title" entries={contextEntries} responsible={responsibleName} followUpAt={selected.thread.follow_up_at} /></aside> : null}
               </div>
               <nav className="kc-mail-mobile-actions" aria-label="Acciones rápidas">
                 <button type="button" onClick={() => openReply("reply")}><Reply size={18} aria-hidden="true" /><span>Responder</span></button>

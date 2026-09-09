@@ -425,8 +425,14 @@ select:focus-visible {
 .kc-mail-thread-header { position: relative; z-index: 10; flex: none; }
 .kc-mail-thread-layout { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; overflow: hidden; }
 .kc-mail-thread-scroll { min-height: 0; overscroll-behavior: contain; }
-.kc-mail-context { display: none; overflow-y: auto; }
-.kc-mail-context-mobile { display: block; }
+.kc-mail-context-details { min-width: 0; }
+.kc-mail-context-details summary::-webkit-details-marker { display: none; }
+.kc-mail-follow-up {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  align-items: end;
+}
+.kc-mail-follow-up > * { min-width: 0; }
 .kc-mail-mobile-actions { display: none; }
 .kc-mail-action {
   display: inline-flex;
@@ -488,10 +494,7 @@ select:focus-visible {
   .kc-mail-detail.is-open { display: flex; height: 100%; }
   .kc-mail-list:not(.has-selection) { height: 100%; }
   .kc-mail-conversation-scroll { max-height: none; }
-  .kc-mail-thread-actions { scrollbar-width: none; }
-  .kc-mail-thread-actions::-webkit-scrollbar { display: none; }
-  .kc-mail-action span { display: inline; }
-  .kc-mail-action { width: auto; min-height: 2.5rem; padding-inline: 0.7rem; }
+  .kc-mail-action { min-height: 2.75rem; }
   .kc-mail-message { padding: 0.85rem; }
   .kc-mail-thread-scroll { padding: 0.65rem; }
   .kc-mail-mobile-actions {
@@ -516,11 +519,6 @@ select:focus-visible {
   }
   .kc-mail-mobile-actions button:hover,
   .kc-mail-mobile-actions button:focus-visible { background: #eff6ff; color: #1d4ed8; outline: none; }
-}
-@media (min-width: 1536px) {
-  .kc-mail-thread-layout:has(.kc-mail-context) { grid-template-columns: minmax(0, 1fr) minmax(13.5rem, 15rem); }
-  .kc-mail-context { display: block; }
-  .kc-mail-context-mobile { display: none; }
 }
 @media (min-width: 640px) { .kc-mail-composer { min-height: min(42rem, calc(100dvh - 2rem)); } }
 @media (max-width: 639px) {
