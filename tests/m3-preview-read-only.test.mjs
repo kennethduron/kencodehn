@@ -23,7 +23,10 @@ test("read-only mode permits only semantically safe HTTP methods", () => {
   for (const method of ["POST", "PATCH", "PUT", "DELETE"]) assert.equal(isPreviewSafeMethod(method), false);
 });
 
-test("logout remains available without opening a generic mutation bypass", () => {
+test("login and logout remain available without opening a generic mutation bypass", () => {
+  assert.equal(isPreviewMutationAllowed("/api/auth/login", "POST"), true);
+  assert.equal(isPreviewMutationAllowed("/api/auth/login", "PUT"), false);
+  assert.equal(isPreviewMutationAllowed("/api/auth/login/anything", "POST"), false);
   assert.equal(isPreviewMutationAllowed("/api/admin/logout", "POST"), true);
   assert.equal(isPreviewMutationAllowed("/api/admin/logout", "DELETE"), false);
   assert.equal(isPreviewMutationAllowed("/api/admin/session", "POST"), false);

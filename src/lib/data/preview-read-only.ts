@@ -12,5 +12,6 @@ export function isPreviewSafeMethod(method: string) {
 }
 
 export function isPreviewMutationAllowed(pathname: string, method: string) {
-  return pathname === "/api/admin/logout" && method.toUpperCase() === "POST";
+  if (method.toUpperCase() !== "POST") return false;
+  return pathname === "/api/auth/login" || pathname === "/api/admin/logout";
 }
