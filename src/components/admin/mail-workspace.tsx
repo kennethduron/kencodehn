@@ -14,6 +14,8 @@ import {
   ExternalLink,
   FileSignature,
   FileText,
+  FileDown,
+  ImageIcon,
   Forward,
   Inbox,
   Loader2,
@@ -39,6 +41,7 @@ import { ConfirmDialog, Toast, Tooltip } from "./ui";
 import { RichTextEditor } from "./rich-text-editor";
 import { draftFingerprint, isMeaningfulDraft, type DraftAutosavePayload } from "@/lib/mail/draft-autosave";
 import { formatHondurasDate, formatHondurasDateTime } from "@/lib/time";
+import { hasRevealableRemoteMailImages, isImageAttachmentType, isPreviewableAttachmentType, revealRemoteMailImages } from "@/lib/mail/media-presentation";
 
 type Identity = { id?: string; email: string; display_name: string; mail_identity_assignments?: Array<{ is_primary: boolean }> };
 type Template = {
@@ -124,7 +127,7 @@ type Message = {
     | "failed"
     | "bounced"
     | "complained";
-  attachments?: Array<{ id: string; filename: string; content_type: string; size_bytes: number }>;
+  attachments?: Array<{ id: string; filename: string; content_type: string; size_bytes: number; content_id?: string | null; inline?: boolean }>;
 };
 type Initial = {
   folder: string;
@@ -331,6 +334,7 @@ export function MailWorkspace({
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState(false);
   const [deleteAssessment, setDeleteAssessment] = useState<MailDeletionAssessment | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
+  const [remoteImagesShown, setRemoteImagesShown] = useState<Set<string>>(() => new Set());
   const signatureApplied = useRef(false);
   const draftRef = useRef(draft);
   const autosaveInFlight = useRef(false);
@@ -348,6 +352,7 @@ export function MailWorkspace({
   const proposalContext = relation(selected?.thread.add_on_proposals);
 
   useEffect(() => { draftRef.current = draft; }, [draft]);
+  useEffect(() => { setRemoteImagesShown(new Set()); }, [selected?.thread.id]);
 
   function finishClosingComposer() {
     closeAfterAutosave.current = false;
@@ -1127,6 +1132,9 @@ export function MailWorkspace({
                   <div className="mx-auto grid max-w-5xl gap-3">
                     {selected.messages.map((message) => {
                       const sender = message.from_address.name || message.from_address.email || "Remitente";
+                      const showRemoteImages = remoteImagesShown.has(message.id);
+                      const hasRevealableRemoteImages = Boolean(message.has_remote_images && hasRevealableRemoteMailImages(message.body_html));
+                      const visibleAttachments = (message.attachments || []).filter((attachment) => !(attachment.inline && attachment.content_id && message.body_html.includes(attachment.id)));
                       return <article key={message.id} className={`kc-mail-message min-w-0 rounded-2xl border p-4 shadow-sm ${message.direction === "outbound" ? "border-blue-100 bg-blue-50/35" : "border-slate-200 bg-white"}`}>
                         <div className="flex min-w-0 items-start gap-3">
                           <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-black ${avatarTone(sender)}`} aria-hidden="true">{initials(sender)}</span>
@@ -1138,12 +1146,28 @@ export function MailWorkspace({
                             <p className="mt-1 truncate text-xs text-kc-muted">Para: {message.to_addresses.map((address) => address.email).filter(Boolean).join(", ") || "Sin destinatario"}</p>
                           </div>
                         </div>
-                        {message.has_remote_images ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">Imágenes externas bloqueadas para proteger su privacidad.</p> : null}
-                        <div className="kc-mail-message-html prose prose-sm mt-4 max-w-none break-words text-sm leading-6" dangerouslySetInnerHTML={{ __html: message.body_html }} />
-                        {message.attachments?.length ? <div className="mt-4 grid gap-2 border-t border-slate-100 pt-3" aria-label="Adjuntos del mensaje">
-                          {message.attachments.map((attachment) => <a key={attachment.id} href={`/api/admin/mail/attachments?id=${encodeURIComponent(attachment.id)}`} className="flex min-h-12 min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-blue-800 hover:border-blue-300" download>
-                            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-rose-50 text-rose-700"><FileText size={17} aria-hidden="true" /></span><span className="min-w-0 flex-1 truncate">{attachment.filename}</span><span className="shrink-0 text-xs font-normal text-kc-muted">{attachment.content_type.split("/").at(-1)?.toUpperCase()} · {readableSize(attachment.size_bytes)}</span>
-                          </a>)}
+                        {message.has_remote_images ? <div className="mt-3 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">
+                          <span className="min-w-0 flex-1 font-bold">{showRemoteImages ? "Imágenes externas visibles solo en esta sesión." : hasRevealableRemoteImages ? "Imágenes externas bloqueadas para proteger su privacidad." : "Las imágenes externas de este mensaje se bloquearon al recibirlo."}</span>
+                          {hasRevealableRemoteImages && !showRemoteImages ? <button type="button" onClick={() => setRemoteImagesShown((current) => new Set(current).add(message.id))} className="min-h-9 shrink-0 rounded-lg border border-amber-300 bg-white px-3 font-black text-amber-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">Mostrar imágenes</button> : null}
+                        </div> : null}
+                        <div className="kc-mail-message-html prose prose-sm mt-4 max-w-none break-words text-sm leading-6" dangerouslySetInnerHTML={{ __html: showRemoteImages ? revealRemoteMailImages(message.body_html) : message.body_html }} />
+                        {visibleAttachments.length ? <div className="kc-mail-attachments mt-4 grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-2" aria-label="Adjuntos del mensaje">
+                          {visibleAttachments.map((attachment) => {
+                            const previewable = isPreviewableAttachmentType(attachment.content_type);
+                            const image = isImageAttachmentType(attachment.content_type);
+                            const source = `/api/admin/mail/attachments?id=${encodeURIComponent(attachment.id)}`;
+                            return <article key={attachment.id} className="kc-mail-attachment-card min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                              {image ? <a href={`${source}&mode=inline`} target="_blank" rel="noopener noreferrer" className="block border-b border-slate-100 bg-slate-50" aria-label={`Vista previa de ${attachment.filename}`}><img src={`${source}&mode=inline`} alt="" loading="lazy" className="h-28 w-full object-contain" /></a> : null}
+                              <div className="flex min-h-14 min-w-0 items-center gap-3 px-3 py-2">
+                                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${image ? "bg-blue-50 text-blue-700" : "bg-rose-50 text-rose-700"}`}>{image ? <ImageIcon size={17} aria-hidden="true" /> : <FileText size={17} aria-hidden="true" />}</span>
+                                <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-slate-900" title={attachment.filename}>{attachment.filename}</strong><span className="block truncate text-[.68rem] font-normal text-kc-muted">{attachment.content_type.split("/").at(-1)?.toUpperCase()} · {readableSize(attachment.size_bytes)}</span></span>
+                                <span className="flex shrink-0 items-center gap-1">
+                                  {previewable && !image ? <a href={`${source}&mode=inline`} target="_blank" rel="noopener noreferrer" className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-blue-700 hover:bg-blue-50" aria-label={`Abrir ${attachment.filename}`} title="Abrir"><ExternalLink size={16} aria-hidden="true" /></a> : null}
+                                  <a href={source} download className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-blue-700 hover:bg-blue-50" aria-label={`Descargar ${attachment.filename}`} title="Descargar"><FileDown size={16} aria-hidden="true" /></a>
+                                </span>
+                              </div>
+                            </article>;
+                          })}
                         </div> : null}
                       </article>;
                     })}
@@ -1411,7 +1435,7 @@ export function MailWorkspace({
                   <input
                     type="file"
                     className="sr-only"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx,.txt"
+                    accept=".pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.gif,.zip,application/octet-stream"
                     onChange={(event) => {
                       const file = event.target.files?.[0];
                       event.target.value = "";

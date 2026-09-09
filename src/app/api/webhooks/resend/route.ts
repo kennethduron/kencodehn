@@ -2,13 +2,19 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend, type EmailReceivedEvent } from "resend";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { parseHeaderReferences, sanitizeMailHtml, textFromHtml } from "@/lib/mail/security";
+import { parseHeaderReferences, sanitizeInboundMailHtml, textFromHtml } from "@/lib/mail/security";
+import {
+  MAX_MAIL_ATTACHMENT_BYTES,
+  sanitizeAttachmentFilename,
+  sanitizeContentId,
+  trustedResendAttachmentUrl,
+  validateMailAttachment,
+} from "@/lib/mail/attachment-security";
 import { sendPushToUser } from "@/lib/push/service";
 import { sendOperationalNotificationEmail } from "@/lib/email/service";
 import { notificationChannelEnabled } from "@/lib/notifications/preferences";
 
 export const runtime = "nodejs";
-const allowedAttachments = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain"]);
 function emailOnly(value: string) { return (value.match(/<([^>]+)>/)?.[1] || value).trim().toLowerCase(); }
 function address(value: string) { const email = emailOnly(value); const name = value.includes("<") ? value.slice(0, value.lastIndexOf("<")).trim().replace(/^['"]|['"]$/g, "") : ""; return { email, ...(name ? { name } : {}) }; }
 function includesExactRecipient(value: unknown, expectedEmail: string) {
@@ -128,7 +134,11 @@ export async function POST(request: NextRequest) {
         }
       }
     }
-    const rawHtml = received.data.html || `<p>${(received.data.text || "").replace(/[&<>]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[character] || character)).replace(/\n/g, "<br>")}</p>`; const hasRemoteImages = /<img\b[^>]*\bsrc\s*=\s*["']https?:/i.test(rawHtml); const cleanHtml = sanitizeMailHtml(rawHtml); const cleanText = (received.data.text || textFromHtml(cleanHtml)).slice(0, 1_000_000); const now = received.data.created_at || new Date().toISOString();
+    const rawHtml = received.data.html || `<p>${(received.data.text || "").replace(/[&<>]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[character] || character)).replace(/\n/g, "<br>")}</p>`;
+    const cleanHtml = sanitizeInboundMailHtml(rawHtml);
+    const hasRemoteImages = cleanHtml.includes("data-kc-remote-src=");
+    const cleanText = (received.data.text || textFromHtml(cleanHtml)).slice(0, 1_000_000);
+    const now = received.data.created_at || new Date().toISOString();
     if (!threadId) { stage = "create_thread"; const { data: assignments, error: assignmentError } = await client.from("mail_identity_assignments").select("profile_id").eq("identity_id", identity.id).eq("active", true).order("is_primary", { ascending: false }).limit(1); if (assignmentError) throw assignmentError; const created = await client.from("mail_threads").insert({ identity_id: identity.id, subject: received.data.subject || "(Sin asunto)", assigned_to: assignments?.[0]?.profile_id || null, snippet: cleanText.slice(0, 500), latest_message_at: now }).select("id").single(); if (created.error) throw created.error; threadId = created.data.id; }
     if (!messageId) {
       stage = "store_message";
@@ -141,7 +151,50 @@ export async function POST(request: NextRequest) {
     stage = "store_attachments";
     const attachmentList = await resend.emails.receiving.attachments.list({ emailId: received.data.id });
     if (attachmentList.error) throw attachmentList.error;
-    for (const attachment of attachmentList.data?.data || []) { if (!allowedAttachments.has(attachment.content_type) || attachment.size > 10 * 1024 * 1024) continue; const existingAttachment = await client.from("mail_attachments").select("id").eq("message_id", messageId).eq("provider_attachment_id", attachment.id).maybeSingle(); if (existingAttachment.error || existingAttachment.data) { if (existingAttachment.error) throw existingAttachment.error; continue; } const download = await fetch(attachment.download_url); if (!download.ok) continue; const path = `${identity.id}/${threadId}/${crypto.randomUUID()}`; const uploaded = await client.storage.from("mail-attachments").upload(path, new Uint8Array(await download.arrayBuffer()), { contentType: attachment.content_type, upsert: false }); if (!uploaded.error) await client.from("mail_attachments").insert({ message_id: messageId, provider_attachment_id: attachment.id, storage_path: path, filename: (attachment.filename || "archivo").replace(/[\r\n]/g, "").slice(0, 255), content_type: attachment.content_type, size_bytes: attachment.size, content_id: attachment.content_id || null, inline: attachment.content_disposition === "inline" }); }
+    let acceptedAttachmentCount = 0;
+    let rejectedAttachmentCount = 0;
+    for (const attachment of attachmentList.data?.data || []) {
+      if (attachment.size <= 0 || attachment.size > MAX_MAIL_ATTACHMENT_BYTES || !trustedResendAttachmentUrl(attachment.download_url)) {
+        rejectedAttachmentCount += 1;
+        continue;
+      }
+      const existingAttachment = await client.from("mail_attachments").select("id").eq("message_id", messageId).eq("provider_attachment_id", attachment.id).maybeSingle();
+      if (existingAttachment.error) throw existingAttachment.error;
+      if (existingAttachment.data) {
+        acceptedAttachmentCount += 1;
+        continue;
+      }
+      const download = await fetch(attachment.download_url, { redirect: "error", signal: AbortSignal.timeout(15_000) });
+      if (!download.ok) {
+        rejectedAttachmentCount += 1;
+        continue;
+      }
+      const bytes = new Uint8Array(await download.arrayBuffer());
+      const filename = sanitizeAttachmentFilename(attachment.filename);
+      const validation = validateMailAttachment(bytes, filename, attachment.content_type);
+      if (!validation.ok) {
+        rejectedAttachmentCount += 1;
+        continue;
+      }
+      const path = `${identity.id}/${threadId}/${crypto.randomUUID()}`;
+      const uploaded = await client.storage.from("mail-attachments").upload(path, bytes, { contentType: validation.contentType, upsert: false });
+      if (uploaded.error) throw uploaded.error;
+      const stored = await client.from("mail_attachments").insert({
+        message_id: messageId,
+        provider_attachment_id: attachment.id,
+        storage_path: path,
+        filename,
+        content_type: validation.contentType,
+        size_bytes: bytes.length,
+        content_id: sanitizeContentId(attachment.content_id),
+        inline: attachment.content_disposition === "inline",
+      });
+      if (stored.error) {
+        await client.storage.from("mail-attachments").remove([path]);
+        throw stored.error;
+      }
+      acceptedAttachmentCount += 1;
+    }
     stage = "notify_assignees";
     const { data: assignees, error: assigneesError } = await client.from("mail_identity_assignments").select("profile_id").eq("identity_id", identity.id).eq("active", true);
     if (assigneesError) throw assigneesError;
@@ -168,7 +221,7 @@ export async function POST(request: NextRequest) {
     const existingAudit = await client.from("mail_audit_events").select("id").eq("action", "mail_message_received").eq("message_id", messageId).maybeSingle();
     if (existingAudit.error) throw existingAudit.error;
     if (!existingAudit.data) {
-      const audit = await client.from("mail_audit_events").insert({ action: "mail_message_received", identity_id: identity.id, thread_id: threadId, message_id: messageId, safe_metadata: { provider: "resend", attachmentCount: attachmentList.data?.data.length || 0 } });
+      const audit = await client.from("mail_audit_events").insert({ action: "mail_message_received", identity_id: identity.id, thread_id: threadId, message_id: messageId, safe_metadata: { provider: "resend", attachmentCount: attachmentList.data?.data.length || 0, acceptedAttachmentCount, rejectedAttachmentCount } });
       if (audit.error) throw audit.error;
     }
     const completedEvent = await client.from("mail_webhook_events").update({ status: "processed", processed_at: new Date().toISOString(), error_category: null }).eq("provider_event_id", eventId);

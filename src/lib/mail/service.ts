@@ -3,7 +3,7 @@ import { Resend } from "resend";
 import type { AdminUser } from "@/lib/admin/types";
 import { hasPermission } from "@/lib/admin/authorization";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sanitizeMailHtml, textFromHtml } from "./security";
+import { resolveInlineContentIds, sanitizeMailHtml, textFromHtml } from "./security";
 
 export type MailFolder = "inbox" | "sent" | "drafts" | "archived" | "trash" | "follow-up";
 export type Address = { email: string; name?: string };
@@ -104,12 +104,19 @@ export async function loadThread(admin: AdminUser, threadId: string) {
   const { data: messages, error: messageError } = await client.from("mail_messages").select("id,direction,delivery_status,from_address,to_addresses,cc_addresses,bcc_addresses,subject,body_html,body_text,sender_snapshot,signature_snapshot,sent_at,received_at,created_at,has_remote_images").eq("thread_id", threadId).order("created_at"); if (messageError) throw messageError;
   const messageIds = (messages || []).map((message) => message.id);
   const attachmentResult = messageIds.length
-    ? await client.from("mail_attachments").select("id,message_id,filename,content_type,size_bytes").in("message_id", messageIds).order("created_at")
+    ? await client.from("mail_attachments").select("id,message_id,filename,content_type,size_bytes,content_id,inline").in("message_id", messageIds).order("created_at")
     : { data: [], error: null };
   if (attachmentResult.error) throw attachmentResult.error;
   const attachments = new Map<string, typeof attachmentResult.data>();
   for (const attachment of attachmentResult.data || []) attachments.set(attachment.message_id, [...(attachments.get(attachment.message_id) || []), attachment]);
-  return { thread, messages: (messages || []).map((message) => ({ ...message, attachments: attachments.get(message.id) || [] })) };
+  return { thread, messages: (messages || []).map((message) => {
+    const messageAttachments = attachments.get(message.id) || [];
+    return {
+      ...message,
+      body_html: message.direction === "inbound" ? resolveInlineContentIds(message.body_html, messageAttachments) : message.body_html,
+      attachments: messageAttachments,
+    };
+  }) };
 }
 
 export type MailDeletionAssessment = { canDelete: boolean; reasonCode: string; reason: string; attachmentCount: number };
