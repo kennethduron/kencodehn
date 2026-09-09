@@ -471,14 +471,14 @@ select:focus-visible {
 }
 .kc-mail-compose-label { width: 3.25rem; flex: none; color: #475569; }
 
-@media (max-width: 1279px) {
+@media (max-width: 1280px) {
   .kc-mail-shell { grid-template-columns: 10.5rem minmax(17rem, 20rem) minmax(0, 1fr); }
 }
 @media (max-width: 1599px) {
   .kc-mail-action span { display: none; }
   .kc-mail-action { width: 2.35rem; justify-content: center; padding: 0; }
 }
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .kc-mail-shell { grid-template-columns: minmax(18rem, 21rem) minmax(0, 1fr); }
   .kc-mail-folders { position: fixed; inset: 0 auto 0 0; z-index: 70; width: min(82vw, 18rem); padding-top: max(1rem, env(safe-area-inset-top)); transform: translateX(-105%); transition: transform 180ms ease; box-shadow: 0 25px 60px rgba(15,23,42,.28); }
   .kc-mail-folders.is-open { transform: translateX(0); }
