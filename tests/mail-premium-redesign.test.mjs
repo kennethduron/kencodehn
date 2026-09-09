@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const workspace = readFileSync("src/components/admin/mail-workspace.tsx", "utf8");
+const page = readFileSync("src/app/admin/mail/page.tsx", "utf8");
 const service = readFileSync("src/lib/mail/service.ts", "utf8");
 const css = readFileSync("src/app/globals.css", "utf8");
 
@@ -54,8 +55,16 @@ test("composer keeps real identities, copies, templates, signatures and attachme
 test("composer keeps autosave and idempotent send protections", () => {
   assert.match(workspace, /setTimeout\(\(\) => void persistAutosave\(entry\), 1500\)/);
   assert.match(workspace, /sendRequestId\.current/);
-  assert.match(workspace, /disabled=\{busy \|\| sending \|\| !identityId\}/);
+  assert.match(workspace, /disabled=\{busy \|\| sending \|\| readOnlyPreview \|\| !identityId\}/);
   assert.doesNotMatch(workspace, />Programar</);
+});
+
+test("read-only Preview can inspect Mail without draft or read-state mutations", () => {
+  assert.match(page, /readOnlyPreview=\{isCrmPreviewReadOnly\(\)\}/);
+  assert.match(workspace, /if \(!compose \|\| readOnlyPreview\) return/);
+  assert.match(workspace, /if \(!selected\?\.thread\.id \|\| readOnlyPreview\) return/);
+  assert.match(workspace, /if \(readOnlyPreview\) return finishClosingComposer\(\)/);
+  assert.match(workspace, /Preview solo lectura · guardado y envío desactivados/);
 });
 
 test("Mail contains sender HTML and oversized embedded content", () => {

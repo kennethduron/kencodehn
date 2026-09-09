@@ -295,10 +295,12 @@ export function MailWorkspace({
   admin,
   initial,
   composeContext,
+  readOnlyPreview = false,
 }: {
   admin: AdminUser;
   initial: Initial;
   composeContext: Context;
+  readOnlyPreview?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -360,6 +362,7 @@ export function MailWorkspace({
   }
 
   async function persistAutosave(entry: { fingerprint: string; payload: DraftAutosavePayload }) {
+    if (readOnlyPreview) return;
     if (autosaveInFlight.current) {
       queuedAutosave.current = entry;
       return;
@@ -402,6 +405,7 @@ export function MailWorkspace({
   }
 
   function requestCloseComposer() {
+    if (readOnlyPreview) return finishClosingComposer();
     const isCompletelyEmpty = !isMeaningfulDraft(currentAutosaveEntry().payload);
     if (isCompletelyEmpty) return finishClosingComposer();
     const entry = currentAutosaveEntry();
@@ -411,7 +415,7 @@ export function MailWorkspace({
   }
 
   useEffect(() => {
-    if (!compose) return;
+    if (!compose || readOnlyPreview) return;
     const isCompletelyEmpty = !isMeaningfulDraft(currentAutosaveEntry().payload);
     if (isCompletelyEmpty) return;
     const entry = currentAutosaveEntry();
@@ -425,12 +429,14 @@ export function MailWorkspace({
     composeMeta,
     html,
     identityId,
+    readOnlyPreview,
     selectedSignatureId,
     subject,
     to,
   ]);
 
   async function discardDraft() {
+    if (readOnlyPreview) return;
     if (!draft.id) {
       sendRequestId.current = null;
       setCompose(false);
@@ -526,6 +532,7 @@ export function MailWorkspace({
     setConfirmPermanentDelete(true);
   }
   async function act(action: string, threadId: string, value?: boolean) {
+    if (readOnlyPreview) return;
     setBusy(true);
     const response = await fetch("/api/admin/mail", {
       method: "POST",
@@ -554,6 +561,7 @@ export function MailWorkspace({
   }
   async function send(event: FormEvent) {
     event.preventDefault();
+    if (readOnlyPreview) return;
     if (!identityId)
       return setError(
         "Necesita una identidad corporativa asignada para enviar.",
@@ -596,6 +604,7 @@ export function MailWorkspace({
     router.refresh();
   }
   async function uploadAttachment(file: File) {
+    if (readOnlyPreview) return;
     setBusy(true);
     setError("");
     let currentDraft = draft;
@@ -715,6 +724,7 @@ export function MailWorkspace({
     setCompose(true);
   }
   async function assignThread(profileId: string) {
+    if (readOnlyPreview) return;
     if (!selected) return;
     setBusy(true);
     const response = await fetch("/api/admin/mail", {
@@ -733,6 +743,7 @@ export function MailWorkspace({
     router.refresh();
   }
   async function createFollowUp() {
+    if (readOnlyPreview) return;
     if (!selected || !followDue)
       return setError("Seleccione fecha y hora para el seguimiento.");
     setBusy(true);
@@ -819,9 +830,9 @@ export function MailWorkspace({
   }, [compose, identityId, initial.signatures]);
 
   useEffect(() => {
-    if (!selected?.thread.id) return;
+    if (!selected?.thread.id || readOnlyPreview) return;
     fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "read", threadId: selected.thread.id }) }).catch(() => undefined);
-  }, [selected?.thread.id]);
+  }, [readOnlyPreview, selected?.thread.id]);
 
   useEffect(() => {
     if (!mobileFolders) return;
@@ -849,11 +860,13 @@ export function MailWorkspace({
     composeMeta,
     html,
     identityId,
+    readOnlyPreview,
     selectedSignatureId,
     subject,
     to,
   ]);
   async function attachProposalPdf() {
+    if (readOnlyPreview) return;
     if (!composeContext.proposalId || !composeContext.addOnId) return;
     setBusy(true);
     setError("");
@@ -1091,7 +1104,7 @@ export function MailWorkspace({
                   <Tooltip label={selected.thread.is_important ? "Quitar importante" : "Marcar como importante"} placement="bottom">
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || readOnlyPreview}
                       onClick={() =>
                         act(
                           "important",
@@ -1108,13 +1121,13 @@ export function MailWorkspace({
                   </Tooltip>
                 </div>
                 <div className="kc-mail-thread-actions flex min-w-0 gap-1.5 overflow-x-auto border-t border-slate-100 px-3 py-2 sm:px-4" aria-label="Acciones de conversación">
-                  <button type="button" onClick={() => openReply("reply")} className="kc-mail-action"><Reply size={15} aria-hidden="true" /><span>Responder</span></button>
-                  <button type="button" onClick={() => openReply("replyAll")} className="kc-mail-action"><ReplyAll size={15} aria-hidden="true" /><span>Responder a todos</span></button>
-                  <button type="button" onClick={() => openReply("forward")} className="kc-mail-action"><Forward size={15} aria-hidden="true" /><span>Reenviar</span></button>
-                  <button type="button" disabled={busy} onClick={() => act("unread", selected.thread.id)} className="kc-mail-action"><MailOpen size={15} aria-hidden="true" /><span>No leído</span></button>
-                  {selected.thread.state !== "inbox" ? <button type="button" disabled={busy} onClick={() => act("restore", selected.thread.id)} className="kc-mail-action"><Inbox size={15} aria-hidden="true" /><span>Restaurar</span></button> : <Tooltip label="Archivar" placement="bottom"><button type="button" disabled={busy} onClick={() => act("archive", selected.thread.id)} className="kc-mail-action"><Archive size={15} aria-hidden="true" /><span>Archivar</span></button></Tooltip>}
-                  {selected.thread.state !== "trash" ? <Tooltip label="Mover a Papelera" placement="bottom"><button type="button" disabled={busy} onClick={() => act("trash", selected.thread.id)} className="kc-mail-action text-rose-700" aria-label="Mover a Papelera" title="Mover a Papelera"><Trash2 size={15} aria-hidden="true" /><span>Papelera</span></button></Tooltip> : admin.role === "owner" ? <Tooltip label="Eliminar definitivamente" placement="bottom"><button type="button" disabled={busy} onClick={() => void preparePermanentDelete(selected.thread.id)} className="kc-mail-action text-rose-700" aria-label="Eliminar definitivamente" title="Eliminar definitivamente"><Trash2 size={15} aria-hidden="true" /><span>Eliminar</span></button></Tooltip> : null}
-                  <a href="#mail-follow-up" className="kc-mail-action"><CalendarPlus size={15} aria-hidden="true" /><span>Seguimiento</span></a>
+                  <button type="button" onClick={() => openReply("reply")} className="kc-mail-action" aria-label="Responder" title="Responder"><Reply size={15} aria-hidden="true" /><span>Responder</span></button>
+                  <button type="button" onClick={() => openReply("replyAll")} className="kc-mail-action" aria-label="Responder a todos" title="Responder a todos"><ReplyAll size={15} aria-hidden="true" /><span>Responder a todos</span></button>
+                  <button type="button" onClick={() => openReply("forward")} className="kc-mail-action" aria-label="Reenviar" title="Reenviar"><Forward size={15} aria-hidden="true" /><span>Reenviar</span></button>
+                  <button type="button" disabled={busy || readOnlyPreview} onClick={() => act("unread", selected.thread.id)} className="kc-mail-action" aria-label="Marcar como no leído" title="Marcar como no leído"><MailOpen size={15} aria-hidden="true" /><span>No leído</span></button>
+                  {selected.thread.state !== "inbox" ? <button type="button" disabled={busy || readOnlyPreview} onClick={() => act("restore", selected.thread.id)} className="kc-mail-action" aria-label="Restaurar" title="Restaurar"><Inbox size={15} aria-hidden="true" /><span>Restaurar</span></button> : <Tooltip label="Archivar" placement="bottom"><button type="button" disabled={busy || readOnlyPreview} onClick={() => act("archive", selected.thread.id)} className="kc-mail-action" aria-label="Archivar" title="Archivar"><Archive size={15} aria-hidden="true" /><span>Archivar</span></button></Tooltip>}
+                  {selected.thread.state !== "trash" ? <Tooltip label="Mover a Papelera" placement="bottom"><button type="button" disabled={busy || readOnlyPreview} onClick={() => act("trash", selected.thread.id)} className="kc-mail-action text-rose-700" aria-label="Mover a Papelera" title="Mover a Papelera"><Trash2 size={15} aria-hidden="true" /><span>Papelera</span></button></Tooltip> : admin.role === "owner" ? <Tooltip label="Eliminar definitivamente" placement="bottom"><button type="button" disabled={busy || readOnlyPreview} onClick={() => void preparePermanentDelete(selected.thread.id)} className="kc-mail-action text-rose-700" aria-label="Eliminar definitivamente" title="Eliminar definitivamente"><Trash2 size={15} aria-hidden="true" /><span>Eliminar</span></button></Tooltip> : null}
+                  <a href="#mail-follow-up" className="kc-mail-action" aria-label="Seguimiento" title="Seguimiento"><CalendarPlus size={15} aria-hidden="true" /><span>Seguimiento</span></a>
                 </div>
               </header>
               <div className="kc-mail-thread-layout min-h-0">
@@ -1156,6 +1169,7 @@ export function MailWorkspace({
                       </span>
                       <select
                         defaultValue={selected.thread.assigned_to || ""}
+                        disabled={busy || readOnlyPreview}
                         onChange={(event) =>
                           void assignThread(event.target.value)
                         }
@@ -1190,7 +1204,7 @@ export function MailWorkspace({
                       />
                       <button
                         type="button"
-                        disabled={busy || !followDue}
+                        disabled={busy || readOnlyPreview || !followDue}
                         onClick={() => void createFollowUp()}
                         className="min-h-10 rounded-xl bg-blue-700 px-3 text-xs font-black text-white disabled:opacity-50"
                       >
@@ -1206,7 +1220,7 @@ export function MailWorkspace({
                 <button type="button" onClick={() => openReply("reply")}><Reply size={18} aria-hidden="true" /><span>Responder</span></button>
                 <button type="button" onClick={() => openReply("replyAll")}><ReplyAll size={18} aria-hidden="true" /><span>A todos</span></button>
                 <button type="button" onClick={() => openReply("forward")}><Forward size={18} aria-hidden="true" /><span>Reenviar</span></button>
-                {selected.thread.state === "inbox" ? <button type="button" disabled={busy} onClick={() => act("archive", selected.thread.id)}><Archive size={18} aria-hidden="true" /><span>Archivar</span></button> : <button type="button" disabled={busy} onClick={() => act("restore", selected.thread.id)}><Inbox size={18} aria-hidden="true" /><span>Restaurar</span></button>}
+                {selected.thread.state === "inbox" ? <button type="button" disabled={busy || readOnlyPreview} onClick={() => act("archive", selected.thread.id)}><Archive size={18} aria-hidden="true" /><span>Archivar</span></button> : <button type="button" disabled={busy || readOnlyPreview} onClick={() => act("restore", selected.thread.id)}><Inbox size={18} aria-hidden="true" /><span>Restaurar</span></button>}
               </nav>
             </>
           ) : (
@@ -1372,7 +1386,7 @@ export function MailWorkspace({
                 {composeContext.proposalId && composeContext.addOnId ? (
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || readOnlyPreview}
                     onClick={() => void attachProposalPdf()}
                     className="m-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-800"
                   >
@@ -1390,7 +1404,9 @@ export function MailWorkspace({
                 ) : null}
                 <div className="flex items-center gap-2 px-4 pb-3 text-xs text-kc-muted">
                   <Check size={14} />{" "}
-                  {draft.id
+                  {readOnlyPreview
+                    ? "Preview solo lectura · guardado y envío desactivados"
+                    : draft.id
                     ? "Borrador guardado"
                     : "Guardado automático activo"}
                 </div>
@@ -1409,13 +1425,13 @@ export function MailWorkspace({
                       event.target.value = "";
                       if (file) void uploadAttachment(file);
                     }}
-                    disabled={busy}
+                    disabled={busy || readOnlyPreview}
                   />
                 </label>
                 {draft.id && !confirmDiscard ? (
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || readOnlyPreview}
                     onClick={() => setConfirmDiscard(true)}
                     className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-200 px-3 text-sm font-bold text-rose-700 disabled:opacity-50"
                   >
@@ -1426,7 +1442,7 @@ export function MailWorkspace({
                   <>
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || readOnlyPreview}
                       onClick={() => void discardDraft()}
                       className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-rose-700 px-3 text-sm font-bold text-white disabled:opacity-50"
                     >
@@ -1445,7 +1461,7 @@ export function MailWorkspace({
               </div>
               <button
                 type="submit"
-                disabled={busy || sending || !identityId}
+                disabled={busy || sending || readOnlyPreview || !identityId}
                 className="inline-flex min-h-11 min-w-32 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-black text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
               >
                 {sending ? (

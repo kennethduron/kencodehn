@@ -467,6 +467,8 @@ select:focus-visible {
 
 @media (max-width: 1279px) {
   .kc-mail-shell { grid-template-columns: 10.5rem minmax(17rem, 20rem) minmax(0, 1fr); }
+}
+@media (max-width: 1599px) {
   .kc-mail-action span { display: none; }
   .kc-mail-action { width: 2.35rem; justify-content: center; padding: 0; }
 }
