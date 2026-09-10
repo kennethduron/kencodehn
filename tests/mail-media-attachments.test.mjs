@@ -177,6 +177,15 @@ test("inbound webhook validates bytes before private storage and records rejecti
   assert.match(webhook, /sanitizeContentId/);
 });
 
+test("inbound replay resumes attachments without repeating notifications or thread state", () => {
+  const webhook = readFileSync("src/app/api/webhooks/resend/route.ts", "utf8");
+  assert.match(webhook, /event\.type !== "email\.received"/);
+  assert.match(webhook, /const existingInboundMessage = Boolean\(existingMessage\.data\)/);
+  assert.match(webhook, /if \(!existingInboundMessage\) \{\s*const threadUpdate/);
+  assert.match(webhook, /if \(!existingInboundMessage\) \{\s*stage = "notify_assignees"/);
+  assert.match(webhook, /update\(\{ safe_metadata: auditMetadata \}\)/);
+});
+
 test("outbound business mail stays multipart alternative without marketing headers", () => {
   const service = readFileSync("src/lib/mail/service.ts", "utf8");
   assert.match(service, /html: cleanHtml/);

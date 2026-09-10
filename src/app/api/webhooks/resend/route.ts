@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   try { event = resend.webhooks.verify({ payload, headers: { id: eventId, timestamp, signature }, webhookSecret: secret }); } catch { return NextResponse.json({ error: "Firma inválida." }, { status: 401 }); }
   const client = createSupabaseAdminClient(); const hash = createHash("sha256").update(payload).digest("hex");
   const insertedEvent = await client.from("mail_webhook_events").insert({ provider_event_id: eventId, event_type: event.type, payload_hash: hash }).select("status").maybeSingle();
-  if (insertedEvent.error?.code === "23505") { const { data: existing } = await client.from("mail_webhook_events").select("status,payload_hash").eq("provider_event_id", eventId).single(); if (!existing) return NextResponse.json({ error: "No pudimos validar el evento." }, { status: 500 }); if (existing.payload_hash !== hash) return NextResponse.json({ error: "Evento inconsistente." }, { status: 409 }); if (existing.status === "processed" || existing.status === "ignored") return NextResponse.json({ ok: true, duplicate: true }); }
+  if (insertedEvent.error?.code === "23505") { const { data: existing } = await client.from("mail_webhook_events").select("status,payload_hash").eq("provider_event_id", eventId).single(); if (!existing) return NextResponse.json({ error: "No pudimos validar el evento." }, { status: 500 }); if (existing.payload_hash !== hash) return NextResponse.json({ error: "Evento inconsistente." }, { status: 409 }); if ((existing.status === "processed" || existing.status === "ignored") && event.type !== "email.received") return NextResponse.json({ ok: true, duplicate: true }); }
   if (event.type in outboundStatuses) {
     let stage = "apply_delivery_status";
     try {
@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
     stage = "resume_partial_event";
     const existingMessage = await client.from("mail_messages").select("id,thread_id").eq("provider_email_id", received.data.id).eq("direction", "inbound").maybeSingle();
     if (existingMessage.error) throw existingMessage.error;
+    const existingInboundMessage = Boolean(existingMessage.data);
     let messageId: string | null = existingMessage.data?.id || null;
     let threadId: string | null = existingMessage.data?.thread_id || null;
     stage = "resolve_direct_parent";
@@ -146,8 +147,10 @@ export async function POST(request: NextRequest) {
       if (message.error) throw message.error;
       messageId = message.data.id;
     }
-    const threadUpdate = await client.from("mail_threads").update({ state: "inbox", subject: received.data.subject || "(Sin asunto)", snippet: cleanText.slice(0, 500), latest_message_at: now, updated_at: new Date().toISOString() }).eq("id", threadId);
-    if (threadUpdate.error) throw threadUpdate.error;
+    if (!existingInboundMessage) {
+      const threadUpdate = await client.from("mail_threads").update({ state: "inbox", subject: received.data.subject || "(Sin asunto)", snippet: cleanText.slice(0, 500), latest_message_at: now, updated_at: new Date().toISOString() }).eq("id", threadId);
+      if (threadUpdate.error) throw threadUpdate.error;
+    }
     stage = "store_attachments";
     const attachmentList = await resend.emails.receiving.attachments.list({ emailId: received.data.id });
     if (attachmentList.error) throw attachmentList.error;
@@ -195,33 +198,39 @@ export async function POST(request: NextRequest) {
       }
       acceptedAttachmentCount += 1;
     }
-    stage = "notify_assignees";
-    const { data: assignees, error: assigneesError } = await client.from("mail_identity_assignments").select("profile_id").eq("identity_id", identity.id).eq("active", true);
-    if (assigneesError) throw assigneesError;
-    const profileIds = [...new Set((assignees || []).map((assignment) => assignment.profile_id))];
-    const { data: profiles, error: profilesError } = profileIds.length
-      ? await client.from("profiles").select("id,email,display_name,name").in("id", profileIds)
-      : { data: [], error: null };
-    if (profilesError) throw profilesError;
-    const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
-    for (const assignment of assignees || []) {
-      const profile = profilesById.get(assignment.profile_id);
-      const readState = await client.from("mail_read_states").upsert({ thread_id: threadId, profile_id: assignment.profile_id, unread: true, last_read_at: now });
-      if (readState.error) throw readState.error;
-      if (await notificationChannelEnabled(assignment.profile_id, "mail_received", "crm")) {
-        const notification = await client.from("notifications").upsert({ firebase_id: `mail:${eventId}:${assignment.profile_id}`, recipient_id: assignment.profile_id, recipient_name: profile?.display_name || profile?.name || "", recipient_email: profile?.email || "", type: "mail_received", severity: "info", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, action_url: `/admin/mail?thread=${threadId}`, is_read: false, created_at: now, updated_at: now }, { onConflict: "firebase_id", ignoreDuplicates: true });
-        if (notification.error) throw notification.error;
+    if (!existingInboundMessage) {
+      stage = "notify_assignees";
+      const { data: assignees, error: assigneesError } = await client.from("mail_identity_assignments").select("profile_id").eq("identity_id", identity.id).eq("active", true);
+      if (assigneesError) throw assigneesError;
+      const profileIds = [...new Set((assignees || []).map((assignment) => assignment.profile_id))];
+      const { data: profiles, error: profilesError } = profileIds.length
+        ? await client.from("profiles").select("id,email,display_name,name").in("id", profileIds)
+        : { data: [], error: null };
+      if (profilesError) throw profilesError;
+      const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+      for (const assignment of assignees || []) {
+        const profile = profilesById.get(assignment.profile_id);
+        const readState = await client.from("mail_read_states").upsert({ thread_id: threadId, profile_id: assignment.profile_id, unread: true, last_read_at: now });
+        if (readState.error) throw readState.error;
+        if (await notificationChannelEnabled(assignment.profile_id, "mail_received", "crm")) {
+          const notification = await client.from("notifications").upsert({ firebase_id: `mail:${eventId}:${assignment.profile_id}`, recipient_id: assignment.profile_id, recipient_name: profile?.display_name || profile?.name || "", recipient_email: profile?.email || "", type: "mail_received", severity: "info", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, action_url: `/admin/mail?thread=${threadId}`, is_read: false, created_at: now, updated_at: now }, { onConflict: "firebase_id", ignoreDuplicates: true });
+          if (notification.error) throw notification.error;
+        }
+        await Promise.all([
+          sendPushToUser(assignment.profile_id, { type: "mail_received", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, actionUrl: `/admin/mail?thread=${threadId}`, idempotencyKey: `mail:${eventId}:${assignment.profile_id}:push` }),
+          sendOperationalNotificationEmail({ profileId: assignment.profile_id, event: "mail_received", subject: "Nuevo correo en Ken Code CRM", message: `Recibió un nuevo mensaje en ${identity.email}.`, actionUrl: `/admin/mail?thread=${threadId}`, idempotencyKey: `mail:${eventId}:${assignment.profile_id}:email` }),
+        ]);
       }
-      await Promise.all([
-        sendPushToUser(assignment.profile_id, { type: "mail_received", title: "Nuevo correo recibido", message: `Nuevo mensaje en ${identity.email}`, actionUrl: `/admin/mail?thread=${threadId}`, idempotencyKey: `mail:${eventId}:${assignment.profile_id}:push` }),
-        sendOperationalNotificationEmail({ profileId: assignment.profile_id, event: "mail_received", subject: "Nuevo correo en Ken Code CRM", message: `Recibió un nuevo mensaje en ${identity.email}.`, actionUrl: `/admin/mail?thread=${threadId}`, idempotencyKey: `mail:${eventId}:${assignment.profile_id}:email` }),
-      ]);
     }
     stage = "complete_event";
     const existingAudit = await client.from("mail_audit_events").select("id").eq("action", "mail_message_received").eq("message_id", messageId).maybeSingle();
     if (existingAudit.error) throw existingAudit.error;
+    const auditMetadata = { provider: "resend", attachmentCount: attachmentList.data?.data.length || 0, acceptedAttachmentCount, rejectedAttachmentCount };
     if (!existingAudit.data) {
-      const audit = await client.from("mail_audit_events").insert({ action: "mail_message_received", identity_id: identity.id, thread_id: threadId, message_id: messageId, safe_metadata: { provider: "resend", attachmentCount: attachmentList.data?.data.length || 0, acceptedAttachmentCount, rejectedAttachmentCount } });
+      const audit = await client.from("mail_audit_events").insert({ action: "mail_message_received", identity_id: identity.id, thread_id: threadId, message_id: messageId, safe_metadata: auditMetadata });
+      if (audit.error) throw audit.error;
+    } else {
+      const audit = await client.from("mail_audit_events").update({ safe_metadata: auditMetadata }).eq("id", existingAudit.data.id);
       if (audit.error) throw audit.error;
     }
     const completedEvent = await client.from("mail_webhook_events").update({ status: "processed", processed_at: new Date().toISOString(), error_category: null }).eq("provider_event_id", eventId);
