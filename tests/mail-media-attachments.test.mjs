@@ -183,7 +183,15 @@ test("inbound replay resumes attachments without repeating notifications or thre
   assert.match(webhook, /const existingInboundMessage = Boolean\(existingMessage\.data\)/);
   assert.match(webhook, /if \(!existingInboundMessage\) \{\s*const threadUpdate/);
   assert.match(webhook, /if \(!existingInboundMessage\) \{\s*stage = "notify_assignees"/);
-  assert.match(webhook, /update\(\{ safe_metadata: auditMetadata \}\)/);
+  assert.match(webhook, /action", "mail_attachments_reconciled"/);
+  assert.match(webhook, /action: "mail_attachments_reconciled"/);
+  assert.doesNotMatch(webhook, /mail_audit_events"\)\.update/);
+});
+
+test("inbound replay preserves append-only audit privileges", () => {
+  const privileges = readFileSync("supabase/migrations/20260902000300_phase5_mail_service_privileges.sql", "utf8");
+  assert.match(privileges, /grant select, insert on public\.mail_audit_events to service_role/i);
+  assert.doesNotMatch(privileges, /grant[^;]*update[^;]*mail_audit_events/i);
 });
 
 test("outbound business mail stays multipart alternative without marketing headers", () => {

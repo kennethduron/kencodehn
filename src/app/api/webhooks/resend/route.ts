@@ -230,8 +230,12 @@ export async function POST(request: NextRequest) {
       const audit = await client.from("mail_audit_events").insert({ action: "mail_message_received", identity_id: identity.id, thread_id: threadId, message_id: messageId, safe_metadata: auditMetadata });
       if (audit.error) throw audit.error;
     } else {
-      const audit = await client.from("mail_audit_events").update({ safe_metadata: auditMetadata }).eq("id", existingAudit.data.id);
-      if (audit.error) throw audit.error;
+      const reconciledAudit = await client.from("mail_audit_events").select("id").eq("action", "mail_attachments_reconciled").eq("message_id", messageId).limit(1).maybeSingle();
+      if (reconciledAudit.error) throw reconciledAudit.error;
+      if (!reconciledAudit.data) {
+        const audit = await client.from("mail_audit_events").insert({ action: "mail_attachments_reconciled", identity_id: identity.id, thread_id: threadId, message_id: messageId, safe_metadata: auditMetadata });
+        if (audit.error) throw audit.error;
+      }
     }
     const completedEvent = await client.from("mail_webhook_events").update({ status: "processed", processed_at: new Date().toISOString(), error_category: null }).eq("provider_event_id", eventId);
     if (completedEvent.error) throw completedEvent.error;
