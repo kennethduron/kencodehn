@@ -177,7 +177,10 @@ export function isImageAttachmentType(contentType: string) {
 export function trustedResendAttachmentUrl(value: string) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && (url.hostname === "resend.com" || url.hostname.endsWith(".resend.com"));
+    return url.protocol === "https:" && new Set([
+      "cdn.resend.app",
+      "inbound-cdn.resend.com",
+    ]).has(url.hostname);
   } catch {
     return false;
   }

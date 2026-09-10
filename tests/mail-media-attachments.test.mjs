@@ -137,9 +137,12 @@ test("malicious HTML elements, handlers, forms and URLs stay removed", () => {
 
 test("attachment URL trust is restricted to Resend HTTPS hosts", () => {
   assert.equal(trustedResendAttachmentUrl("https://inbound-cdn.resend.com/id?signature=x"), true);
-  assert.equal(trustedResendAttachmentUrl("https://resend.com/path"), true);
+  assert.equal(trustedResendAttachmentUrl("https://cdn.resend.app/receiving/id/attachments/file?signature=x"), true);
+  assert.equal(trustedResendAttachmentUrl("https://resend.com/path"), false);
+  assert.equal(trustedResendAttachmentUrl("https://assets.resend.com/path"), false);
   assert.equal(trustedResendAttachmentUrl("https://resend.com.evil.test/file"), false);
   assert.equal(trustedResendAttachmentUrl("http://inbound-cdn.resend.com/file"), false);
+  assert.equal(trustedResendAttachmentUrl("https://cdn.resend.app.evil.test/file"), false);
 });
 
 test("private media route keeps authorization and no-sniff controls", () => {
